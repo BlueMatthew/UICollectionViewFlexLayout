@@ -5,5 +5,5 @@ Custom Layout of UICollectionView including below features:
 3. Pagination
 4. Sticky Headers
 
+![Screenshot](https://github.com/BlueMatthew/UICollectionViewFlexLayout/raw/master/docs/res/layout.gif)
 
-![Screenshot] (https://github.com/BlueMatthew/UICollectionViewFlexLayout/raw/master/docs/res/layout.gif)
