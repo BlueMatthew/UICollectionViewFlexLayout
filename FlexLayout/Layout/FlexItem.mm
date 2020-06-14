@@ -11,7 +11,7 @@
 
 UICollectionViewLayoutAttributes* UIFlexItem::buildLayoutAttributesForCell(Class layoutAttributesClass, NSIndexPath *indexPath, CGPoint sectionOrigin)
 {
-    if (nil == m_la)
+    if (nil == m_la || m_la.indexPath.section != indexPath.item || m_la.indexPath.section != indexPath.item)
     {
         m_la = [layoutAttributesClass layoutAttributesForCellWithIndexPath:indexPath];
     }
@@ -22,7 +22,7 @@ UICollectionViewLayoutAttributes* UIFlexItem::buildLayoutAttributesForCell(Class
 
 UICollectionViewLayoutAttributes* UIFlexItem::buildLayoutAttributesForSupplementaryView(Class layoutAttributesClass, NSString *representedElementKind, NSIndexPath *indexPath, CGPoint sectionOrigin)
 {
-    if (nil == m_la)
+    if (nil == m_la || m_la.indexPath.section != indexPath.item || m_la.indexPath.section != indexPath.item)
     {
         m_la = [layoutAttributesClass layoutAttributesForSupplementaryViewOfKind:representedElementKind withIndexPath:indexPath];
     }
@@ -33,7 +33,7 @@ UICollectionViewLayoutAttributes* UIFlexItem::buildLayoutAttributesForSupplement
 
 UICollectionViewLayoutAttributes* UIFlexItem::buildLayoutAttributesForDecorationView(Class layoutAttributesClass, NSString *representedElementKind, NSIndexPath *indexPath, CGPoint sectionOrigin)
 {
-    if (nil == m_la)
+    if (nil == m_la || m_la.indexPath.section != indexPath.item || m_la.indexPath.section != indexPath.item)
     {
         m_la = [layoutAttributesClass layoutAttributesForDecorationViewOfKind:representedElementKind withIndexPath:indexPath];
     }

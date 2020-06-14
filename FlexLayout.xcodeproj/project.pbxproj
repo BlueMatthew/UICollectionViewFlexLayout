@@ -22,6 +22,9 @@
 		3489126C24909FE200B1A95B /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 3489126B24909FE200B1A95B /* Assets.xcassets */; };
 		3489126F24909FE200B1A95B /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 3489126D24909FE200B1A95B /* LaunchScreen.storyboard */; };
 		3489127224909FE200B1A95B /* main.m in Sources */ = {isa = PBXBuildFile; fileRef = 3489127124909FE200B1A95B /* main.m */; };
+		34E452CD249312200096A72B /* LayoutUtils.mm in Sources */ = {isa = PBXBuildFile; fileRef = 34E452CC249312200096A72B /* LayoutUtils.mm */; };
+		34E452D0249394880096A72B /* PagingCollectionView.m in Sources */ = {isa = PBXBuildFile; fileRef = 34E452CF249394880096A72B /* PagingCollectionView.m */; };
+		34E452D4249394D40096A72B /* TimerAnimation.m in Sources */ = {isa = PBXBuildFile; fileRef = 34E452D3249394D40096A72B /* TimerAnimation.m */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -61,6 +64,11 @@
 		3489126E24909FE200B1A95B /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/LaunchScreen.storyboard; sourceTree = "<group>"; };
 		3489127024909FE200B1A95B /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		3489127124909FE200B1A95B /* main.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = main.m; sourceTree = "<group>"; };
+		34E452CC249312200096A72B /* LayoutUtils.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; path = LayoutUtils.mm; sourceTree = "<group>"; };
+		34E452CE249394880096A72B /* PagingCollectionView.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = PagingCollectionView.h; sourceTree = "<group>"; };
+		34E452CF249394880096A72B /* PagingCollectionView.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = PagingCollectionView.m; sourceTree = "<group>"; };
+		34E452D2249394D40096A72B /* TimerAnimation.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = TimerAnimation.h; sourceTree = "<group>"; };
+		34E452D3249394D40096A72B /* TimerAnimation.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = TimerAnimation.m; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -90,6 +98,8 @@
 		3454969C2490C17600447FCA /* Base */ = {
 			isa = PBXGroup;
 			children = (
+				34E452CE249394880096A72B /* PagingCollectionView.h */,
+				34E452CF249394880096A72B /* PagingCollectionView.m */,
 				3454969D2490C1B400447FCA /* CategoryBar.h */,
 				345496A12490C1B400447FCA /* CategoryBar.m */,
 				345496A02490C1B400447FCA /* CategoryBarItemViewCell.h */,
@@ -118,6 +128,7 @@
 		3489126124909FDE00B1A95B /* FlexLayout */ = {
 			isa = PBXGroup;
 			children = (
+				34E452D1249394C10096A72B /* Animations */,
 				3454969C2490C17600447FCA /* Base */,
 				345496952490C11700447FCA /* ViewCells */,
 				3489126224909FDE00B1A95B /* AppDelegate.h */,
@@ -141,19 +152,29 @@
 			children = (
 				348475D12490A2B900569952 /* CollectionViewFlexLayout.h */,
 				348475D02490A2B900569952 /* CollectionViewFlexLayout.mm */,
-				348475C92490A2B800569952 /* FlowSection.h */,
-				348475CF2490A2B900569952 /* LayoutUtils.h */,
-				348475CD2490A2B900569952 /* Section.h */,
+				345496A72490DEAF00447FCA /* CollectionViewFlexLayoutInvalidationContext.h */,
+				345496A82490DEC200447FCA /* CollectionViewFlexLayoutInvalidationContext.m */,
 				348475D22490A2B900569952 /* FlexColumn.h */,
 				348475D42490A2B900569952 /* FlexItem.h */,
 				348475CE2490A2B900569952 /* FlexItem.mm */,
 				348475D32490A2B900569952 /* FlexPage.h */,
 				348475C82490A2B800569952 /* FlexRow.h */,
+				348475C92490A2B800569952 /* FlowSection.h */,
+				348475CF2490A2B900569952 /* LayoutUtils.h */,
+				34E452CC249312200096A72B /* LayoutUtils.mm */,
+				348475CD2490A2B900569952 /* Section.h */,
 				348475CC2490A2B900569952 /* WaterfallSection.h */,
-				345496A72490DEAF00447FCA /* CollectionViewFlexLayoutInvalidationContext.h */,
-				345496A82490DEC200447FCA /* CollectionViewFlexLayoutInvalidationContext.m */,
 			);
 			path = Layout;
+			sourceTree = "<group>";
+		};
+		34E452D1249394C10096A72B /* Animations */ = {
+			isa = PBXGroup;
+			children = (
+				34E452D2249394D40096A72B /* TimerAnimation.h */,
+				34E452D3249394D40096A72B /* TimerAnimation.m */,
+			);
+			path = Animations;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -227,10 +248,13 @@
 			buildActionMask = 2147483647;
 			files = (
 				3454969A2490C14200447FCA /* ItemViewCell.m in Sources */,
+				34E452CD249312200096A72B /* LayoutUtils.mm in Sources */,
 				3489126724909FDE00B1A95B /* ViewController.m in Sources */,
 				3489127224909FE200B1A95B /* main.m in Sources */,
+				34E452D0249394880096A72B /* PagingCollectionView.m in Sources */,
 				3454969B2490C14200447FCA /* ImageItemViewCell.m in Sources */,
 				345496A22490C1B500447FCA /* CategoryBarItemViewCell.m in Sources */,
+				34E452D4249394D40096A72B /* TimerAnimation.m in Sources */,
 				3489126424909FDE00B1A95B /* AppDelegate.m in Sources */,
 				345496942490C07200447FCA /* FlexListView.mm in Sources */,
 				348475D82490A2B900569952 /* FlexItem.mm in Sources */,
@@ -385,6 +409,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
+				"OTHER_LDFLAGS[arch=*]" = "-v";
 				PRODUCT_BUNDLE_IDENTIFIER = SHA.FlexLayout;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				TARGETED_DEVICE_FAMILY = "1,2";

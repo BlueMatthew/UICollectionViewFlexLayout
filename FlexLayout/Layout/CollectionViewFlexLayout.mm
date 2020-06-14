@@ -47,6 +47,12 @@ typedef UISectionVerticalCompareT<UICollectionViewFlexLayout> UISectionVerticalC
 - (NSInteger)getNumberOfColumnsForSection:(NSInteger)section;
 - (UICollectionViewFlexLayoutMode)getLayoutModeForSection:(NSInteger)section;
 
+- (NSInteger)getPage;
+- (NSInteger)getPageAtSection:(NSInteger)section;
+- (NSInteger)getPageSize;
+- (NSInteger)getNumberOfPagingSectionsForPage:(NSInteger)page;
+- (BOOL)getContentOffset:(out CGPoint *)contentOffset forPage:(NSInteger)page;
+
 @end
 
 /*
@@ -98,17 +104,32 @@ protected:
                 unsigned int numberOfColumns : 1;
                 unsigned int enterStickyMode : 1;
                 unsigned int exitStickyMode : 1;
+                unsigned int page : 1;
+                unsigned int pageAtSection : 1;
+                unsigned int pageSize : 1;
+                unsigned int numberOfPagingSections : 1;
+                unsigned int contentOffsetForPage : 1;
             };
             unsigned int layoutDelegate;
         };
     } m_layoutDelegateFlags;
     
     std::vector<UISection *> m_sections;
+    
+    std::vector< std::vector<UISection *> > m_pages;
+    // When m_pagingSection is validated and (m_pagingSection - 1) is in m_stickyHeaders, we will handle the page context saving/restoring
+    std::map<NSInteger, CGPoint>    m_pageContexts;    // Page -> contentOffset, should be reset when the data is updated
+    
+    CGSize m_contentSize;
+    
     NSMutableArray *m_updateIndexPaths;
     
     std::map<NSInteger, BOOL> m_stickyHeaders; // Section Index -> Sticy Status(YES/NO)
     
-    BOOL m_layoutInvalidated;
+    BOOL        m_draggingMode;
+    CGPoint     m_minPagingOffset;
+    CGPoint     m_maxPagingOffset;
+    BOOL    m_layoutInvalidated;
 }
 
 @end
@@ -143,6 +164,9 @@ protected:
         m_pagingSection = NSNotFound;
         m_pagingOffset = CGPointZero;
         
+        m_draggingMode = NO;
+        m_minPagingOffset = CGPointZero;
+        m_maxPagingOffset = CGPointZero;
         m_layoutInvalidated = YES;
     }
     return self;
@@ -176,6 +200,9 @@ protected:
         m_minimumInteritemSpacing = [aDecoder containsValueForKey:@"minimumInteritemSpacing"] ? [aDecoder decodeDoubleForKey:@"minimumInteritemSpacing"] : 0.0f;
         m_minimumLineSpacing = [aDecoder containsValueForKey:@"minimumLineSpacing"] ? [aDecoder decodeDoubleForKey:@"minimumLineSpacing"] : 0.0f;
         
+        m_draggingMode = NO;
+        m_minPagingOffset = CGPointZero;
+        m_maxPagingOffset = CGPointZero;
         m_layoutInvalidated = YES;
     }
     return self;
@@ -278,9 +305,38 @@ protected:
     [self invalidateLayoutWithContext:context];
 }
 
+- (void)setPagingSection:(NSInteger)pagingSection
+{
+    if (pagingSection != m_pagingSection)
+    {
+        NSInteger minSection = MIN(m_pagingSection, pagingSection);
+        m_pagingSection = pagingSection;
+        
+        [self recalcSectionFrameFrom:minSection + 1];
+    }
+}
+
 - (void)setPagingOffset:(CGPoint)pagingOffset
 {
+    [self setPagingOffset:pagingOffset withDraggingMode:YES];
+}
+
+- (void)setPagingOffset:(CGPoint)pagingOffset withDraggingMode:(BOOL)draggingMode
+{
     m_pagingOffset = pagingOffset;
+    m_draggingMode = draggingMode;
+    if (draggingMode)
+    {
+        if (m_minPagingOffset.x > pagingOffset.x) m_minPagingOffset.x = pagingOffset.x;
+        if (m_minPagingOffset.y > pagingOffset.y) m_minPagingOffset.y = pagingOffset.y;
+        if (m_maxPagingOffset.x < pagingOffset.x) m_maxPagingOffset.x = pagingOffset.x;
+        if (m_maxPagingOffset.y < pagingOffset.y) m_maxPagingOffset.y = pagingOffset.y;
+    }
+    else
+    {
+        m_minPagingOffset = CGPointZero;
+        m_maxPagingOffset = CGPointZero;
+    }
     [self invalidateOffset];
 }
 
@@ -347,27 +403,69 @@ protected:
         return;
     }
     
-    CGFloat position = 0.0;
-    std::vector<UISection *>::iterator it = m_sections.begin() + section;
-    if (section > 0)
+    m_pages.clear();
+    NSInteger pageSize = [self getPageSize];
+    if (m_pagingSection != NSNotFound && pageSize > 1)
     {
-        std::vector<UISection *>::iterator prevIt = it - 1;
-        position = IS_CV_VERTICAL(self) ? ((*prevIt)->getFrame().origin.y + (*prevIt)->getFrame().size.height) : ((*prevIt)->getFrame().origin.x + (*prevIt)->getFrame().size.width);
+        
+        NSLog(@"PAGING: recalcSectionFrameFrom");
+        m_pages.resize(pageSize);
+        
+        CGFloat position = 0.0;
+        
+        std::vector<UISection *>::iterator it = m_sections.begin();
+        std::vector<UISection *>::iterator itEnd = it + MIN(m_pagingSection, m_sections.size());
+        for (; it != itEnd; ++it)
+        {
+            IS_CV_VERTICAL(self) ? (*it)->getFrame().origin.y = position : (*it)->getFrame().origin.x = position;
+            position += IS_CV_VERTICAL(self) ? ((*it)->getFrame().size.height) : ((*it)->getFrame().size.width);
+        }
+        
+        for (std::vector<std::vector<UISection *> >::iterator itPage = m_pages.begin(); itPage != m_pages.end(); ++itPage)
+        {
+            itPage->insert(itPage->end(), m_sections.begin(), itEnd);
+        }
+        
+        itEnd = m_sections.end();
+        for (NSInteger page = 0; page < pageSize; page++)
+        {
+            std::vector<UISection *> &sections = m_pages[page];
+            
+            NSInteger pagingSections = [self getNumberOfPagingSectionsForPage:page];
+            CGFloat pagingPosition = position;
+            for (NSInteger sectionIndex = 0; sectionIndex < pagingSections && it != itEnd; sectionIndex++, ++it)
+            {
+                IS_CV_VERTICAL(self) ? (*it)->getFrame().origin.y = pagingPosition : (*it)->getFrame().origin.x = pagingPosition;
+                pagingPosition += IS_CV_VERTICAL(self) ? ((*it)->getFrame().size.height) : ((*it)->getFrame().size.width);
+                
+                sections.push_back(*it);
+            }
+            
+            if (it == itEnd) break;
+        }
     }
-    
-    for (; it != m_sections.end(); ++it)
+    else
     {
-        IS_CV_VERTICAL(self) ? (*it)->getFrame().origin.y = position : (*it)->getFrame().origin.x = position;
-        position += IS_CV_VERTICAL(self) ? ((*it)->getFrame().size.height) : ((*it)->getFrame().size.width);
+        CGFloat position = 0.0;
+        std::vector<UISection *>::iterator it = m_sections.begin() + section;
+        
+        if (section > 0)
+        {
+            std::vector<UISection *>::iterator prevIt = it - 1;
+            position = IS_CV_VERTICAL(self) ? ((*prevIt)->getFrame().origin.y + (*prevIt)->getFrame().size.height) : ((*prevIt)->getFrame().origin.x + (*prevIt)->getFrame().size.width);
+        }
+        for (; it != m_sections.end(); ++it)
+        {
+            IS_CV_VERTICAL(self) ? (*it)->getFrame().origin.y = position : (*it)->getFrame().origin.x = position;
+            position += IS_CV_VERTICAL(self) ? ((*it)->getFrame().size.height) : ((*it)->getFrame().size.width);
+        }
     }
 }
 
 - (void)prepareLayout
 {
     [super prepareLayout];
-    
-    // [self prepareDelegate];
-    
+
     if (m_layoutInvalidated)
     {
         for (std::vector<UISection *>::iterator it = m_sections.begin(); it != m_sections.end(); delete *it, ++it);
@@ -389,163 +487,15 @@ protected:
             m_sections.push_back(section);
         }
         
+        NSInteger pageSize = [self getPageSize];
+        if (m_pagingSection != NSNotFound && pageSize > 1)
+        {
+            [self recalcSectionFrameFrom:0];
+        }
+        
         m_layoutInvalidated = NO;
     }
 }
-
-- (CGSize)collectionViewContentSize {
-    if (m_sections.size() == 0)
-    {
-        return CGSizeZero;
-    }
-    UISection *section = m_sections[m_sections.size() - 1];
-    
-    return IS_CV_VERTICAL(self) ? CGSizeMake(self.collectionView.bounds.size.width, section->m_frame.origin.y + section->m_frame.size.height) : CGSizeMake(section->m_frame.origin.x + section->m_frame.size.width, self.collectionView.bounds.size.width);
-}
-
-- (BOOL)shouldInvalidateLayoutForBoundsChange:(CGRect)newBounds
-{
-    if (!m_stickyHeaders.empty())
-    {
-        // Don't return YES because it will call invalidateLayout
-        [self invalidateOffset];
-    }
-    
-    return [super shouldInvalidateLayoutForBoundsChange:newBounds];
-}
-
-#ifdef DEBUG
-- (NSString *)stringFromInvalidationContext:(UICollectionViewLayoutInvalidationContext *)context
-{
-    // CGPoint contentOffsetAdjustment = context.contentOffsetAdjustment;
-    NSMutableString *description = [NSMutableString string];
-    if (context.invalidateEverything)
-    {
-        [description appendString:@"invalidateEverything=YES;"];
-    }
-    if (context.invalidateDataSourceCounts)
-    {
-        [description appendString:@"invalidateDSCounts=YES;"];
-    }
-    if (!CGPointEqualToPoint(context.contentOffsetAdjustment, CGPointZero))
-    {
-        [description appendFormat:@"contentOffsetAdjustment=%@;", NSStringFromCGPoint(context.contentOffsetAdjustment)];
-    }
-    if (!CGSizeEqualToSize(context.contentSizeAdjustment, CGSizeZero))
-    {
-        [description appendFormat:@"contentSizeAdjustment=%@;", NSStringFromCGSize(context.contentSizeAdjustment)];
-    }
-    if (context.invalidatedItemIndexPaths.count > 0)
-    {
-        [description appendFormat:@"invalidatedItemIndexPaths=%ld;", context.invalidatedItemIndexPaths.count];
-    }
-    if (context.invalidatedSupplementaryIndexPaths.count > 0)
-    {
-        [description appendFormat:@"invalidatedSupplementaryIndexPaths=%ld;", context.invalidatedSupplementaryIndexPaths.count];
-    }
-    
-    if (description.length == 0)
-    {
-        // CGPoint contentOffset = self.collectionView.contentOffset;
-        // CGRect bounds = self.collectionView.bounds;
-        // NSLog(@"No InvalidationContext%@", @"");
-    }
-    
-    return description;
-}
-#endif // DEBUG
-
-- (void)invalidateLayout
-{
-    [super invalidateLayout];
-    
-    m_layoutInvalidated = YES;
-}
-
-- (void)invalidateLayoutWithContext:(UICollectionViewLayoutInvalidationContext *)context
-{
-    [super invalidateLayoutWithContext:context];
-    
-    if ([context isKindOfClass:[UICollectionViewFlexLayout invalidationContextClass]])
-    {
-        UICollectionViewFlexLayoutInvalidationContext *pagingInvalidationContext = (UICollectionViewFlexLayoutInvalidationContext *)context;
-        if (!pagingInvalidationContext.invalidateOffset)
-        {
-            // It is not caused by internal offset change, should call prepareLayout
-            m_layoutInvalidated = YES;
-        }
-    }
-    else
-    {
-        // It is not caused by offset change, should call prepareLayout
-        m_layoutInvalidated = YES;
-    }
-}
-
-/*
-- (UICollectionViewLayoutInvalidationContext *)invalidationContextForBoundsChange:(CGRect)newBounds
-{
-    CGRect oldBounds = self.collectionView.bounds;
-    
-    // guard _shouldDoCustomLayout,
-    UICollectionViewLayoutInvalidationContext *invalidationContext = [super invalidationContextForBoundsChange:newBounds];
-    
-    CGPoint contentOffsetAdjustment = CGPointMake(newBounds.origin.x - oldBounds.origin.x, newBounds.origin.y - newBounds.origin.y);
-    // CGPoint contentSizeAdjustment = CGPointMake(newBounds.origin.x - oldBounds.origin.x, newBounds.origin.y - newBounds.origin.y);
-
-    invalidationContext.contentOffsetAdjustment = contentOffsetAdjustment;
-    
-    return invalidationContext;
-}
- */
-
-/*
- - (UICollectionViewLayoutInvalidationContext *)invalidationContextForBoundsChange:(CGRect)newBounds
- {
- // guard _shouldDoCustomLayout,
- UICollectionViewLayoutInvalidationContext *invalidationContext = [super invalidationContextForBoundsChange:newBounds];
- if (nil == self.collectionView)
- {
- return invalidationContext;
- }
- 
- CGRect oldBounds = self.collectionView.bounds;
- 
- 
- if (!CGSizeEqualToSize(oldBounds.size, newBounds.size))
- {
- // re-query the collection view delegate for metrics such as size information etc.
- // invalidationContext inval = YES;
- m_prepared = NO;
- }
- 
- // Origin changes?
- if (!CGPointEqualToPoint(oldBounds.origin, newBounds.origin))
- {
- NSMutableIndexSet *sectionIds = [NSMutableIndexSet indexSet];
- [sectionIds addIndex:0];
- [sectionIds addIndex:2];
- // find and invalidate the sections that would fall into the new bounds
- // guard let sectionIdxPaths = sectionsHeadersIDxs(forRect: newBounds) else {return invalidationContext}
- 
- // then invalidate
- NSMutableArray<NSIndexPath *> *indexPaths = [NSMutableArray<NSIndexPath *> arrayWithCapacity:sectionIds.count];
- [sectionIds enumerateIndexesUsingBlock:^(NSUInteger idx, BOOL * _Nonnull stop) {
- [indexPaths addObject:[NSIndexPath indexPathForItem:0 inSection:idx]];
- }];
- [invalidationContext invalidateSupplementaryElementsOfKind:UICollectionElementKindSectionHeader atIndexPaths:indexPaths];
- }
- 
- return invalidationContext;
- }
- */
-
-/*
- - (BOOL)shouldInvalidateLayoutForPreferredLayoutAttributes:(UICollectionViewLayoutAttributes *)preferredAttributes withOriginalAttributes:(UICollectionViewLayoutAttributes *)originalAttributes
- {
- return YES;
- }
- */
 
 - (NSArray<UICollectionViewLayoutAttributes *> *)layoutAttributesForElementsInRect:(CGRect)rect
 {
@@ -557,15 +507,17 @@ protected:
     UICollectionView * const cv = self.collectionView;
     CGSize contentSize = [self collectionViewContentSize];
     CGPoint contentOffset = cv.contentOffset;
+    CGRect bounds = cv.bounds;
+    
     if (!CGSizeEqualToSize(contentSize, cv.contentSize))
     {
         // If layout is updated but collectionview is not, we should adjust contentOffset
-        CGFloat maxOffset = contentSize.width - cv.bounds.size.width;
+        CGFloat maxOffset = contentSize.width - bounds.size.width;
         if (contentOffset.x > maxOffset)
         {
             contentOffset.x = maxOffset;
         }
-        maxOffset = contentSize.height - cv.bounds.size.height;
+        maxOffset = contentSize.height - bounds.size.height;
         if (contentOffset.y > maxOffset)
         {
             contentOffset.y = maxOffset;
@@ -573,26 +525,29 @@ protected:
     }
     
     CGRect visibleRect = (CGRect) { .origin = contentOffset, .size = self.collectionView.bounds.size };
+    NSInteger page = [self getPage];
+    NSInteger pageSize = [self getPageSize];
+    
+    UISectionsHorizontalFilterT<UICollectionViewFlexLayout> hFilter;
+    UISectionsVerticalFilterT<UICollectionViewFlexLayout> vFilter;
     
     NSMutableArray<UICollectionViewLayoutAttributes *> *layoutAttributesArray = [NSMutableArray array];
-    std::pair<std::vector<UISection *>::iterator, std::vector<UISection *>::iterator> range = IS_CV_VERTICAL(self) ? std::equal_range(m_sections.begin(), m_sections.end(), std::pair<CGFloat, CGFloat>(visibleRect.origin.y, visibleRect.origin.y + visibleRect.size.height), UISectionVerticalCompare()) : std::equal_range(m_sections.begin(), m_sections.end(), std::pair<CGFloat, CGFloat>(visibleRect.origin.x, visibleRect.origin.x + visibleRect.size.width), UISectionHorizontalCompare());
+    
+    std::vector<UISection *> const &sections = (m_pagingSection != NSNotFound && pageSize > 1) ? (m_pages[page]) : m_sections;
+    std::pair<std::vector<UISection *>::const_iterator, std::vector<UISection *>::const_iterator> range = IS_CV_VERTICAL(self) ? vFilter(sections, visibleRect, layoutAttributesArray) : hFilter(sections, visibleRect, layoutAttributesArray);
     if (range.first == range.second)
     {
         // No Sections
         return nil;
     }
     
-    for (std::vector<UISection *>::iterator it = range.first; it != range.second; ++it)
-    {
-        (*it)->getLayoutAttributesInRect(layoutAttributesArray, visibleRect);
-    }
-    
     NSMutableArray<UICollectionViewLayoutAttributes *> *newLayoutAttributesArray = nil;
+    CGFloat totalHeaderSize = 0.0f; // When m_stackedStickyHeaders == YES
     
     if (!m_stickyHeaders.empty())
     {
-        NSInteger maxSection = range.second - 1 - m_sections.begin();
-        NSInteger minSection = range.first - m_sections.begin();
+        NSInteger maxSection = range.second - 1 - sections.begin();
+        NSInteger minSection = range.first - sections.begin();
         std::map<NSInteger, UICollectionViewLayoutAttributes *> headerLayoutAttributesMap;
         
         for (UICollectionViewLayoutAttributes *layoutAttributes in layoutAttributesArray)
@@ -607,7 +562,7 @@ protected:
         }
         
         UIEdgeInsets contentInset = self.collectionView.contentInset;
-        CGFloat totalHeaderSize = 0.0f; // When m_stackedStickyHeaders == YES
+        
         
         for (std::map<NSInteger, BOOL>::iterator it = m_stickyHeaders.begin(); it != m_stickyHeaders.end(); ++it)
         {
@@ -681,33 +636,144 @@ protected:
         }
     }
     
-    // PagingOffset
-    if (m_pagingSection != NSNotFound && !CGPointEqualToPoint(m_pagingOffset, CGPointZero))
+    // Pagination
+    if (m_pagingSection != NSNotFound && pageSize > 1)
     {
-        for (UICollectionViewLayoutAttributes *layoutAttributes in layoutAttributesArray)
+        if (!CGPointEqualToPoint(m_pagingOffset, CGPointZero))
         {
-            if (layoutAttributes.indexPath.section >= m_pagingSection)
+            // Offset all cells for current page
+            for (UICollectionViewLayoutAttributes *layoutAttributes in layoutAttributesArray)
             {
-                layoutAttributes.frame = CGRectOffset(layoutAttributes.frame, m_pagingOffset.x, m_pagingOffset.y);
+                if (layoutAttributes.indexPath.section >= m_pagingSection)
+                {
+                    layoutAttributes.frame = CGRectOffset(layoutAttributes.frame, m_pagingOffset.x, m_pagingOffset.y);
+                }
+            }
+            for (UICollectionViewLayoutAttributes *layoutAttributes in newLayoutAttributesArray)
+            {
+                if (layoutAttributes.indexPath.section >= m_pagingSection)
+                {
+                    layoutAttributes.frame = CGRectOffset(layoutAttributes.frame, m_pagingOffset.x, m_pagingOffset.y);
+                }
+            }
+            
+            // Other pages swiping, right now we just handle one page
+            bool leftSwiping = (m_pagingOffset.x < 0);
+            NSInteger swipingPage = leftSwiping ? (page + 1) : (page - 1);
+            if (swipingPage >= 0 && swipingPage < pageSize)
+            {
+                CGPoint pagingContentOffset = contentOffset;
+                if (![self getContentOffset:&pagingContentOffset forPage:swipingPage])
+                {
+                    // Calc
+                    // Get bottom of last fixing section
+                    CGFloat bottomOfLastFixedSection = 0;
+                    if (m_pagingSection > 0)
+                    {
+                        bottomOfLastFixedSection = CGRectGetMaxY(m_sections[m_pagingSection - 1]->getFrame());
+                    }
+                    bottomOfLastFixedSection += totalHeaderSize;
+                    pagingContentOffset.y = bottomOfLastFixedSection;
+                }
+                
+                CGRect pagingRect = (CGRect) { .origin = pagingContentOffset, .size = self.collectionView.bounds.size };
+                
+                NSMutableArray<UICollectionViewLayoutAttributes *> *pagingLayoutAttributesArray = [NSMutableArray array];
+                if (leftSwiping)
+                {
+                    CGFloat dx = swipingPage > 0 ? ((-m_pagingOffset.x) - (swipingPage - page - 1) * bounds.size.width) : (-m_pagingOffset.x);
+                    pagingRect.origin.x = bounds.size.width - dx;
+                    pagingRect.size.width = dx;
+                }
+                else
+                {
+                    pagingRect.size.width = m_pagingOffset.x - (swipingPage - page - 1) * bounds.size.width;
+                }
+                
+                std::vector<UISection *> const &pageSections = *(m_pages.begin() + swipingPage);
+                std::pair<std::vector<UISection *>::const_iterator, std::vector<UISection *>::const_iterator> rangePage = IS_CV_VERTICAL(self) ? vFilter(pageSections, pagingRect, pagingLayoutAttributesArray, m_pagingSection) : hFilter(pageSections, pagingRect, pagingLayoutAttributesArray, m_pagingSection);
+                
+                if (rangePage.first != rangePage.second && pagingLayoutAttributesArray.count > 0)
+                {
+                    CGFloat pagingOffsetX = (swipingPage - page) * bounds.size.width + m_pagingOffset.x;
+                    
+                    for (UICollectionViewLayoutAttributes *layoutAttributes in pagingLayoutAttributesArray)
+                    {
+                        layoutAttributes.frame = CGRectOffset(layoutAttributes.frame, pagingOffsetX, m_pagingOffset.y);
+                    }
+                    
+                    [layoutAttributesArray addObjectsFromArray:pagingLayoutAttributesArray];
+                    [pagingLayoutAttributesArray removeAllObjects];
+                }
+            }
+            
+            
+        }
+        
+        
+
+        /*
+        if (m_draggingMode || !CGPointEqualToPoint(m_pagingOffset, CGPointZero))
+        {
+            bool negativeOffset = m_pagingOffset.x < 0.0f;
+            CGFloat minOffset = negativeOffset ? m_pagingOffset.x : 0.0f;
+            CGFloat maxOffset = negativeOffset ? 0.0f : m_pagingOffset.x;
+            if (m_draggingMode)
+            {
+                minOffset = m_minPagingOffset.x;
+                maxOffset = m_maxPagingOffset.x;
+            }
+            NSInteger minPageIndex = page - ((maxOffset >= 0.0f) ? ceil(maxOffset / bounds.size.width) : (-floor(maxOffset / bounds.size.width)));
+            NSInteger maxPageIndex = page - ((minOffset < 0.0f) ? floor(minOffset / bounds.size.width) : (-ceil(minOffset / bounds.size.width)));
+            if (minPageIndex < 0) minPageIndex = 0;
+            if (maxPageIndex >= pageSize) maxPageIndex = pageSize - 1;
+            NSMutableArray<UICollectionViewLayoutAttributes *> *pagingLayoutAttributesArray = [NSMutableArray array];
+            
+            for (NSInteger pageIndex = minPageIndex; pageIndex <= maxPageIndex; pageIndex++)
+            {
+                if (pageIndex == page) continue;
+
+                CGRect pagingRect = visibleRect;
+                if (pageIndex == minPageIndex)
+                {
+                    CGFloat dx = minPageIndex > 0 ? (abs(maxOffset) - (pageIndex - page - 1) * bounds.size.width) : abs(maxOffset);
+                    pagingRect.origin.x = bounds.size.width - dx;
+                    pagingRect.size.width = dx;
+                }
+                else if (pageIndex == maxPageIndex)
+                {
+                    pagingRect.size.width = abs(minOffset) - (pageIndex - page - 1) * bounds.size.width;
+                }
+
+                std::vector<UISection *> const &pageSections = (m_pages[pageIndex]);
+                std::pair<std::vector<UISection *>::const_iterator, std::vector<UISection *>::const_iterator> rangePage = IS_CV_VERTICAL(self) ? vFilter(pageSections, pagingRect, pagingLayoutAttributesArray, m_pagingSection) : hFilter(pageSections, pagingRect, pagingLayoutAttributesArray, m_pagingSection);
+                
+                if (rangePage.first == rangePage.second || pagingLayoutAttributesArray.count == 0) continue;
+
+                CGFloat pagingOffsetX = (pageIndex - page) * bounds.size.width + m_pagingOffset.x;
+                
+                for (UICollectionViewLayoutAttributes *layoutAttributes in pagingLayoutAttributesArray)
+                {
+                    layoutAttributes.frame = CGRectOffset(layoutAttributes.frame, pagingOffsetX, m_pagingOffset.y);
+                }
+                
+                [layoutAttributesArray addObjectsFromArray:pagingLayoutAttributesArray];
+                [pagingLayoutAttributesArray removeAllObjects];
             }
         }
-        for (UICollectionViewLayoutAttributes *layoutAttributes in newLayoutAttributesArray)
-        {
-            if (layoutAttributes.indexPath.section >= m_pagingSection)
-            {
-                layoutAttributes.frame = CGRectOffset(layoutAttributes.frame, m_pagingOffset.x, m_pagingOffset.y);
-            }
-        }
+         */
     }
+
     if (nil == newLayoutAttributesArray || 0 == newLayoutAttributesArray.count)
     {
         newLayoutAttributesArray = layoutAttributesArray;
     }
     else
     {
-        [newLayoutAttributesArray addObjectsFromArray:layoutAttributesArray];
+        [layoutAttributesArray addObjectsFromArray:newLayoutAttributesArray];
+        newLayoutAttributesArray = layoutAttributesArray;
     }
-    
+
     return newLayoutAttributesArray;
 }
 
@@ -827,6 +893,87 @@ protected:
     m_updateIndexPaths = nil;
 }
 
+- (void)prepareForTransitionFromLayout:(UICollectionViewLayout *)oldLayout;
+{
+    memset(&m_layoutDelegateFlags, 0, sizeof(m_layoutDelegateFlags));
+}
+
+- (void)prepareForTransitionToLayout:(UICollectionViewLayout *)newLayout
+{
+    memset(&m_layoutDelegateFlags, 0, sizeof(m_layoutDelegateFlags));
+}
+
+- (void)finalizeLayoutTransition
+{
+    [self prepareDelegate];
+}
+
+
+/*
+ - (UICollectionViewLayoutInvalidationContext *)invalidationContextForBoundsChange:(CGRect)newBounds
+ {
+ CGRect oldBounds = self.collectionView.bounds;
+ 
+ // guard _shouldDoCustomLayout,
+ UICollectionViewLayoutInvalidationContext *invalidationContext = [super invalidationContextForBoundsChange:newBounds];
+ 
+ CGPoint contentOffsetAdjustment = CGPointMake(newBounds.origin.x - oldBounds.origin.x, newBounds.origin.y - newBounds.origin.y);
+ // CGPoint contentSizeAdjustment = CGPointMake(newBounds.origin.x - oldBounds.origin.x, newBounds.origin.y - newBounds.origin.y);
+ 
+ invalidationContext.contentOffsetAdjustment = contentOffsetAdjustment;
+ 
+ return invalidationContext;
+ }
+ */
+
+/*
+ - (UICollectionViewLayoutInvalidationContext *)invalidationContextForBoundsChange:(CGRect)newBounds
+ {
+ // guard _shouldDoCustomLayout,
+ UICollectionViewLayoutInvalidationContext *invalidationContext = [super invalidationContextForBoundsChange:newBounds];
+ if (nil == self.collectionView)
+ {
+ return invalidationContext;
+ }
+ 
+ CGRect oldBounds = self.collectionView.bounds;
+ 
+ 
+ if (!CGSizeEqualToSize(oldBounds.size, newBounds.size))
+ {
+ // re-query the collection view delegate for metrics such as size information etc.
+ // invalidationContext inval = YES;
+ m_prepared = NO;
+ }
+ 
+ // Origin changes?
+ if (!CGPointEqualToPoint(oldBounds.origin, newBounds.origin))
+ {
+ NSMutableIndexSet *sectionIds = [NSMutableIndexSet indexSet];
+ [sectionIds addIndex:0];
+ [sectionIds addIndex:2];
+ // find and invalidate the sections that would fall into the new bounds
+ // guard let sectionIdxPaths = sectionsHeadersIDxs(forRect: newBounds) else {return invalidationContext}
+ 
+ // then invalidate
+ NSMutableArray<NSIndexPath *> *indexPaths = [NSMutableArray<NSIndexPath *> arrayWithCapacity:sectionIds.count];
+ [sectionIds enumerateIndexesUsingBlock:^(NSUInteger idx, BOOL * _Nonnull stop) {
+ [indexPaths addObject:[NSIndexPath indexPathForItem:0 inSection:idx]];
+ }];
+ [invalidationContext invalidateSupplementaryElementsOfKind:UICollectionElementKindSectionHeader atIndexPaths:indexPaths];
+ }
+ 
+ return invalidationContext;
+ }
+ */
+
+/*
+ - (BOOL)shouldInvalidateLayoutForPreferredLayoutAttributes:(UICollectionViewLayoutAttributes *)preferredAttributes withOriginalAttributes:(UICollectionViewLayoutAttributes *)originalAttributes
+ {
+ return YES;
+ }
+ */
+
 - (UICollectionViewLayoutAttributes *)layoutAttributesForItemAtIndexPath:(NSIndexPath *)indexPath
 {
     UISection *section = NULL;
@@ -837,8 +984,8 @@ protected:
     
     UIFlexItem *item = section->m_items[indexPath.item];
     UICollectionViewLayoutAttributes *la = item->buildLayoutAttributesForCell([UICollectionViewFlexLayout layoutAttributesClass], indexPath, section->m_frame.origin);
-
-    return la;
+    
+    return [la copy];
 }
 
 - (UICollectionViewLayoutAttributes *)layoutAttributesForSupplementaryViewOfKind:(NSString *)elementKind atIndexPath:(NSIndexPath *)indexPath
@@ -866,8 +1013,8 @@ protected:
     }
     
     UICollectionViewLayoutAttributes *la = item->buildLayoutAttributesForSupplementaryView([UICollectionViewFlexLayout layoutAttributesClass], elementKind, indexPath, section->m_frame.origin);
-
-    return la;
+    
+    return [la copy];
     
     // UICollectionViewLayoutAttributes *layoutAttributes = [[super layoutAttributesForSupplementaryViewOfKind:elementKind atIndexPath:indexPath] copy];
     // UICollectionViewLayoutAttributes *layoutAttributes = [super layoutAttributesForSupplementaryViewOfKind:elementKind atIndexPath:indexPath];
@@ -896,19 +1043,46 @@ protected:
     // return section->adjustLayoutAttributes(layoutAttributes, indexPath);
 }
 
-- (void)prepareForTransitionFromLayout:(UICollectionViewLayout *)oldLayout;
+- (CGSize)collectionViewContentSize
 {
-    memset(&m_layoutDelegateFlags, 0, sizeof(m_layoutDelegateFlags));
+    if (m_sections.empty())
+    {
+        return CGSizeZero;
+    }
+    
+    UISection *section = NULL;
+    
+    NSInteger pageSize = [self getPageSize];
+    if (m_pagingSection != NSNotFound && pageSize > 1)
+    {
+        NSInteger page = [self getPage];
+        std::vector<UISection *> const &sections = m_pages[page];
+        section = sections.empty() ? NULL : *(--(sections.end()));
+    }
+    else
+    {
+        section = *(--(m_sections.end()));
+    }
+    
+    if (NULL == section)
+    {
+        return CGSizeZero;
+    }
+    
+    // UISection *section = m_sections[m_sections.size() - 1];
+    
+    return IS_CV_VERTICAL(self) ? CGSizeMake(self.collectionView.bounds.size.width, section->m_frame.origin.y + section->m_frame.size.height) : CGSizeMake(section->m_frame.origin.x + section->m_frame.size.width, self.collectionView.bounds.size.width);
 }
 
-- (void)prepareForTransitionToLayout:(UICollectionViewLayout *)newLayout
+- (BOOL)shouldInvalidateLayoutForBoundsChange:(CGRect)newBounds
 {
-    memset(&m_layoutDelegateFlags, 0, sizeof(m_layoutDelegateFlags));
-}
-
-- (void)finalizeLayoutTransition
-{
-    [self prepareDelegate];
+    if (!m_stickyHeaders.empty())
+    {
+        // Don't return YES because it will call invalidateLayout
+        [self invalidateOffset];
+    }
+    
+    return [super shouldInvalidateLayoutForBoundsChange:newBounds];
 }
 
 - (void)prepareDelegate
@@ -920,8 +1094,8 @@ protected:
         m_layoutDelegateFlags.dataSource = 0;
         if ([dataSource conformsToProtocol:@protocol(UICollectionViewDataSource)])
         {
-            m_layoutDelegateFlags.numberOfSections = ([dataSource respondsToSelector:@selector(numberOfSectionsInCollectionView:)]) ? 1 : 0;
-            m_layoutDelegateFlags.numberOfItemsInSection = ([dataSource respondsToSelector:@selector(collectionView:numberOfItemsInSection:)]) ? 1 : 0;
+            m_layoutDelegateFlags.numberOfSections = [dataSource respondsToSelector:@selector(numberOfSectionsInCollectionView:)] ? 1 : 0;
+            m_layoutDelegateFlags.numberOfItemsInSection = [dataSource respondsToSelector:@selector(collectionView:numberOfItemsInSection:)] ? 1 : 0;
         }
     }
     
@@ -933,15 +1107,20 @@ protected:
         if ([delegate conformsToProtocol:@protocol(UICollectionViewDelegateFlexLayout)])
         {
             m_layoutDelegateFlags.sizeForItem = [delegate respondsToSelector:@selector(collectionView:layout:sizeForItemAtIndexPath:)] ? 1 : 0;
-            m_layoutDelegateFlags.insetForSection = ([delegate respondsToSelector:@selector(collectionView:layout:insetForSectionAtIndex:)]) ? 1 : 0;
-            m_layoutDelegateFlags.minimumLineSpacing = ([delegate respondsToSelector:@selector(collectionView:layout:minimumLineSpacingForSectionAtIndex:)]) ? 1 : 0;
-            m_layoutDelegateFlags.minimumInteritemSpacing = ([delegate respondsToSelector:@selector(collectionView:layout:minimumLineSpacingForSectionAtIndex:)]) ? 1 : 0;
-            m_layoutDelegateFlags.sizeForHeader = ([delegate respondsToSelector:@selector(collectionView:layout:referenceSizeForHeaderInSection:)]) ? 1 : 0;
-            m_layoutDelegateFlags.sizeForFooter = ([delegate respondsToSelector:@selector(collectionView:layout:referenceSizeForFooterInSection:)]) ? 1 : 0;
-            m_layoutDelegateFlags.numberOfColumns = ([delegate respondsToSelector:@selector(collectionView:layout:numberOfColumnsInSection:)]) ? 1 : 0;
+            m_layoutDelegateFlags.insetForSection = [delegate respondsToSelector:@selector(collectionView:layout:insetForSectionAtIndex:)] ? 1 : 0;
+            m_layoutDelegateFlags.minimumLineSpacing = [delegate respondsToSelector:@selector(collectionView:layout:minimumLineSpacingForSectionAtIndex:)] ? 1 : 0;
+            m_layoutDelegateFlags.minimumInteritemSpacing = [delegate respondsToSelector:@selector(collectionView:layout:minimumLineSpacingForSectionAtIndex:)] ? 1 : 0;
+            m_layoutDelegateFlags.sizeForHeader = [delegate respondsToSelector:@selector(collectionView:layout:referenceSizeForHeaderInSection:)] ? 1 : 0;
+            m_layoutDelegateFlags.sizeForFooter = [delegate respondsToSelector:@selector(collectionView:layout:referenceSizeForFooterInSection:)] ? 1 : 0;
+            m_layoutDelegateFlags.numberOfColumns = [delegate respondsToSelector:@selector(collectionView:layout:numberOfColumnsInSection:)] ? 1 : 0;
             m_layoutDelegateFlags.layoutModeForSection = ([delegate respondsToSelector:@selector(collectionView:layout:layoutModeForSection:)]) ? 1 : 0;
-            m_layoutDelegateFlags.enterStickyMode = [delegate respondsToSelector:@selector(collectionView:layout:headerEnterStickyModeAtSection:withOriginalPoint:)];
-            m_layoutDelegateFlags.exitStickyMode = [delegate respondsToSelector:@selector(collectionView:layout:headerExitStickyModeAtSection:)];
+            m_layoutDelegateFlags.enterStickyMode = [delegate respondsToSelector:@selector(collectionView:layout:headerEnterStickyModeAtSection:withOriginalPoint:)] ? 1 : 0;
+            m_layoutDelegateFlags.exitStickyMode = [delegate respondsToSelector:@selector(collectionView:layout:headerExitStickyModeAtSection:)] ? 1 : 0;
+            m_layoutDelegateFlags.page = [delegate respondsToSelector:@selector(pageForCollectionView:layout:)] ? 1 : 0;
+            m_layoutDelegateFlags.pageAtSection = [delegate respondsToSelector:@selector(pageForCollectionView:layout:atSection:)] ? 1 : 0;
+            m_layoutDelegateFlags.pageSize = [delegate respondsToSelector:@selector(pageSizeForCollectionView:layout:)] ? 1 : 0;
+            m_layoutDelegateFlags.numberOfPagingSections = [delegate respondsToSelector:@selector(collectionView:layout:numberOfPagingSectionsForPage:)] ? 1 : 0;
+            m_layoutDelegateFlags.contentOffsetForPage = [delegate respondsToSelector:@selector(collectionView:layout:contentOffsetForPage:)] ? 1 : 0;
         }
     }
 }
@@ -1011,21 +1190,89 @@ protected:
     [self prepareDelegate];
     if (m_layoutDelegateFlags.enterStickyMode)
     {
-        
-    }
-    if ([self.collectionView.delegate conformsToProtocol:@protocol(UICollectionViewDelegateFlexLayout)] && [self.collectionView.delegate respondsToSelector:@selector(collectionView:layout:headerEnterStickyModeAtSection:withOriginalPoint:)])
-    {
         [((id<UICollectionViewDelegateFlexLayout>)self.collectionView.delegate) collectionView:self.collectionView layout:self headerEnterStickyModeAtSection:section withOriginalPoint:point];
     }
 }
 
 - (void)exitStickyModeAt:(NSInteger)section
 {
-    // [self prepareDelegate];
-    if ([self.collectionView.delegate conformsToProtocol:@protocol(UICollectionViewDelegateFlexLayout)] && [self.collectionView.delegate respondsToSelector:@selector(collectionView:layout:headerExitStickyModeAtSection:)])
+    [self prepareDelegate];
+    if (m_layoutDelegateFlags.exitStickyMode)
     {
         [((id<UICollectionViewDelegateFlexLayout>)self.collectionView.delegate) collectionView:self.collectionView layout:self headerExitStickyModeAtSection:section];
     }
 }
+
+- (NSInteger)getPage
+{
+    [self prepareDelegate];
+    return (m_layoutDelegateFlags.page) ? [((id<UICollectionViewDelegateFlexLayout>)self.collectionView.delegate) pageForCollectionView:self.collectionView layout:self] : 0;
+}
+
+- (NSInteger)getPageAtSection:(NSInteger)section
+{
+    [self prepareDelegate];
+    return (m_layoutDelegateFlags.pageAtSection) ? [((id<UICollectionViewDelegateFlexLayout>)self.collectionView.delegate) pageForCollectionView:self.collectionView layout:self atSection:section] : 0;
+}
+
+- (NSInteger)getPageSize
+{
+    [self prepareDelegate];
+    return (m_layoutDelegateFlags.pageSize) ? ([((id<UICollectionViewDelegateFlexLayout>)self.collectionView.delegate) pageSizeForCollectionView:self.collectionView layout:self]) : 1;
+}
+
+- (NSInteger)getNumberOfPagingSectionsForPage:(NSInteger)page
+{
+    [self prepareDelegate];
+    return (m_layoutDelegateFlags.numberOfPagingSections) ? [((id<UICollectionViewDelegateFlexLayout>)self.collectionView.delegate) collectionView:self.collectionView layout:self numberOfPagingSectionsForPage:page] : 0;
+}
+
+- (BOOL)getContentOffset:(CGPoint *)contentOffset forPage:(NSInteger)page
+{
+    [self prepareDelegate];
+    return (m_layoutDelegateFlags.contentOffsetForPage) ? [((id<UICollectionViewDelegateFlexLayout>)self.collectionView.delegate) collectionView:self.collectionView layout:self contentOffset:contentOffset forPage:page] : NO;
+}
+
+#ifdef DEBUG
+- (NSString *)stringFromInvalidationContext:(UICollectionViewLayoutInvalidationContext *)context
+{
+    // CGPoint contentOffsetAdjustment = context.contentOffsetAdjustment;
+    NSMutableString *description = [NSMutableString string];
+    if (context.invalidateEverything)
+    {
+        [description appendString:@"invalidateEverything=YES;"];
+    }
+    if (context.invalidateDataSourceCounts)
+    {
+        [description appendString:@"invalidateDSCounts=YES;"];
+    }
+    if (!CGPointEqualToPoint(context.contentOffsetAdjustment, CGPointZero))
+    {
+        [description appendFormat:@"contentOffsetAdjustment=%@;", NSStringFromCGPoint(context.contentOffsetAdjustment)];
+    }
+    if (!CGSizeEqualToSize(context.contentSizeAdjustment, CGSizeZero))
+    {
+        [description appendFormat:@"contentSizeAdjustment=%@;", NSStringFromCGSize(context.contentSizeAdjustment)];
+    }
+    if (context.invalidatedItemIndexPaths.count > 0)
+    {
+        [description appendFormat:@"invalidatedItemIndexPaths=%ld;", context.invalidatedItemIndexPaths.count];
+    }
+    if (context.invalidatedSupplementaryIndexPaths.count > 0)
+    {
+        [description appendFormat:@"invalidatedSupplementaryIndexPaths=%ld;", context.invalidatedSupplementaryIndexPaths.count];
+    }
+    
+    if (description.length == 0)
+    {
+        // CGPoint contentOffset = self.collectionView.contentOffset;
+        // CGRect bounds = self.collectionView.bounds;
+        // NSLog(@"No InvalidationContext%@", @"");
+    }
+    
+    return description;
+}
+#endif // DEBUG
+
 
 @end

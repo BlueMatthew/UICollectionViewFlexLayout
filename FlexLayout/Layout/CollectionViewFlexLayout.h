@@ -29,6 +29,11 @@ typedef NS_ENUM(NSUInteger, UICollectionViewFlexLayoutMode) {
 - (void)collectionView:(UICollectionView *)collectionView layout:(UICollectionViewFlexLayout *)layout headerEnterStickyModeAtSection:(NSInteger)section withOriginalPoint:(CGPoint)point;
 - (void)collectionView:(UICollectionView *)collectionView layout:(UICollectionViewFlexLayout *)layout headerExitStickyModeAtSection:(NSInteger)section;
 
+- (NSInteger)pageForCollectionView:(UICollectionView *)collectionView layout:(UICollectionViewFlexLayout *)layout;
+- (NSInteger)pageSizeForCollectionView:(UICollectionView *)collectionView layout:(UICollectionViewFlexLayout *)layout;
+- (NSInteger)pageForCollectionView:(UICollectionView *)collectionView layout:(UICollectionViewFlexLayout *)layout atSection:(NSInteger)section;
+- (NSInteger)collectionView:(UICollectionView *)collectionView layout:(UICollectionViewFlexLayout *)layout numberOfPagingSectionsForPage:(NSInteger)page;
+- (BOOL)collectionView:(UICollectionView *)collectionView layout:(UICollectionViewFlexLayout *)layout contentOffset:(out CGPoint *)contentOffset forPage:(NSInteger)page;
 
 @end
 
@@ -51,6 +56,8 @@ typedef NS_ENUM(NSUInteger, UICollectionViewFlexLayoutMode) {
 - (void)addStickyHeader:(NSInteger)section;
 - (void)removeStickyHeader:(NSInteger)section;
 - (void)removeAllStickyHeaders;
+
+- (void)setPagingOffset:(CGPoint)pagingOffset withDraggingMode:(BOOL)draggingMode;
 
 @end
 

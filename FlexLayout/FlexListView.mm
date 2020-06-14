@@ -63,7 +63,7 @@
 
 #define ITEM_COLUMNS                     2
 
-@interface SUIFlexListView() <UICollectionViewDelegateFlexLayout, UICollectionViewDataSource, SUICategoryBarDelegate>
+@interface SUIFlexListView() <UICollectionViewDelegateFlexLayout, UICollectionViewDataSource, SUICategoryBarDelegate, UIPagingCollectionViewDelegate>
 {
     NSInteger                       m_page;
     SUICategoryBar                  *m_categoryBarView;
@@ -72,7 +72,8 @@
     CGFloat                         m_minPagingTop;
     
     // DataSource
-    NSMutableDictionary<NSNumber *, NSMutableArray< NSNumber * > *>    *m_sections;     // Category Page -> Sections
+    NSMutableArray< NSNumber * >                                        *m_fixedSections;
+    NSMutableDictionary<NSNumber *, NSMutableArray< NSNumber * > *>     *m_pagingSections;     // Category Page -> Sections
     NSMutableArray<UIColor *>       *m_entryColors;
     NSNumber                        *m_navbarColor;
     NSMutableArray<UIBarItem *>     *m_barItems;
@@ -101,7 +102,7 @@
     
     layout.minimumInteritemSpacing = 0.0;
     layout.minimumLineSpacing = 0.0;
-    // layout.pagingSection = SECTION_INDEX_ITEM1;
+    layout.pagingSection = SECTION_INDEX_ITEM1;
     // layout.sectionHeadersPinToVisibleBounds = YES;
     [layout addStickyHeader:SECTION_INDEX_ENTRY];
     [layout addStickyHeader:SECTION_INDEX_CATBAR];
@@ -116,9 +117,9 @@
         
         self.dataSource = self;
         self.delegate = self;
-        // self.pagingDelegate = self;
+        self.pagingDelegate = self;
         
-        // [self enablePagingWithDirection:UICollectionViewScrollDirectionHorizontal];
+        [self enablePagingWithDirection:UICollectionViewScrollDirectionHorizontal];
         
         if (@available(iOS 10.0, *))
         {
@@ -152,11 +153,12 @@
 
 - (void)initializeDataSource
 {
-    m_sections = [NSMutableDictionary<NSNumber *, NSMutableArray< NSNumber * > *> dictionaryWithCapacity:NUM_OF_ITEMS_IN_CATEGORY_BAR];
+    m_fixedSections = [(@[/*@SECTION_INDEX_NAVBAR, */@SECTION_INDEX_ENTRY, @SECTION_INDEX_CATBAR]) mutableCopy];
+    m_pagingSections = [NSMutableDictionary<NSNumber *, NSMutableArray< NSNumber * > *> dictionaryWithCapacity:NUM_OF_ITEMS_IN_CATEGORY_BAR];
     for (NSInteger idx = 0; idx < NUM_OF_ITEMS_IN_CATEGORY_BAR; idx++)
     {
-        NSMutableArray<NSNumber *> *sections = [(@[/*@SECTION_INDEX_NAVBAR, */@SECTION_INDEX_ENTRY, @SECTION_INDEX_CATBAR, @SECTION_INDEX_ITEM1, @SECTION_INDEX_ITEM2]) mutableCopy];
-        [m_sections setObject:sections forKey:@(idx)];
+        NSMutableArray<NSNumber *> *sections = [(@[@SECTION_INDEX_ITEM1, @SECTION_INDEX_ITEM2]) mutableCopy];
+        [m_pagingSections setObject:sections forKey:@(idx)];
     }
     
     m_navbarColor = [NSNumber numberWithUnsignedLong:0xFF7F50];   // coral
@@ -291,7 +293,29 @@
 // Check if the section which put items (SECTION_INDEX_ITEM / SECTION_INDEX_ITEM_PAGING)
 - (BOOL)isSection:(NSInteger)section itemsInCollectionView:(UICollectionView *)collectionView
 {
-    return ((collectionView == self && SECTION_INDEX_ITEM1 == section) || (collectionView != self && SECTION_INDEX_ITEM_PAGING1 == section));
+    NSInteger sectionIndex = section;
+    if (sectionIndex < m_fixedSections.count)
+    {
+        return NO;
+    }
+    sectionIndex -= m_fixedSections.count;
+    
+    for (NSInteger page = 0; page < NUM_OF_ITEMS_IN_CATEGORY_BAR; page++)
+    {
+        NSMutableArray<NSNumber *> *pagingSections = [m_pagingSections objectForKey:@(page)];
+        if (sectionIndex < pagingSections.count)
+        {
+            if (SECTION_INDEX_ITEM_PAGING1 == sectionIndex)
+            {
+                // items1
+                return YES;
+            }
+            break;
+        }
+        sectionIndex -= pagingSections.count;
+    }
+    
+    return NO;
 }
 
 #pragma mark Paging Functions
@@ -398,21 +422,20 @@
         }
     }
     
-    NSMutableArray<NSNumber *> *sections = [m_sections objectForKey:@(m_page)];
+    NSMutableArray<NSNumber *> *sections = [m_pagingSections objectForKey:@(m_page)];
     __block NSMutableIndexSet *indexSet = [NSMutableIndexSet indexSetWithIndexesInRange:NSMakeRange(SECTION_INDEX_ITEM1, sections.count - SECTION_INDEX_ITEM1)];
-    // __block UICollectionViewFlexLayout *layout = (UICollectionViewFlexLayout *)self.collectionViewLayout;
+    __block UICollectionViewFlexLayout *layout = (UICollectionViewFlexLayout *)self.collectionViewLayout;
     
     [self performBatchUpdates:^{
         [UIView performWithoutAnimation:^{
             [self reloadSections:indexSet];
-            // layout.pagingOffset = CGPointZero;
+            layout.pagingOffset = CGPointZero;
         }];
     } completion:^(BOOL finished) {
         if (contentOffsetInvalidated)
         {
             self.contentOffset = contentOffset;
         }
-        // [self cleanPagingViews];
         
         [self->m_categoryBarView selectItemAt:page animated:YES];
     }];
@@ -421,44 +444,49 @@
 #pragma mark UICollectionViewDataSource Implementation
 - (NSInteger)numberOfSectionsInCollectionView:(UICollectionView *)collectionView
 {
-    NSMutableArray<NSNumber *> *sections = [m_sections objectForKey:(collectionView == self) ? @(m_page) : @(collectionView.tag)];
-    return (collectionView == self) ? sections.count : 1;
+    NSInteger numberOfSections = m_fixedSections.count;
+    for (NSNumber *page in m_pagingSections)
+    {
+        NSMutableArray<NSNumber *> *pagingSections = [m_pagingSections objectForKey:page];
+        numberOfSections += pagingSections.count;
+    }
+    return numberOfSections;
 }
 
 - (NSInteger)collectionView:(UICollectionView *)collectionView numberOfItemsInSection:(NSInteger)section
 {
     NSInteger numberOfItemsInSection = 0;
-    if (collectionView == self)
+    NSInteger sectionIndex = section;
+    if (sectionIndex < m_fixedSections.count)
     {
-        if (SECTION_INDEX_ENTRY == section)
+        if (SECTION_INDEX_ENTRY == sectionIndex)
         {
             numberOfItemsInSection = NUM_OF_ITEMS_IN_SECTION_ENTRY;
-        }
-        else if (SECTION_INDEX_ITEM1 == section)
-        {
-            // items
-            numberOfItemsInSection = [m_items1 objectAtIndex:m_page].count;
-        }
-        else if (SECTION_INDEX_ITEM2 == section)
-        {
-            // items
-            numberOfItemsInSection = [m_items2 objectAtIndex:m_page].count;
         }
     }
     else
     {
-        if (SECTION_INDEX_ITEM_PAGING1 == section)
+        sectionIndex -= m_fixedSections.count;
+        for (NSInteger page = 0; page < NUM_OF_ITEMS_IN_CATEGORY_BAR; page++)
         {
-            // items
-            NSInteger page = collectionView.tag;
-            numberOfItemsInSection = [m_items2 objectAtIndex:page].count;
-        }
-        else if (SECTION_INDEX_ITEM_PAGING2 == section)
+            NSMutableArray<NSNumber *> *pagingSections = [m_pagingSections objectForKey:@(page)];
+            if (sectionIndex < pagingSections.count)
             {
-                // items
-                NSInteger page = collectionView.tag;
-                numberOfItemsInSection = [m_items2 objectAtIndex:page].count;
+                if (SECTION_INDEX_ITEM_PAGING1 == sectionIndex)
+                {
+                    // items
+                    numberOfItemsInSection = [m_items2 objectAtIndex:page].count;
+                }
+                else if (SECTION_INDEX_ITEM_PAGING2 == sectionIndex)
+                {
+                    // items
+                    NSInteger page = collectionView.tag;
+                    numberOfItemsInSection = [m_items2 objectAtIndex:page].count;
+                }
+                break;
             }
+            sectionIndex -= pagingSections.count;
+        }
     }
     
     return numberOfItemsInSection;
@@ -466,32 +494,34 @@
 
 - (CGSize)collectionView:(UICollectionView *)collectionView layout:(UICollectionViewLayout *)collectionViewLayout sizeForItemAtIndexPath:(NSIndexPath *)indexPath
 {
-    if (collectionView == self)
+    NSInteger sectionIndex = indexPath.section;
+    if (sectionIndex < m_fixedSections.count)
     {
-        if (SECTION_INDEX_ENTRY == indexPath.section)
+        if (SECTION_INDEX_ENTRY == sectionIndex)
         {
             return CGSizeMake(self.bounds.size.width, ITEM_HEIGHT_ENTRY);
-        }
-        else if (SECTION_INDEX_ITEM1 == indexPath.section)
-        {
-            return [self itemSizeForItem1:indexPath.item AtPage:m_page];
-        }
-        else if (SECTION_INDEX_ITEM2 == indexPath.section)
-        {
-            return [self itemSizeForItem2:indexPath.item AtPage:m_page];
         }
     }
     else
     {
-        if (SECTION_INDEX_ITEM_PAGING1 == indexPath.section)
+        sectionIndex -= m_fixedSections.count;
+        
+        for (NSInteger page = 0; page < NUM_OF_ITEMS_IN_CATEGORY_BAR; page++)
         {
-            NSInteger page = collectionView.tag;
-            return [self itemSizeForItem1:indexPath.item AtPage:page];
-        }
-        if (SECTION_INDEX_ITEM_PAGING2 == indexPath.section)
-        {
-            NSInteger page = collectionView.tag;
-            return [self itemSizeForItem2:indexPath.item AtPage:page];
+            NSMutableArray<NSNumber *> *pagingSections = [m_pagingSections objectForKey:@(page)];
+            if (sectionIndex < pagingSections.count)
+            {
+                if (SECTION_INDEX_ITEM_PAGING1 == sectionIndex)
+                {
+                    return [self itemSizeForItem1:indexPath.item AtPage:page];
+                }
+                if (SECTION_INDEX_ITEM_PAGING2 == sectionIndex)
+                {
+                    return [self itemSizeForItem2:indexPath.item AtPage:page];
+                }
+                break;
+            }
+            sectionIndex -= pagingSections.count;
         }
     }
     return CGSizeZero;
@@ -499,7 +529,7 @@
 
 - (CGSize)collectionView:(UICollectionView *)collectionView layout:(UICollectionViewLayout *)collectionViewLayout referenceSizeForHeaderInSection:(NSInteger)section
 {
-    if (collectionView == self)
+    if (section < m_fixedSections.count)
     {
         if (SECTION_INDEX_ENTRY == section)
         {
@@ -516,12 +546,9 @@
 
 - (CGSize)collectionView:(UICollectionView *)collectionView layout:(UICollectionViewLayout *)collectionViewLayout referenceSizeForFooterInSection:(NSInteger)section
 {
-    if (collectionView == self)
+    if (SECTION_INDEX_ENTRY == section)
     {
-        if (SECTION_INDEX_ENTRY == section)
-        {
-            return CGSizeMake(self.bounds.size.width, ITEM_HEIGHT_LOADMORE);
-        }
+        return CGSizeMake(self.bounds.size.width, ITEM_HEIGHT_LOADMORE);
     }
     
     return CGSizeZero;
@@ -549,37 +576,34 @@
 
 - (UICollectionReusableView *)collectionView:(UICollectionView *)collectionView viewForSupplementaryElementOfKind:(NSString *)kind atIndexPath:(NSIndexPath *)indexPath
 {
-    if (collectionView == self)
+    if ([kind isEqualToString:UICollectionElementKindSectionHeader])
     {
-        if ([kind isEqualToString:UICollectionElementKindSectionHeader])
+        if (SECTION_INDEX_ENTRY == indexPath.section)
         {
-            if (SECTION_INDEX_ENTRY == indexPath.section)
-            {
-                SUIItemViewCell *cell = (SUIItemViewCell *)[collectionView dequeueReusableSupplementaryViewOfKind:UICollectionElementKindSectionHeader withReuseIdentifier:@REUSE_ID_NAVBAR forIndexPath:indexPath];
-                NSDictionary *ds = @{@"bgColor": m_navbarColor, @"text": @ITEM_TEXT_NAVBAR};
-                [cell updateDataSource:[ ds mutableCopy]];
-
-                return cell;
-            }
-            else if (SECTION_INDEX_CATBAR == indexPath.section)
-            {
-                 SUICategoryBarViewCell *cell = (SUICategoryBarViewCell *)[collectionView dequeueReusableSupplementaryViewOfKind:UICollectionElementKindSectionHeader withReuseIdentifier:@REUSE_ID_CATBAR forIndexPath:indexPath];
-                cell.backgroundColor = m_catColor;
-                [self buildCategoryBarWithFrame:cell.bounds];
-
-                return cell;
-            }
+            SUIItemViewCell *cell = (SUIItemViewCell *)[collectionView dequeueReusableSupplementaryViewOfKind:UICollectionElementKindSectionHeader withReuseIdentifier:@REUSE_ID_NAVBAR forIndexPath:indexPath];
+            NSDictionary *ds = @{@"bgColor": m_navbarColor, @"text": @ITEM_TEXT_NAVBAR};
+            [cell updateDataSource:[ ds mutableCopy]];
+            
+            return cell;
         }
-        else if ([kind isEqualToString:UICollectionElementKindSectionFooter])
+        else if (SECTION_INDEX_CATBAR == indexPath.section)
         {
-            if (SECTION_INDEX_ENTRY == indexPath.section)
-            {
-                SUIItemViewCell *cell = (SUIItemViewCell *)[collectionView dequeueReusableSupplementaryViewOfKind:UICollectionElementKindSectionFooter withReuseIdentifier:@REUSE_ID_LOADMORE forIndexPath:indexPath];
-                NSDictionary *ds = @{@"bgColor": m_loadMoreColor, @"text": @ITEM_TEXT_LOADMORE};
-                [cell updateDataSource:[ ds mutableCopy]];
-                
-                return cell;
-            }
+            SUICategoryBarViewCell *cell = (SUICategoryBarViewCell *)[collectionView dequeueReusableSupplementaryViewOfKind:UICollectionElementKindSectionHeader withReuseIdentifier:@REUSE_ID_CATBAR forIndexPath:indexPath];
+            cell.backgroundColor = m_catColor;
+            [self buildCategoryBarWithFrame:cell.bounds];
+            
+            return cell;
+        }
+    }
+    else if ([kind isEqualToString:UICollectionElementKindSectionFooter])
+    {
+        if (SECTION_INDEX_ENTRY == indexPath.section)
+        {
+            SUIItemViewCell *cell = (SUIItemViewCell *)[collectionView dequeueReusableSupplementaryViewOfKind:UICollectionElementKindSectionFooter withReuseIdentifier:@REUSE_ID_LOADMORE forIndexPath:indexPath];
+            NSDictionary *ds = @{@"bgColor": m_loadMoreColor, @"text": @ITEM_TEXT_LOADMORE};
+            [cell updateDataSource:[ ds mutableCopy]];
+            
+            return cell;
         }
     }
     
@@ -588,48 +612,59 @@
 
 - (__kindof UICollectionViewCell *)collectionView:(UICollectionView *)collectionView cellForItemAtIndexPath:(NSIndexPath *)indexPath
 {
-    NSInteger page = (collectionView == self) ? m_page : collectionView.tag;
-    NSInteger itemIndexBase = (collectionView == self) ? SECTION_INDEX_ITEM1 : SECTION_INDEX_ITEM_PAGING1;
-    
-    if (indexPath.section == itemIndexBase + 1) // MUST check it first
+    NSInteger sectionIndex = indexPath.section;
+    if (sectionIndex < m_fixedSections.count)
     {
-        SUIImageItemViewCell *cell = (SUIImageItemViewCell *)[collectionView dequeueReusableCellWithReuseIdentifier:@REUSE_ID_ITEM2 forIndexPath:indexPath];
-        cell.fullLineMode = YES;
-        [cell updateDataSource:[self itemDictForItem2:indexPath.item AtPage:page]];
-        return cell;
+        if (SECTION_INDEX_ENTRY == sectionIndex)
+        {
+            SUIItemViewCell *cell = (SUIItemViewCell *)[collectionView dequeueReusableCellWithReuseIdentifier:@REUSE_ID_ENTRY forIndexPath:indexPath];
+            NSMutableDictionary *entry = [m_entries objectAtIndex:indexPath.item];
+            [cell updateDataSource:entry];
+            return cell;
+        }
     }
-    else if (indexPath.section == itemIndexBase) // MUST check it first
+    else
     {
-        SUIImageItemViewCell *cell = (SUIImageItemViewCell *)[collectionView dequeueReusableCellWithReuseIdentifier:@REUSE_ID_ITEM1 forIndexPath:indexPath];
-        cell.fullLineMode = (ITEM_COLUMNS == 1);
-        [cell updateDataSource:[self itemDictForItem1:indexPath.item AtPage:page]];
-        return cell;
+        sectionIndex -= m_fixedSections.count;
+        
+        for (NSInteger page = 0; page < NUM_OF_ITEMS_IN_CATEGORY_BAR; page++)
+        {
+            NSMutableArray<NSNumber *> *pagingSections = [m_pagingSections objectForKey:@(page)];
+            if (sectionIndex < pagingSections.count)
+            {
+                if (SECTION_INDEX_ITEM_PAGING1 == sectionIndex)
+                {
+                    SUIImageItemViewCell *cell = (SUIImageItemViewCell *)[collectionView dequeueReusableCellWithReuseIdentifier:@REUSE_ID_ITEM1 forIndexPath:indexPath];
+                    cell.fullLineMode = (ITEM_COLUMNS == 1);
+                    [cell updateDataSource:[self itemDictForItem1:indexPath.item AtPage:page]];
+                    return cell;
+                }
+                if (SECTION_INDEX_ITEM_PAGING2 == sectionIndex)
+                {
+                    SUIImageItemViewCell *cell = (SUIImageItemViewCell *)[collectionView dequeueReusableCellWithReuseIdentifier:@REUSE_ID_ITEM2 forIndexPath:indexPath];
+                    cell.fullLineMode = YES;
+                    [cell updateDataSource:[self itemDictForItem2:indexPath.item AtPage:page]];
+                    return cell;
+                }
+                break;
+            }
+            sectionIndex -= pagingSections.count;
+        }
     }
-    else if (indexPath.section == SECTION_INDEX_ENTRY)
-    {
-        SUIItemViewCell *cell = (SUIItemViewCell *)[collectionView dequeueReusableCellWithReuseIdentifier:@REUSE_ID_ENTRY forIndexPath:indexPath];
-        NSMutableDictionary *entry = [m_entries objectAtIndex:indexPath.item];
-        [cell updateDataSource:entry];
-        return cell;
-    }
-    
     return nil;
 }
 
 - (void)collectionView:(UICollectionView *)collectionView willDisplaySupplementaryView:(UICollectionReusableView *)view forElementKind:(NSString *)elementKind atIndexPath:(NSIndexPath *)indexPath
 {
-    if (collectionView == self)
+    if ([elementKind isEqualToString:UICollectionElementKindSectionHeader])
     {
-        if ([elementKind isEqualToString:UICollectionElementKindSectionHeader])
+        if (SECTION_INDEX_CATBAR == indexPath.section)
         {
-            if (SECTION_INDEX_CATBAR == indexPath.section)
+            if ([view isKindOfClass:[SUICategoryBarViewCell class]])
             {
-                if ([view isKindOfClass:[SUICategoryBarViewCell class]])
-                {
-                    SUICategoryBarViewCell *cell = (SUICategoryBarViewCell *)view;
-                    [self buildCategoryBarWithFrame:cell.bounds];
-                    [cell attachCategoryBar:m_categoryBarView];
-                }
+                SUICategoryBarViewCell *cell = (SUICategoryBarViewCell *)view;
+                [self buildCategoryBarWithFrame:cell.bounds];
+                [cell attachCategoryBar:m_categoryBarView];
             }
         }
     }
@@ -637,23 +672,19 @@
 
 - (void)collectionView:(UICollectionView *)collectionView didEndDisplayingSupplementaryView:(UICollectionReusableView *)view forElementOfKind:(NSString *)elementKind atIndexPath:(NSIndexPath *)indexPath
 {
-    if (collectionView == self)
+    if ([elementKind isEqualToString:UICollectionElementKindSectionHeader])
     {
-        if ([elementKind isEqualToString:UICollectionElementKindSectionHeader])
+        if (SECTION_INDEX_CATBAR == indexPath.section)
         {
-            if (SECTION_INDEX_CATBAR == indexPath.section)
+            if ([view isKindOfClass:[SUICategoryBarViewCell class]])
             {
-                if ([view isKindOfClass:[SUICategoryBarViewCell class]])
-                {
-                    SUICategoryBarViewCell *cell = (SUICategoryBarViewCell *)view;
-                    [cell detachCategoryBar];
-                }
+                SUICategoryBarViewCell *cell = (SUICategoryBarViewCell *)view;
+                [cell detachCategoryBar];
             }
         }
     }
 }
 
-/*
  #pragma mark UIPagingCollectionViewDelegate Implementation
 - (BOOL)collectionView:(UICollectionView *)collectionView pagingShouldBeginAtLocation:(CGPoint)location withTranslation:(CGPoint)translation andVelocity:(CGPoint)velocity onSection:(out NSInteger *)section
 {
@@ -671,60 +702,47 @@
 
 - (NSInteger)pageForSection:(NSInteger)section inPagingCollectionView:(UIPagingCollectionView *)pagingCollectionView
 {
-    if (pagingCollectionView == self)
-    {
-        return (section == SECTION_INDEX_ITEM) ? m_page : 0;
-    }
+    return m_page;
+    // return (section == SECTION_INDEX_ITEM) ? m_page : 0;
     
     return 0;
 }
 
 - (NSInteger)pageSizeForSection:(NSInteger)section inPagingCollectionView:(UIPagingCollectionView *)pagingCollectionView
 {
-    if (pagingCollectionView == self)
+    return NUM_OF_ITEMS_IN_CATEGORY_BAR;
+    /*
+     if (pagingCollectionView == self)
     {
         return (section == SECTION_INDEX_ITEM) ? m_barItems.count : 0;
     }
     
     return 0;
+     */
 }
 
-- (UIView *)pagingCollectionView:(UIPagingCollectionView *)pagingCollectionView viewForPage:(NSInteger)page inSection:(NSInteger)section
+- (void)collectionView:(UIPagingCollectionView *)pagingCollectionView pagingEndedOnSection:(NSInteger)section toNewPage:(NSInteger)page
 {
-    CGRect frame = [self visibleRectForScrollableSction:section];
-
-    UICollectionView *collectionView = [self buildCollectionViewAtPage:page forView:self withFrame:frame];
-    return collectionView;
-}
-
-- (BOOL)collectionView:(UIPagingCollectionView *)pagingCollectionView pagingEndedOnSection:(NSInteger)section toNewPage:(NSInteger)page
-{
-    if (pagingCollectionView == self)
+    // if (SECTION_INDEX_ITEM == section)
     {
-        if (SECTION_INDEX_ITEM == section)
+        if (m_page != page)
         {
-            if (m_page != page)
-            {
-                // [pagingCollectionView resetSwipedViews];
-                // [self resetSwipedViews];
-                [self switchPage:page];
-            }
+            // [pagingCollectionView resetSwipedViews];
+            // [self resetSwipedViews];
+            [self switchPage:page];
         }
     }
-    
-    return NO;
+
 }
 
 - (void)collectionView:(nonnull UIPagingCollectionView *)pagingCollectionView pagingWithOffset:(CGPoint) offset decelerating:(BOOL)decelerating onSection:(NSInteger)section
 {
-    UICollectionViewPagingLayout *layout = (UICollectionViewPagingLayout *)self.collectionViewLayout;
-    
-    layout.pagingOffset = offset;
+    UICollectionViewFlexLayout *layout = (UICollectionViewFlexLayout *)self.collectionViewLayout;
+    [layout setPagingOffset:offset withDraggingMode:!decelerating];
+    // layout.pagingOffset = offset;
 }
- */
 
-#pragma mark UICollectionViewPagingLayoutDelegate Implementation
-
+#pragma mark UICollectionViewDelegateFlexLayout Implementation
 
 - (UICollectionViewFlexLayoutMode)collectionView:(UICollectionView *)collectionView layout:(UICollectionViewLayout *)layout layoutModeForSection:(NSInteger)section
 {
@@ -739,27 +757,81 @@
 
 - (void)collectionView:(UICollectionView *)collectionView layout:(UICollectionViewFlexLayout *)layout headerEnterStickyModeAtSection:(NSInteger)section withOriginalPoint:(CGPoint)point
 {
-    if (collectionView == self)
+    if (SECTION_INDEX_CATBAR == section)
     {
-        if (SECTION_INDEX_CATBAR == section)
-        {
-            m_isCategoryBarSticky = YES;
-            m_minPagingTop = point.y + ITEM_HEIGHT_CATBAR;
-        }
+        m_isCategoryBarSticky = YES;
+        m_minPagingTop = point.y + ITEM_HEIGHT_CATBAR;
     }
 }
 
 - (void)collectionView:(UICollectionView *)collectionView layout:(UICollectionViewFlexLayout *)layout headerExitStickyModeAtSection:(NSInteger)section
 {
-    if (collectionView == self)
+    if (SECTION_INDEX_CATBAR == section)
     {
-        if (SECTION_INDEX_CATBAR == section)
-        {
-            m_isCategoryBarSticky = NO;
-            m_minPagingTop = CGFLOAT_MAX;
-            m_pageContexts.clear();
-        }
+        m_isCategoryBarSticky = NO;
+        m_minPagingTop = CGFLOAT_MAX;
+        m_pageContexts.clear();
     }
+}
+
+- (NSInteger)pageForCollectionView:(UICollectionView *)collectionView layout:(UICollectionViewFlexLayout *)layout
+{
+    return m_page;
+}
+
+- (NSInteger)pageForCollectionView:(UICollectionView *)collectionView layout:(UICollectionViewFlexLayout *)layout atSection:(NSInteger)section
+{
+    if (section <= m_fixedSections.count)
+    {
+        return NSNotFound;
+    }
+    
+    NSInteger page = 0;
+    NSInteger index = section - m_fixedSections.count;
+    
+    for (; page < NUM_OF_ITEMS_IN_CATEGORY_BAR; page++)
+    {
+        NSMutableArray< NSNumber * > *sections = [m_pagingSections objectForKey:@(page)];
+        if (index < sections.count)
+        {
+            break;
+        }
+        index -= sections.count;
+    }
+    
+    return page;
+}
+
+- (NSInteger)collectionView:(UICollectionView *)collectionView layout:(UICollectionViewFlexLayout *)layout numberOfPagingSectionsForPage:(NSInteger)page
+{
+    if (page >= NUM_OF_ITEMS_IN_CATEGORY_BAR)
+    {
+        return 0;
+    }
+
+    NSMutableArray< NSNumber * > *sections = [m_pagingSections objectForKey:@(page)];
+    return sections.count;
+}
+
+- (NSInteger)pageSizeForCollectionView:(UICollectionView *)collectionView layout:(UICollectionViewFlexLayout *)layout
+{
+    return NUM_OF_ITEMS_IN_CATEGORY_BAR;
+}
+
+- (BOOL)collectionView:(UICollectionView *)collectionView layout:(UICollectionViewFlexLayout *)layout contentOffset:(out CGPoint *)contentOffset forPage:(NSInteger)page
+{
+    std::map<NSInteger, CGPoint>::const_iterator it = m_pageContexts.find(page);
+    BOOL existed = it != m_pageContexts.end();
+    if (existed)
+    {
+        if (NULL != contentOffset) *contentOffset = it->second;
+    }
+    else
+    {
+        
+    }
+
+    return existed;
 }
 
 @end

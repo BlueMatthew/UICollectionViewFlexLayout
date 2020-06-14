@@ -9,13 +9,23 @@
 #ifndef LayoutUtils_h
 #define LayoutUtils_h
 
+#import <Foundation/Foundation.h>
+#import <UIKit/UIKit.h>
+
 class DirectionalTransformor
 {
 public:
-    virtual ~DirectionalTransformor() {}
+    DirectionalTransformor() {}
+    virtual ~DirectionalTransformor();
     
     virtual CGFloat origin(const CGPoint &point) = 0;
+    virtual CGFloat rorigin(const CGPoint &point) = 0;
+    virtual void origin(CGPoint &point, CGFloat v) = 0;
+    virtual void rorigin(CGPoint &point, CGFloat v) = 0;
     virtual CGFloat origin(const CGRect &rect) = 0;
+    virtual CGFloat rorigin(const CGRect &rect) = 0;
+    virtual void origin(CGRect &rect, CGFloat v) = 0;
+    virtual void rorigin(CGRect &rect, CGFloat v) = 0;
     virtual CGFloat size(const CGSize &sz) = 0;
     virtual CGFloat rsize(const CGSize &sz) = 0;
     virtual void size(CGSize &sz, CGFloat dv) = 0;
@@ -23,60 +33,82 @@ public:
     virtual CGFloat rsize(const CGRect &rect) = 0;
     virtual void size(CGRect &rect, CGFloat dv) = 0;
     virtual CGFloat upperOrigin(const CGRect &rect) = 0;
+    virtual CGFloat rupperOrigin(const CGRect &rect) = 0;
     virtual void offset(CGPoint &point, CGFloat dv) = 0;
     virtual void offset(CGRect &rect, CGFloat dv) = 0;
     virtual void resize(CGSize &size, CGFloat dv) = 0;
     virtual void resize(CGRect &rect, CGFloat dv) = 0;
     virtual void inset(CGRect &rect, CGFloat dv) = 0;
     virtual void inset(CGRect &rect, CGFloat dv1, CGFloat dv2) = 0;
-    virtual CGSize makeSize(CGFloat width, CGFloat height);
+    virtual CGFloat inset(const UIEdgeInsets &insets) = 0;
+    virtual CGFloat rinset(const UIEdgeInsets &insets) = 0;
+    
 };
 
 struct HorizontalTransformor : public DirectionalTransformor
 {
 public:
-    ~HorizontalTransformor() {}
+    HorizontalTransformor() : DirectionalTransformor() {}
+    ~HorizontalTransformor();
     
-    CGFloat origin(const CGPoint &point) { return point.x; }
-    CGFloat origin(const CGRect &rect) { return rect.origin.x; }
-    CGFloat size(const CGSize &sz) { return sz.width; }
-    CGFloat rsize(const CGSize &sz) { return sz.height; }
-    void size(CGSize &sz, CGFloat dv) { sz.width = dv; }
-    CGFloat size(const CGRect &rect) { return rect.size.width; }
-    CGFloat rsize(const CGRect &rect) { return rect.size.height; }
-    void size(CGRect &rect, CGFloat dv) { rect.size.width = dv; }
-    CGFloat upperOrigin(const CGRect &rect) { return rect.origin.x + rect.size.height; }
-    void offset(CGPoint &point, CGFloat dv) { point.x += dv; }
-    void offset(CGRect &rect, CGFloat dv) { rect.origin.x += dv; }
-    void resize(CGSize &size, CGFloat dv) { size.width += dv; }
-    void resize(CGRect &rect, CGFloat dv) { rect.size.width += dv; }
-    void inset(CGRect &rect, CGFloat dv) { rect.origin.x += dv; rect.size.width -= (dv + dv); }
-    void inset(CGRect &rect, CGFloat dv1, CGFloat dv2) { rect.origin.x += dv1; rect.size.width -= (dv1 + dv2); }
+    CGFloat origin(const CGPoint &point);
+    CGFloat rorigin(const CGPoint &point);
+    void origin(CGPoint &point, CGFloat v);
+    void rorigin(CGPoint &point, CGFloat v);
+    CGFloat origin(const CGRect &rect);
+    CGFloat rorigin(const CGRect &rect);
+    void origin(CGRect &rect, CGFloat v);
+    void rorigin(CGRect &rect, CGFloat v);
+    CGFloat size(const CGSize &sz);
+    CGFloat rsize(const CGSize &sz);
+    void size(CGSize &sz, CGFloat dv);
+    CGFloat size(const CGRect &rect);
+    CGFloat rsize(const CGRect &rect);
+    void size(CGRect &rect, CGFloat dv);
+    CGFloat upperOrigin(const CGRect &rect);
+    CGFloat rupperOrigin(const CGRect &rect);
+    void offset(CGPoint &point, CGFloat dv);
+    void offset(CGRect &rect, CGFloat dv);
+    void resize(CGSize &size, CGFloat dv);
+    void resize(CGRect &rect, CGFloat dv);
+    void inset(CGRect &rect, CGFloat dv);
+    void inset(CGRect &rect, CGFloat dv1, CGFloat dv2);
+    CGFloat inset(const UIEdgeInsets &insets);
+    CGFloat rinset(const UIEdgeInsets &insets);
     
-    CGSize makeSize(CGFloat width, CGFloat height) { return CGSizeMake(width, height); }
 };
 
 struct VerticalTransformor : public DirectionalTransformor
 {
 public:
-    ~VerticalTransformor() {}
+    VerticalTransformor() : DirectionalTransformor() {}
+    ~VerticalTransformor();
     
-    CGFloat origin(const CGPoint &point) { return point.y; }
-    CGFloat origin(const CGRect &rect) { return rect.origin.y; }
-    CGFloat size(const CGSize &sz) { return sz.height; }
-    CGFloat rsize(const CGSize &sz) { return sz.width; }
-    void size(CGSize &sz, CGFloat dv) { sz.height = dv; }
-    CGFloat size(const CGRect &rect) { return rect.size.height; }
-    CGFloat rsize(const CGRect &rect) { return rect.size.width; }
-    void size(CGRect &rect, CGFloat dv) { rect.size.height = dv; }
-    CGFloat upperOrigin(const CGRect &rect) { return rect.origin.y + rect.size.height; }
-    void offset(CGPoint &point, CGFloat dv) { point.y += dv; }
-    void offset(CGRect &rect, CGFloat dv) { rect.origin.y += dv; }
-    void resize(CGSize &size, CGFloat dv) { size.height += dv; }
-    void resize(CGRect &rect, CGFloat dv) { rect.size.height += dv; }
-    void inset(CGRect &rect, CGFloat dv) { rect.origin.y += dv; rect.size.height -= (dv + dv); }
-    void inset(CGRect &rect, CGFloat dv1, CGFloat dv2) { rect.origin.y += dv1; rect.size.height -= (dv1 + dv2); }
-    CGSize makeSize(CGFloat width, CGFloat height) { return CGSizeMake(height, width); }
+    CGFloat origin(const CGPoint &point);
+    CGFloat rorigin(const CGPoint &point);
+    void origin(CGPoint &point, CGFloat v);
+    void rorigin(CGPoint &point, CGFloat v);
+    CGFloat origin(const CGRect &rect);
+    CGFloat rorigin(const CGRect &rect);
+    void origin(CGRect &rect, CGFloat v);
+    void rorigin(CGRect &rect, CGFloat v);
+    CGFloat size(const CGSize &sz);
+    CGFloat rsize(const CGSize &sz);
+    void size(CGSize &sz, CGFloat dv);
+    CGFloat size(const CGRect &rect);
+    CGFloat rsize(const CGRect &rect);
+    void size(CGRect &rect, CGFloat dv);
+    CGFloat upperOrigin(const CGRect &rect);
+    CGFloat rupperOrigin(const CGRect &rect);
+    void offset(CGPoint &point, CGFloat dv);
+    void offset(CGRect &rect, CGFloat dv);
+    void resize(CGSize &size, CGFloat dv);
+    void resize(CGRect &rect, CGFloat dv);
+    void inset(CGRect &rect, CGFloat dv);
+    void inset(CGRect &rect, CGFloat dv1, CGFloat dv2);
+    CGFloat inset(const UIEdgeInsets &insets);
+    CGFloat rinset(const UIEdgeInsets &insets);
+    
 };
 
 #define IS_CV_VERTICAL(layout) (layout.scrollDirection == UICollectionViewScrollDirectionVertical)

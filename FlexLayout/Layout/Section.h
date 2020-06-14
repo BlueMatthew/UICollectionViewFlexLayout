@@ -11,8 +11,8 @@
 
 #import <UIKit/UIKit.h>
 #include <vector>
-#include <map>
 #include <algorithm>
+#include <utility>
 
 #import "FlexItem.h"
 #import "LayoutUtils.h"
@@ -204,5 +204,63 @@ struct UISectionHorizontalCompareT
         return leftRight.second < section->m_frame.origin.x;
     }
 };
+
+template<class TLayout>
+struct UISectionsVerticalFilterT
+{
+    // typedef UISectionT<TLayout> UISection;
+    
+    
+    std::pair<typename std::vector<UISectionT<TLayout> *>::const_iterator, typename std::vector<UISectionT<TLayout> *>::const_iterator> operator() (const std::vector<UISectionT<TLayout> *> &sections, const CGRect &rect, NSMutableArray<UICollectionViewLayoutAttributes *> *layoutAttributesArray, NSInteger numberOfSectionsToSkip = 0) const
+    {
+        if (sections.empty() || numberOfSectionsToSkip >= sections.size())
+        {
+            return std::pair<typename std::vector<UISectionT<TLayout> *>::const_iterator, typename std::vector<UISectionT<TLayout> *>::const_iterator>(sections.end(), sections.end());
+        }
+        
+        std::pair<CGFloat, CGFloat> topBottom = std::pair<CGFloat, CGFloat>(rect.origin.y, rect.origin.y + rect.size.height);
+        std::pair<typename std::vector<UISectionT<TLayout> *>::const_iterator, typename std::vector<UISectionT<TLayout> *>::const_iterator> range = std::equal_range(sections.begin() + numberOfSectionsToSkip, sections.end(), topBottom, m_compare);
+        if (range.first != range.second)
+        {
+            for (typename std::vector<UISectionT<TLayout> *>::const_iterator it = range.first; it != range.second; ++it)
+            {
+                (*it)->getLayoutAttributesInRect(layoutAttributesArray, rect);
+            }
+        }
+        
+        return range;
+    }
+
+protected:
+    UISectionVerticalCompareT<TLayout> m_compare;
+};
+
+template<class TLayout>
+struct UISectionsHorizontalFilterT
+{
+    std::pair<typename std::vector<UISectionT<TLayout> *>::const_iterator, typename std::vector<UISectionT<TLayout> *>::const_iterator> operator() (const std::vector<UISectionT<TLayout> *> &sections, const CGRect &rect, NSMutableArray<UICollectionViewLayoutAttributes *> *layoutAttributesArray, NSInteger numberOfSectionsToSkip = 0) const
+    {
+        if (sections.empty() || numberOfSectionsToSkip >= sections.size())
+        {
+            return std::pair<typename std::vector<UISectionT<TLayout> *>::const_iterator, typename std::vector<UISectionT<TLayout> *>::const_iterator>(sections.end(), sections.end());
+        }
+        
+        std::pair<CGFloat, CGFloat> leftRight = std::pair<CGFloat, CGFloat>(rect.origin.x, rect.origin.x + rect.size.width);
+        std::pair< typename std::vector<UISectionT<TLayout> *>::const_iterator, typename std::vector<UISectionT<TLayout> *>::const_iterator> range = std::equal_range(sections.begin() + numberOfSectionsToSkip, sections.end(), leftRight, m_compare);
+        if (range.first != range.second)
+        {
+            for (typename std::vector<UISectionT<TLayout> *>::const_iterator it = range.first; it != range.second; ++it)
+            {
+                (*it)->getLayoutAttributesInRect(layoutAttributesArray, rect);
+            }
+        }
+
+        return range;
+    }
+
+protected:
+    UISectionHorizontalCompareT<TLayout> m_compare;
+};
+
 
 #endif /* Section_h */

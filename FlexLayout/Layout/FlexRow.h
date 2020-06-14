@@ -25,6 +25,7 @@ public:
     }
     
     inline const CGRect& getFrame() const { return m_frame; }
+    inline CGRect& getFrame() { return m_frame; }
     
     inline void addItem(UIFlexItem *item, bool vertical)
     {

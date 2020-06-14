@@ -10,8 +10,9 @@
 #define PagingListView_h
 
 #import <UIKit/UIKit.h>
+#import "PagingCollectionView.h"
 
-@interface SUIFlexListView : UICollectionView
+@interface SUIFlexListView : UIPagingCollectionView
 
 @end
 
