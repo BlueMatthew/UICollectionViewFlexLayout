@@ -14,15 +14,15 @@ class DirectionalTransformor
 public:
     virtual ~DirectionalTransformor() {}
     
-    virtual CGFloat origin(const CGPoint &point) = 0;
-    virtual CGFloat origin(const CGRect &rect) = 0;
-    virtual CGFloat size(const CGSize &sz) = 0;
-    virtual CGFloat rsize(const CGSize &sz) = 0;
-    virtual void size(CGSize &sz, CGFloat dv) = 0;
-    virtual CGFloat size(const CGRect &rect) = 0;
-    virtual CGFloat rsize(const CGRect &rect) = 0;
-    virtual void size(CGRect &rect, CGFloat dv) = 0;
-    virtual CGFloat upperOrigin(const CGRect &rect) = 0;
+    virtual CGFloat x(const CGPoint &point) = 0;
+    virtual CGFloat left(const CGRect &rect) = 0;
+    virtual CGFloat width(const CGSize &sz) = 0;
+    virtual CGFloat height(const CGSize &sz) = 0;
+    virtual void width(CGSize &sz, CGFloat dv) = 0;
+    virtual CGFloat width(const CGRect &rect) = 0;
+    virtual CGFloat height(const CGRect &rect) = 0;
+    virtual void width(CGRect &rect, CGFloat dv) = 0;
+    virtual CGFloat right(const CGRect &rect) = 0;
     virtual void offset(CGPoint &point, CGFloat dv) = 0;
     virtual void offset(CGRect &rect, CGFloat dv) = 0;
     virtual void resize(CGSize &size, CGFloat dv) = 0;
@@ -37,15 +37,15 @@ struct HorizontalTransformor : public DirectionalTransformor
 public:
     ~HorizontalTransformor() {}
     
-    CGFloat origin(const CGPoint &point) { return point.x; }
-    CGFloat origin(const CGRect &rect) { return rect.origin.x; }
-    CGFloat size(const CGSize &sz) { return sz.width; }
-    CGFloat rsize(const CGSize &sz) { return sz.height; }
-    void size(CGSize &sz, CGFloat dv) { sz.width = dv; }
-    CGFloat size(const CGRect &rect) { return rect.size.width; }
-    CGFloat rsize(const CGRect &rect) { return rect.size.height; }
-    void size(CGRect &rect, CGFloat dv) { rect.size.width = dv; }
-    CGFloat upperOrigin(const CGRect &rect) { return rect.origin.x + rect.size.height; }
+    CGFloat x(const CGPoint &point) { return point.x; }
+    CGFloat left(const CGRect &rect) { return rect.origin.x; }
+    CGFloat width(const CGSize &sz) { return sz.width; }
+    CGFloat height(const CGSize &sz) { return sz.height; }
+    void width(CGSize &sz, CGFloat dv) { sz.width = dv; }
+    CGFloat width(const CGRect &rect) { return rect.size.width; }
+    CGFloat height(const CGRect &rect) { return rect.size.height; }
+    void width(CGRect &rect, CGFloat dv) { rect.size.width = dv; }
+    CGFloat right(const CGRect &rect) { return rect.origin.x + rect.size.height; }
     void offset(CGPoint &point, CGFloat dv) { point.x += dv; }
     void offset(CGRect &rect, CGFloat dv) { rect.origin.x += dv; }
     void resize(CGSize &size, CGFloat dv) { size.width += dv; }
@@ -61,15 +61,15 @@ struct VerticalTransformor : public DirectionalTransformor
 public:
     ~VerticalTransformor() {}
     
-    CGFloat origin(const CGPoint &point) { return point.y; }
-    CGFloat origin(const CGRect &rect) { return rect.origin.y; }
-    CGFloat size(const CGSize &sz) { return sz.height; }
-    CGFloat rsize(const CGSize &sz) { return sz.width; }
-    void size(CGSize &sz, CGFloat dv) { sz.height = dv; }
-    CGFloat size(const CGRect &rect) { return rect.size.height; }
-    CGFloat rsize(const CGRect &rect) { return rect.size.width; }
-    void size(CGRect &rect, CGFloat dv) { rect.size.height = dv; }
-    CGFloat upperOrigin(const CGRect &rect) { return rect.origin.y + rect.size.height; }
+    CGFloat x(const CGPoint &point) { return point.y; }
+    CGFloat left(const CGRect &rect) { return rect.origin.y; }
+    CGFloat width(const CGSize &sz) { return sz.height; }
+    CGFloat height(const CGSize &sz) { return sz.width; }
+    void width(CGSize &sz, CGFloat dv) { sz.height = dv; }
+    CGFloat width(const CGRect &rect) { return rect.size.height; }
+    CGFloat height(const CGRect &rect) { return rect.size.width; }
+    void width(CGRect &rect, CGFloat dv) { rect.size.height = dv; }
+    CGFloat right(const CGRect &rect) { return rect.origin.y + rect.size.height; }
     void offset(CGPoint &point, CGFloat dv) { point.y += dv; }
     void offset(CGRect &rect, CGFloat dv) { rect.origin.y += dv; }
     void resize(CGSize &size, CGFloat dv) { size.height += dv; }

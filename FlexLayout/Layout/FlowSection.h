@@ -42,6 +42,7 @@ public:
         
         isVertical ? (UISectionT<TLayout>::m_frame.size.height += UISectionT<TLayout>::m_header.getFrame().size.height) : (UISectionT<TLayout>::m_frame.size.width += UISectionT<TLayout>::m_header.getFrame().size.width);
         
+        m_rows.clear();
         NSInteger numberOfItems = [UISectionT<TLayout>::m_layout.collectionView numberOfItemsInSection:(UISectionT<TLayout>::m_section)];
         if (numberOfItems > 0)
         {
@@ -49,10 +50,9 @@ public:
             
             UISectionT<TLayout>::m_items.reserve(numberOfItems);
             
-            // 获取列数
+            // For FlowLayout, there is no column property but we still try to get the number of columns, and use it to estimate the number of rows
             NSInteger numberOfColumns = [UISectionT<TLayout>::m_layout getNumberOfColumnsForSection:(UISectionT<TLayout>::m_section)];
-            
-            m_rows.reserve(numberOfItems / numberOfColumns);
+            m_rows.reserve(numberOfColumns > 0 ? (numberOfItems / numberOfColumns) : (numberOfItems >> 1));
             
             CGFloat minimumLineSpacing = [UISectionT<TLayout>::m_layout getMinimumLineSpacingForSectionAtIndex:(UISectionT<TLayout>::m_section)];
             CGFloat minimumInteritemSpacing = [UISectionT<TLayout>::m_layout getMinimumInteritemSpacingForSectionAtIndex:(UISectionT<TLayout>::m_section)];
