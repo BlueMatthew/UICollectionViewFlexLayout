@@ -112,13 +112,16 @@ UICollectionViewFlexLayout对于Header的置顶，或者左右滑动引起部分
 
 > - (NSArray<UICollectionViewLayoutAttributes *> *)layoutAttributesForElementsInRect:(CGRect)rect;
 
-可以随着滑动持续被触发，但是又不用真正的执行prepareLayout，避免性能的无谓损耗。基于这个考虑，新建的InvalidationContext增加了invalidatedOffset属性，滚动期间Header需要置顶，或者分页滑动的部分cells的偏移变化，控制改变之后，都基于此InvalidationContent调用invalidateLayout，同时重载函数：
+可以随着滑动持续被触发，但是又不用真正的执行prepareLayout，避免性能的无谓损耗。基于这个考虑，新建的InvalidationContext增加了invalidatedOffset属性，滚动期间Header需要置顶，或者分页滑动的部分cells的偏移变化，控制改变之后，都基于此InvalidationContext调用invalidateLayout，同时重载函数：
 
 > - (void)invalidateLayoutWithContext:(UICollectionViewLayoutInvalidationContext *)context;
 
-在这个函数中检查InvalidationContext中的属性，invalidatedOffset，如果该属性值不为YES，则设置一个标记（m_layoutInvalidated）告诉prepareLayout需要被真正的执行，如果是NO，则不改变标记（m_layoutInvalidated）的值。而重载函数：
+在这个函数中检查InvalidationContext中的属性invalidatedOffset，如果该属性值不为YES，则设置一个标记（m_layoutInvalidated）告诉prepareLayout需要被真正的执行，如果是YES，则不改变标记（m_layoutInvalidated）的值。同时重载函数：
 
-> - (void)prepareLayout中，如果发现这个标记（m_layoutInvalidated）为 YES，则执行真正的布局处理，处理结束后，重制标记（m_layoutInvalidated）为NO。而因为invalidateLayout被调用过，UICollectionView也会触发下面的重载函数：
+> - (void)prepareLayout
+
+在这个函数中，判断标记m_layoutInvalidated是否为YES，如果是，则执行真正的布局处理，处理结束后，重制标记（m_layoutInvalidated）为NO。通过这种方式，避免了只是内部偏移导致的重新布局计算，而因为invalidateLayout被调用过，UICollectionView也会触发下面的重载函数：
+
 > - (NSArray<UICollectionViewLayoutAttributes *> *)layoutAttributesForElementsInRect:(CGRect)rect;
 
 来重新获取可见区域内的cells，从而达到更新特定cell的偏移的目的。
