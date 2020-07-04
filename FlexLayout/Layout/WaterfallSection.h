@@ -41,13 +41,6 @@ public:
         NSInteger numberOfItems = [UISectionT<TLayout>::m_layout.collectionView numberOfItemsInSection:(UISectionT<TLayout>::m_section)];
         if (numberOfItems > 0)
         {
-            
-            CGSize *pSize = (CGSize *)malloc(sizeof(CGSize) * numberOfItems);
-            for (NSInteger item = 0; item < numberOfItems; item++)
-            {
-                *(pSize + item) = [UISectionT<TLayout>::m_layout getSizeForItemAtIndexPath:[NSIndexPath indexPathForItem:item inSection:(UISectionT<TLayout>::m_section)]];
-            }
-            
             UIEdgeInsets sectionInset = [UISectionT<TLayout>::m_layout getInsetForSectionAtIndex:(UISectionT<TLayout>::m_section)];
             
             UISectionT<TLayout>::m_items.reserve(numberOfItems);
@@ -84,12 +77,11 @@ public:
             NSInteger itemIndexInColumn = 0;
             // UISectionItem *sectionItem = new UISectionItem[numberOfItems];
             
-            // 比较器实例，因为成本很小，所以两个实例全部创建，避免后续频繁分配小对象
-            UISectionColumnVerticalCompare vComp;
-            UISectionColumnHorizontalCompare hComp;
+            // Comparator object is small, create for both orientations
+            UIFlexColumnVerticalCompare vComp;
+            UIFlexColumnHorizontalCompare hComp;
             
-            CGSize *pCurSize = pSize;
-            for (NSInteger item = 0; item < numberOfItems; item++, pCurSize++)
+            for (NSInteger item = 0; item < numberOfItems; item++)
             {
                 // 找到size最小的column
                 columnItOfMinimalSize = IS_CV_VERTICAL(UISectionT<TLayout>::m_layout) ? min_element(m_columns.begin(), m_columns.end(), vComp) : min_element(m_columns.begin(), m_columns.end(), hComp);
@@ -109,9 +101,7 @@ public:
                 // 加到最小Size的列中
                 (*columnItOfMinimalSize)->addItem(sectionItem, IS_CV_VERTICAL(UISectionT<TLayout>::m_layout));
             }
-            
-            free(pSize);
-            
+        
             // 找到size最大的column
             std::vector<UIFlexColumn *>::iterator columnItOfMaximalSize = IS_CV_VERTICAL(UISectionT<TLayout>::m_layout) ? max_element(m_columns.begin(), m_columns.end(), vComp) : max_element(m_columns.begin(), m_columns.end(), hComp);
             

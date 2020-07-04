@@ -60,7 +60,7 @@ struct UISectionItemCompare
     }
 };
 
-struct UISectionItemVerticalCompare
+struct UIFlexItemVerticalCompare
 {
     bool operator() ( const UIFlexItem* item, const std::pair<CGFloat, CGFloat>& topBottom) const
     {
@@ -72,7 +72,7 @@ struct UISectionItemVerticalCompare
     }
 };
 
-struct UISectionItemHorizontalCompare
+struct UIFlexItemHorizontalCompare
 {
     bool operator() ( const UIFlexItem* item, const std::pair<CGFloat, CGFloat>& leftRight) const
     {
@@ -84,4 +84,4 @@ struct UISectionItemHorizontalCompare
     }
 };
 
-#endif /* SectionItem_h */
+#endif /* FlexItem_h */

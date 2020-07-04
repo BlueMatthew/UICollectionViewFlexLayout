@@ -54,7 +54,7 @@ public:
      */
 };
 
-struct UISectionRowItemCompare
+struct UIFlexRowItemCompare
 {
     bool operator() ( const UIFlexRow* row, NSInteger item) const
     {
@@ -66,7 +66,7 @@ struct UISectionRowItemCompare
     }
 };
 
-struct UISectionRowVerticalCompare
+struct UIFlexRowVerticalCompare
 {
     bool operator() ( const UIFlexRow* row, const std::pair<CGFloat, CGFloat>& topBottom) const
     {
@@ -78,7 +78,7 @@ struct UISectionRowVerticalCompare
     }
 };
 
-struct UISectionRowHorizontalCompare
+struct UIFlexRowHorizontalCompare
 {
     bool operator() ( const UIFlexRow* row, const std::pair<CGFloat, CGFloat>& leftRight) const
     {
@@ -92,4 +92,4 @@ struct UISectionRowHorizontalCompare
 
 
 
-#endif /* SectionRow_h */
+#endif /* FlexRow_h */

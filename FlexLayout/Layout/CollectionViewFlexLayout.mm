@@ -486,8 +486,8 @@ protected:
     
     if ([context isKindOfClass:[UICollectionViewFlexLayout invalidationContextClass]])
     {
-        UICollectionViewFlexLayoutInvalidationContext *pagingInvalidationContext = (UICollectionViewFlexLayoutInvalidationContext *)context;
-        if (!pagingInvalidationContext.invalidateOffset)
+        UICollectionViewFlexLayoutInvalidationContext *flexInvalidationContext = (UICollectionViewFlexLayoutInvalidationContext *)context;
+        if (!flexInvalidationContext.invalidatedOffset)
         {
             // It is not caused by internal offset change, should call prepareLayout
             m_layoutInvalidated = YES;

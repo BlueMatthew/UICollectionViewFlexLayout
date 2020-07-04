@@ -42,16 +42,16 @@ public:
     
     inline std::pair<std::vector<UIFlexItem *>::iterator, std::vector<UIFlexItem *>::iterator> getVirticalItemsInRect(const CGRect& rect)
     {
-        return std::equal_range(m_items.begin(), m_items.end(), std::pair<CGFloat, CGFloat>(rect.origin.y, rect.origin.y + rect.size.height), UISectionItemVerticalCompare());
+        return std::equal_range(m_items.begin(), m_items.end(), std::pair<CGFloat, CGFloat>(rect.origin.y, rect.origin.y + rect.size.height), UIFlexItemVerticalCompare());
     }
     
     inline std::pair<std::vector<UIFlexItem *>::iterator, std::vector<UIFlexItem *>::iterator> getHorizontalItemsInRect(const CGRect& rect)
     {
-        return std::equal_range(m_items.begin(), m_items.end(), std::pair<CGFloat, CGFloat>(rect.origin.x, rect.origin.x + rect.size.width), UISectionItemHorizontalCompare());
+        return std::equal_range(m_items.begin(), m_items.end(), std::pair<CGFloat, CGFloat>(rect.origin.x, rect.origin.x + rect.size.width), UIFlexItemHorizontalCompare());
     }
 };
 
-struct UISectionColumnItemCompare
+struct UIFlexColumnItemCompare
 {
     bool operator() ( const UIFlexColumn* column, NSInteger item) const
     {
@@ -63,7 +63,7 @@ struct UISectionColumnItemCompare
     }
 };
 
-struct UISectionColumnHorizontalCompare
+struct UIFlexColumnHorizontalCompare
 {
     bool operator() ( const UIFlexColumn* lhs, const UIFlexColumn* rhs) const
     {
@@ -71,7 +71,7 @@ struct UISectionColumnHorizontalCompare
     }
 };
 
-struct UISectionColumnVerticalCompare
+struct UIFlexColumnVerticalCompare
 {
     bool operator() ( const UIFlexColumn* lhs, const UIFlexColumn* rhs) const
     {
