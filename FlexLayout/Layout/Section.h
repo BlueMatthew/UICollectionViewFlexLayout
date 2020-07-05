@@ -58,13 +58,18 @@ public:
     std::vector<UIFlexItem *> m_items;
     UIFlexItem m_footer;
     
-    UISectionT(UICollectionViewFlexLayout *layout, NSInteger section, CGPoint origin) : m_section(section), m_layout(layout), m_frame({.origin = origin, .size = CGSizeZero}), m_header(0), m_footer(0)
+    UISectionT(UICollectionViewFlexLayout *layout, NSInteger section, const CGRect& frame) : m_section(section), m_layout(layout), m_frame(frame), m_header(0), m_footer(0)
     {
     }
     
     virtual ~UISectionT()
     {
         m_layout = nil;
+        clearItems();
+    }
+    
+    inline void clearItems()
+    {
         for(std::vector<UIFlexItem *>::iterator it = m_items.begin(); it != m_items.end(); delete *it, ++it);
         m_items.clear();
     }
@@ -77,7 +82,13 @@ public:
         return IS_CV_VERTICAL(m_layout) ? CGRectMake(m_frame.origin.x, m_frame.origin.y + m_header.getFrame().size.height, m_frame.size.width, m_frame.size.height - m_header.getFrame().size.height - m_footer.getFrame().size.height) : CGRectMake(m_frame.origin.x + m_header.getFrame().origin.x, m_frame.origin.y, m_frame.size.width - m_header.getFrame().size.width - m_footer.getFrame().size.width, m_frame.size.height);
     }
 
-    virtual void prepareLayout() = 0;
+    void prepareLayout()
+    {
+        IS_CV_VERTICAL(UISectionT<TLayout>::m_layout) ? prepareLayoutVertically() : prepareLayoutHorizontally();
+    }
+    
+    virtual void prepareLayoutVertically() = 0;
+    virtual void prepareLayoutHorizontally() = 0;
     virtual BOOL getLayoutAttributesForItemsInRect(NSMutableArray<UICollectionViewLayoutAttributes *> *layoutAttributes, const CGRect &rectInSection) = 0;
     
     bool getLayoutAttributesInRect(NSMutableArray<UICollectionViewLayoutAttributes *> *layoutAttributes, const CGRect &rect)

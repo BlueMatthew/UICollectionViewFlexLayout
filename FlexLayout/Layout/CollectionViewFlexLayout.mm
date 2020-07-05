@@ -354,16 +354,20 @@ protected:
 - (void)insertSection:(NSInteger)section andRelayout:(BOOL)relayout
 {
     UICollectionViewFlexLayoutMode mode = [self getLayoutModeForSection:section];
-    CGPoint origin = CGPointZero;
+    UICollectionView *cv = self.collectionView;
+    UIEdgeInsets insets = cv.contentInset;
+    
+    CGRect frame = CGRectMake(cv.contentInset.left, insets.top, cv.bounds.size.width - insets.left - insets.right, cv.bounds.size.height - insets.top - insets.bottom);
+    
     // Get the leftBottom(topRight for horizontal direction) of the previous section
-    if ((section - 1) > 0)
+    if ((section - 1) >= 0)
     {
         std::vector<UISection *>::iterator it = m_sections.begin() + (section - 1);  // Previous Section
-        origin = (*it)->getFrame().origin;
-        IS_CV_VERTICAL(self) ? origin.y += ((*it)->getFrame().size.height) : (origin.x += (*it)->getFrame().size.width);
+        // origin = (*it)->getFrame().origin;
+        IS_CV_VERTICAL(self) ? frame.origin.y = CGRectGetMaxY((*it)->getFrame()) : (frame.origin.x = CGRectGetMaxX((*it)->getFrame()));
     }
     
-    UISection *pSection = (mode == UICollectionViewFlexLayoutModeFlow) ? ((UISection *)(new UIFlowSection(self, section, origin))) : ((UISection *)(new UIWaterfallSection(self, section, origin)));
+    UISection *pSection = (mode == UICollectionViewFlexLayoutModeFlow) ? ((UISection *)(new UIFlowSection(self, section, frame))) : ((UISection *)(new UIWaterfallSection(self, section, frame)));
     
     pSection->prepareLayout();
     
@@ -444,16 +448,19 @@ protected:
         
         NSInteger numberOfSections = [self getNumberOfSections];
         
-        CGPoint origin = CGPointZero;
+        UICollectionView *cv = self.collectionView;
+        
+        UIEdgeInsets insets = cv.contentInset;
+        CGRect frame = CGRectMake(cv.contentInset.left, insets.top, cv.bounds.size.width - insets.left - insets.right, cv.bounds.size.height - insets.top - insets.bottom);
         for (NSInteger index = 0; index < numberOfSections; index++)
         {
             // Calc Section Frame
             UICollectionViewFlexLayoutMode mode = [self getLayoutModeForSection:index];
-            UISection *pSection = (UICollectionViewFlexLayoutModeFlow == mode) ? ((UISection *)(new UIFlowSection(self, index, origin))) : ((UISection *)(new UIWaterfallSection(self, index, origin)));
+            UISection *pSection = (UICollectionViewFlexLayoutModeFlow == mode) ? ((UISection *)(new UIFlowSection(self, index, frame))) : ((UISection *)(new UIWaterfallSection(self, index, frame)));
             
             pSection->prepareLayout();
             
-            IS_CV_VERTICAL(self) ? origin.y += pSection->getFrame().size.height : origin.x += pSection->getFrame().size.width;
+            IS_CV_VERTICAL(self) ? frame.origin.y += pSection->getFrame().size.height : frame.origin.x += pSection->getFrame().size.width;
             
             m_sections.push_back(pSection);
         }

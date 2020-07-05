@@ -25,6 +25,12 @@ public:
     }
     
     inline const CGRect& getFrame() const { return m_frame; }
+    inline CGRect& getFrame() { return m_frame; }
+    
+    bool hasItems() const
+    {
+        return !m_items.empty();
+    }
     
     inline void addItem(UIFlexItem *item, bool vertical)
     {
@@ -39,6 +45,22 @@ public:
             m_frame.size.height += item->m_frame.size.height;
             if (m_frame.size.width < item->m_frame.size.width) m_frame.size.width = item->m_frame.size.width;
         }
+    }
+    
+    inline void addItemVertically(UIFlexItem *item)
+    {
+        m_items.push_back(item);
+        
+        m_frame.size.width += item->m_frame.size.width;
+        if (m_frame.size.height < item->m_frame.size.height) m_frame.size.height = item->m_frame.size.height;
+    }
+    
+    inline void addItemHorizontally(UIFlexItem *item)
+    {
+        m_items.push_back(item);
+        
+        m_frame.size.height += item->m_frame.size.height;
+        if (m_frame.size.width < item->m_frame.size.width) m_frame.size.width = item->m_frame.size.width;
     }
     
     /*

@@ -18,7 +18,7 @@ class UIWaterfallSectionT : public UISectionT<TLayout>
 public:
     std::vector<UIFlexColumn *> m_columns;
     
-    UIWaterfallSectionT(UICollectionViewFlexLayout *layout, NSInteger section, CGPoint origin) : UISectionT<TLayout>(layout, section, origin)
+    UIWaterfallSectionT(TLayout *layout, NSInteger section, const CGRect &frame) : UISectionT<TLayout>(layout, section, frame)
     {
     }
     
@@ -28,90 +28,213 @@ public:
         m_columns.clear();
     }
     
-    void prepareLayout()
+    /// Keep the commented code of "horizontally" parts
+    void prepareLayoutVertically()
     {
-        UISectionT<TLayout>::m_frame.size = CGSizeZero;
-        
-        IS_CV_VERTICAL(UISectionT<TLayout>::m_layout) ? (UISectionT<TLayout>::m_frame.size.width = UISectionT<TLayout>::m_layout.collectionView.bounds.size.width) : (UISectionT<TLayout>::m_frame.size.height = UISectionT<TLayout>::m_layout.collectionView.bounds.size.height);
-        
-        // header
+        // Header
         UISectionT<TLayout>::m_header.m_frame.size = [UISectionT<TLayout>::m_layout getSizeForHeaderInSection:UISectionT<TLayout>::m_section];
-        IS_CV_VERTICAL(UISectionT<TLayout>::m_layout) ? (UISectionT<TLayout>::m_frame.size.height += UISectionT<TLayout>::m_header.m_frame.size.height) : (UISectionT<TLayout>::m_frame.size.width += UISectionT<TLayout>::m_header.m_frame.size.width);
+        
+        // Items
+        UISectionT<TLayout>::m_frame.size.height = UISectionT<TLayout>::m_header.m_frame.size.height;
+        // UISectionT<TLayout>::m_frame.size.width = UISectionT<TLayout>::m_header.m_frame.size.width;
+        
+        m_columns.clear();
+        UISectionT<TLayout>::clearItems();
         
         NSInteger numberOfItems = [UISectionT<TLayout>::m_layout.collectionView numberOfItemsInSection:(UISectionT<TLayout>::m_section)];
         if (numberOfItems > 0)
         {
-            UIEdgeInsets sectionInset = [UISectionT<TLayout>::m_layout getInsetForSectionAtIndex:(UISectionT<TLayout>::m_section)];
-            
             UISectionT<TLayout>::m_items.reserve(numberOfItems);
+            
+            UIEdgeInsets sectionInset = [UISectionT<TLayout>::m_layout getInsetForSectionAtIndex:(UISectionT<TLayout>::m_section)];
             
             CGFloat minimumLineSpacing = [UISectionT<TLayout>::m_layout getMinimumLineSpacingForSectionAtIndex:(UISectionT<TLayout>::m_section)];
             CGFloat minimumInteritemSpacing = [UISectionT<TLayout>::m_layout getMinimumInteritemSpacingForSectionAtIndex:(UISectionT<TLayout>::m_section)];
             
-            // 获取列数
+            // Get Number of Columns
             NSInteger numberOfColumns = [UISectionT<TLayout>::m_layout getNumberOfColumnsForSection:(UISectionT<TLayout>::m_section)];
+            if (numberOfColumns < 1)
+            {
+                numberOfColumns = 1;
+            }
             
             m_columns.reserve(numberOfColumns);
-            CGFloat sizeOfColumn = IS_CV_VERTICAL(UISectionT<TLayout>::m_layout) ? (UISectionT<TLayout>::m_layout.collectionView.frame.size.width - sectionInset.left - sectionInset.right) : (UISectionT<TLayout>::m_layout.collectionView.frame.size.height - sectionInset.top - sectionInset.bottom);
-            if (numberOfColumns > 1)
-            {
-                sizeOfColumn = (sizeOfColumn - (numberOfColumns - 1) * minimumInteritemSpacing) / numberOfColumns;
-            }
             
-            CGPoint columnOrigin = IS_CV_VERTICAL(UISectionT<TLayout>::m_layout) ? CGPointMake(sectionInset.left, sectionInset.top + UISectionT<TLayout>::m_header.m_frame.size.height) : CGPointMake(sectionInset.left + UISectionT<TLayout>::m_header.m_frame.size.width, sectionInset.top);
-            CGSize columnSize = IS_CV_VERTICAL(UISectionT<TLayout>::m_layout) ? CGSizeMake(sizeOfColumn, 0) : CGSizeMake(0, sizeOfColumn);
-            NSInteger itemCapacity = numberOfItems / numberOfColumns;
+            CGFloat availableSizeOfColumn = UISectionT<TLayout>::m_frame.size.width - sectionInset.left - sectionInset.right;
+            // CGFloat availableSizeOfColumn = UISectionT<TLayout>::m_frame.size.height - sectionInset.top - sectionInset.bottom;
+
+            NSInteger estimatedNumberOfItems = (NSInteger)ceil(numberOfItems / numberOfColumns);
             
-            for (int column = 0; column < numberOfColumns; column++)
+            CGFloat sizeOfColumn = 0.0;
+            CGRect frameOfColumn = CGRectMake(sectionInset.left, sectionInset.top, sizeOfColumn, sizeOfColumn);
+            for (int columnIndex = 0; columnIndex < numberOfColumns; columnIndex++)
             {
-                UIFlexColumn *sectionColumn = new UIFlexColumn(itemCapacity);
-                sectionColumn->m_frame.origin = columnOrigin;
-                sectionColumn->m_frame.size = columnSize;
-                m_columns.push_back(sectionColumn);
+                if (columnIndex == numberOfColumns - 1)
+                {
+                    sizeOfColumn = availableSizeOfColumn;
+                    // availableSizeOfColumn = 0.0;
+                }
+                else
+                {
+                    sizeOfColumn = round((availableSizeOfColumn - (numberOfColumns - columnIndex - 1) * minimumInteritemSpacing) / (numberOfColumns - columnIndex));
+                    availableSizeOfColumn -= sizeOfColumn + minimumInteritemSpacing;
+                }
                 
-                IS_CV_VERTICAL(UISectionT<TLayout>::m_layout) ? (columnOrigin.x += sizeOfColumn + minimumInteritemSpacing) : (columnOrigin.y += sizeOfColumn + minimumInteritemSpacing);
+                frameOfColumn.size.width = sizeOfColumn;
+                // frameOfColumn.size.height = sizeOfColumn;
+                
+                UIFlexColumn *column = new UIFlexColumn(estimatedNumberOfItems, frameOfColumn);
+                m_columns.push_back(column);
+                
+                frameOfColumn.origin.x += sizeOfColumn + minimumInteritemSpacing;
+                // frameOfColumn.origin.y += sizeOfColumn + minimumInteritemSpacing;
             }
             
-            // 对每一个Item进行布局，分配到相应的列中
+            // Layout each item
             std::vector<UIFlexColumn *>::iterator columnItOfMinimalSize = m_columns.begin();
-            NSInteger itemIndexInColumn = 0;
-            // UISectionItem *sectionItem = new UISectionItem[numberOfItems];
             
             // Comparator object is small, create for both orientations
-            UIFlexColumnVerticalCompare vComp;
-            UIFlexColumnHorizontalCompare hComp;
+            UIFlexColumnVerticalCompare compare;
+            // UIFlexColumnHorizontalCompare compare;
             
+            CGPoint originOfItem = CGPointZero;
             for (NSInteger item = 0; item < numberOfItems; item++)
             {
-                // 找到size最小的column
-                columnItOfMinimalSize = IS_CV_VERTICAL(UISectionT<TLayout>::m_layout) ? min_element(m_columns.begin(), m_columns.end(), vComp) : min_element(m_columns.begin(), m_columns.end(), hComp);
-                
-                // 获取item在column中的位置，以处理spacing，非第一column需要在左边添加spacing
-                itemIndexInColumn = (*columnItOfMinimalSize)->m_items.size();
-                
-                CGPoint originOfItem = IS_CV_VERTICAL(UISectionT<TLayout>::m_layout) ? CGPointMake((*columnItOfMinimalSize)->m_frame.origin.x, (*columnItOfMinimalSize)->m_frame.origin.y + (*columnItOfMinimalSize)->m_frame.size.height + (itemIndexInColumn == 0 ? 0.0f : minimumLineSpacing)) : CGPointMake((*columnItOfMinimalSize)->m_frame.origin.x + (*columnItOfMinimalSize)->m_frame.size.width + (itemIndexInColumn == 0 ? 0.0f : minimumLineSpacing), (*columnItOfMinimalSize)->m_frame.origin.y);
-                
-                // sectionItem->m_item = item;
-                // sectionItem->m_frame = {.origin = originOfItem, .size = [m_layout getSizeForItemAtIndexPath:[NSIndexPath indexPathForItem:item inSection:m_section]]};
-                // sectionItem->m_frame = {.origin = originOfItem, .size = *pCurSize };
+                // Find the column with lowest hight
+                columnItOfMinimalSize = min_element(m_columns.begin(), m_columns.end(), compare);
+
+                // Add spacing for the item which is not first one
+                originOfItem.x = (*columnItOfMinimalSize)->m_frame.origin.x;
+                originOfItem.y = CGRectGetMaxY((*columnItOfMinimalSize)->m_frame) + ((*columnItOfMinimalSize)->hasItems() ? minimumLineSpacing : 0.0f);
+                // originOfItem.x = CGRectGetMaxX((*columnItOfMinimalSize)->m_frame) + ((*columnItOfMinimalSize)->hasItems() ? minimumLineSpacing : 0.0f);
+                // originOfItem.y = (*columnItOfMinimalSize)->m_frame.origin.y;
                 
                 UIFlexItem *sectionItem = new UIFlexItem(item, originOfItem, [UISectionT<TLayout>::m_layout getSizeForItemAtIndexPath:[NSIndexPath indexPathForItem:item inSection:(UISectionT<TLayout>::m_section)]]);
                 
                 UISectionT<TLayout>::m_items.push_back(sectionItem);
-                // 加到最小Size的列中
-                (*columnItOfMinimalSize)->addItem(sectionItem, IS_CV_VERTICAL(UISectionT<TLayout>::m_layout));
+                
+                // Add into the column with lowest hight
+                (*columnItOfMinimalSize)->addItemVertically(sectionItem);
+                // (*columnItOfMinimalSize)->addItemHorizontally(sectionItem);
             }
-        
-            // 找到size最大的column
-            std::vector<UIFlexColumn *>::iterator columnItOfMaximalSize = IS_CV_VERTICAL(UISectionT<TLayout>::m_layout) ? max_element(m_columns.begin(), m_columns.end(), vComp) : max_element(m_columns.begin(), m_columns.end(), hComp);
             
-            IS_CV_VERTICAL(UISectionT<TLayout>::m_layout) ? UISectionT<TLayout>::m_frame.size.height += (*columnItOfMaximalSize)->m_frame.size.height + sectionInset.top + sectionInset.bottom : UISectionT<TLayout>::m_frame.size.width += (*columnItOfMaximalSize)->m_frame.size.width + sectionInset.left + sectionInset.right;
+            // Find the column with highest height
+            std::vector<UIFlexColumn *>::iterator columnItOfMaximalSize = max_element(m_columns.begin(), m_columns.end(), compare);
+            
+            UISectionT<TLayout>::m_frame.size.height += (*columnItOfMaximalSize)->m_frame.size.height + sectionInset.top + sectionInset.bottom;
+            // UISectionT<TLayout>::m_frame.size.width += (*columnItOfMaximalSize)->m_frame.size.width + sectionInset.left + sectionInset.right;
         }
         
-        // footer
+        // Footer
         UISectionT<TLayout>::m_footer.m_frame.size = [UISectionT<TLayout>::m_layout getSizeForFooterInSection:(UISectionT<TLayout>::m_section)];
         
-        IS_CV_VERTICAL(UISectionT<TLayout>::m_layout) ? (UISectionT<TLayout>::m_frame.size.height += UISectionT<TLayout>::m_footer.m_frame.size.height) : (UISectionT<TLayout>::m_frame.size.width += UISectionT<TLayout>::m_footer.m_frame.size.width);
+        UISectionT<TLayout>::m_frame.size.height += UISectionT<TLayout>::m_footer.m_frame.size.height;
+        // UISectionT<TLayout>::m_frame.size.width += UISectionT<TLayout>::m_footer.m_frame.size.width;
+    }
+    
+    /// DON"T EDIT THE CODE DIRECTLY
+    /// Update the code in the function of "vertically" first and then sync the commented code of "horizontally" parts
+    void prepareLayoutHorizontally()
+    {
+        // Header
+        UISectionT<TLayout>::m_header.m_frame.size = [UISectionT<TLayout>::m_layout getSizeForHeaderInSection:UISectionT<TLayout>::m_section];
+        
+        // Items
+        // UISectionT<TLayout>::m_frame.size.height = UISectionT<TLayout>::m_header.m_frame.size.height;
+        UISectionT<TLayout>::m_frame.size.width = UISectionT<TLayout>::m_header.m_frame.size.width;
+        
+        m_columns.clear();
+        UISectionT<TLayout>::clearItems();
+        
+        NSInteger numberOfItems = [UISectionT<TLayout>::m_layout.collectionView numberOfItemsInSection:(UISectionT<TLayout>::m_section)];
+        if (numberOfItems > 0)
+        {
+            UISectionT<TLayout>::m_items.reserve(numberOfItems);
+            
+            UIEdgeInsets sectionInset = [UISectionT<TLayout>::m_layout getInsetForSectionAtIndex:(UISectionT<TLayout>::m_section)];
+            
+            CGFloat minimumLineSpacing = [UISectionT<TLayout>::m_layout getMinimumLineSpacingForSectionAtIndex:(UISectionT<TLayout>::m_section)];
+            CGFloat minimumInteritemSpacing = [UISectionT<TLayout>::m_layout getMinimumInteritemSpacingForSectionAtIndex:(UISectionT<TLayout>::m_section)];
+            
+            // Get Number of Columns
+            NSInteger numberOfColumns = [UISectionT<TLayout>::m_layout getNumberOfColumnsForSection:(UISectionT<TLayout>::m_section)];
+            if (numberOfColumns < 1)
+            {
+                numberOfColumns = 1;
+            }
+            
+            m_columns.reserve(numberOfColumns);
+            
+            // CGFloat availableSizeOfColumn = UISectionT<TLayout>::m_frame.size.width - sectionInset.left - sectionInset.right;
+            CGFloat availableSizeOfColumn = UISectionT<TLayout>::m_frame.size.height - sectionInset.top - sectionInset.bottom;
+
+            NSInteger estimatedNumberOfItems = (NSInteger)ceil(numberOfItems / numberOfColumns);
+            
+            CGFloat sizeOfColumn = 0.0;
+            CGRect frameOfColumn = CGRectMake(sectionInset.left, sectionInset.top, sizeOfColumn, sizeOfColumn);
+            for (int columnIndex = 0; columnIndex < numberOfColumns; columnIndex++)
+            {
+                if (columnIndex == numberOfColumns - 1)
+                {
+                    sizeOfColumn = availableSizeOfColumn;
+                    // availableSizeOfColumn = 0.0;
+                }
+                else
+                {
+                    sizeOfColumn = round((availableSizeOfColumn - (numberOfColumns - columnIndex - 1) * minimumInteritemSpacing) / (numberOfColumns - columnIndex));
+                    availableSizeOfColumn -= sizeOfColumn + minimumInteritemSpacing;
+                }
+                
+                // frameOfColumn.size.width = sizeOfColumn;
+                frameOfColumn.size.height = sizeOfColumn;
+                
+                UIFlexColumn *column = new UIFlexColumn(estimatedNumberOfItems, frameOfColumn);
+                m_columns.push_back(column);
+                
+                // frameOfColumn.origin.x += sizeOfColumn + minimumInteritemSpacing;
+                frameOfColumn.origin.y += sizeOfColumn + minimumInteritemSpacing;
+            }
+            
+            // Layout each item
+            std::vector<UIFlexColumn *>::iterator columnItOfMinimalSize = m_columns.begin();
+            
+            // Comparator object is small, create for both orientations
+            // UIFlexColumnVerticalCompare compare;
+            UIFlexColumnHorizontalCompare compare;
+            
+            CGPoint originOfItem = CGPointZero;
+            for (NSInteger item = 0; item < numberOfItems; item++)
+            {
+                // Find the column with lowest hight
+                columnItOfMinimalSize = min_element(m_columns.begin(), m_columns.end(), compare);
+                
+                // Add spacing for the item which is not first one
+                // originOfItem.x = (*columnItOfMinimalSize)->m_frame.origin.x;
+                // originOfItem.y = CGRectGetMaxY((*columnItOfMinimalSize)->m_frame) + ((*columnItOfMinimalSize)->hasItems() ? minimumLineSpacing : 0.0f);
+                originOfItem.x = CGRectGetMaxX((*columnItOfMinimalSize)->m_frame) + ((*columnItOfMinimalSize)->hasItems() ? minimumLineSpacing : 0.0f);
+                originOfItem.y = (*columnItOfMinimalSize)->m_frame.origin.y;
+                
+                UIFlexItem *sectionItem = new UIFlexItem(item, originOfItem, [UISectionT<TLayout>::m_layout getSizeForItemAtIndexPath:[NSIndexPath indexPathForItem:item inSection:(UISectionT<TLayout>::m_section)]]);
+                
+                UISectionT<TLayout>::m_items.push_back(sectionItem);
+                
+                // Add into the column with lowest hight
+                // (*columnItOfMinimalSize)->addItemVertically(sectionItem);
+                (*columnItOfMinimalSize)->addItemHorizontally(sectionItem);
+            }
+            
+            // Find the column with highest height
+            std::vector<UIFlexColumn *>::iterator columnItOfMaximalSize = max_element(m_columns.begin(), m_columns.end(), compare);
+            
+            UISectionT<TLayout>::m_frame.size.height += (*columnItOfMaximalSize)->m_frame.size.height + sectionInset.top + sectionInset.bottom;
+            // UISectionT<TLayout>::m_frame.size.width += (*columnItOfMaximalSize)->m_frame.size.width + sectionInset.left + sectionInset.right;
+        }
+        
+        // Footer
+        UISectionT<TLayout>::m_footer.m_frame.size = [UISectionT<TLayout>::m_layout getSizeForFooterInSection:(UISectionT<TLayout>::m_section)];
+        
+        UISectionT<TLayout>::m_frame.size.height += UISectionT<TLayout>::m_footer.m_frame.size.height;
+        // UISectionT<TLayout>::m_frame.size.width += UISectionT<TLayout>::m_footer.m_frame.size.width;
     }
     
     bool getLayoutAttributesForItemsInRect(NSMutableArray<UICollectionViewLayoutAttributes *> *layoutAttributes, const CGRect &rectInSection)

@@ -27,9 +27,19 @@ public:
     {
     }
     
-    UIFlexColumn(NSInteger itemCapacity)
+    UIFlexColumn(NSInteger estimatedNumberOfItems)
     {
-        m_items.reserve(itemCapacity);
+        m_items.reserve(estimatedNumberOfItems);
+    }
+    
+    UIFlexColumn(NSInteger estimatedNumberOfItems, const CGRect &frame) : m_frame(frame)
+    {
+        m_items.reserve(estimatedNumberOfItems);
+    }
+    
+    bool hasItems() const
+    {
+        return !m_items.empty();
     }
     
     inline void addItem(UIFlexItem *item, bool vertical)
@@ -38,6 +48,19 @@ public:
         
         // vertical ? (m_size.height += item->m_size.height) : m_size.width += item->m_size.width;
         vertical ? (m_frame.size.height = item->m_frame.origin.y + item->m_frame.size.height - (*(m_items.begin()))->m_frame.origin.y) : (m_frame.size.width = item->m_frame.origin.x + item->m_frame.size.width - (*(m_items.begin()))->m_frame.origin.x);
+    }
+    
+    inline void addItemVertically(UIFlexItem *item)
+    {
+        m_items.push_back(item);
+        m_frame.size.height = item->m_frame.origin.y + item->m_frame.size.height - (*(m_items.begin()))->m_frame.origin.y;
+        // m_frame.size.width = item->m_frame.origin.x + item->m_frame.size.width - (*(m_items.begin()))->m_frame.origin.x;
+    }
+    
+    inline void addItemHorizontally(UIFlexItem *item)
+    {
+        m_items.push_back(item);
+        m_frame.size.width = item->m_frame.origin.x + item->m_frame.size.width - (*(m_items.begin()))->m_frame.origin.x;
     }
     
     inline std::pair<std::vector<UIFlexItem *>::iterator, std::vector<UIFlexItem *>::iterator> getVirticalItemsInRect(const CGRect& rect)
