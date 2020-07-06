@@ -10,6 +10,7 @@
 #import "CollectionViewFlexLayout.h"
 #import "CategoryBarViewCell.h"
 #import "ItemViewCell.h"
+#import "InfoViewCell.h"
 #import "ImageItemViewCell.h"
 #import "CategoryBar.h"
 #import "UIUtility.h"
@@ -25,6 +26,9 @@
 #define REUSE_ID_ITEM1              "item1"
 #define REUSE_ID_ITEM2              "item2"
 
+#define REUSE_ID_INFO_HEADER        "info_header"
+#define REUSE_ID_INFO_FOOTER        "info_footer"
+
 #define ITEM_TEXT_NAVBAR            "Navigation Bar"
 #define ITEM_TEXT_LOADMORE          "Loading More Data..."
 #define ITEM_TEXT_CATBAR_ITEM       "Cat %ld"
@@ -33,9 +37,11 @@
 
 // #define SECTION_INDEX_NAVBAR            0
 #define SECTION_INDEX_ENTRY             0
-#define SECTION_INDEX_CATBAR            1
-#define SECTION_INDEX_ITEM1             2
-#define SECTION_INDEX_ITEM2             3
+#define SECTION_INDEX_TEST1             1
+#define SECTION_INDEX_TEST2             2
+#define SECTION_INDEX_CATBAR            3
+#define SECTION_INDEX_ITEM1             4
+#define SECTION_INDEX_ITEM2             5
 
 #define SECTION_INDEX_ITEM_PAGING1       0
 #define SECTION_INDEX_ITEM_PAGING2       1
@@ -43,11 +49,15 @@
 #define NUM_OF_ITEMS_IN_CATEGORY_BAR    8
 
 #define NUM_OF_ITEMS_IN_SECTION_ENTRY   2
+#define NUM_OF_ITEMS_IN_SECTION_TEST1   4
+#define NUM_OF_ITEMS_IN_SECTION_TEST2   4
 #define NUM_OF_ITEMS_IN_SECTION_ITEM1   20
 #define NUM_OF_ITEMS_IN_SECTION_ITEM2   20
 
 #define ITEM_HEIGHT_NAVBAR              100
 #define ITEM_HEIGHT_ENTRY               120
+#define ITEM_HEIGHT_TEST                40
+#define ITEM_HEIGHT_INFO                80
 #define ITEM_HEIGHT_LOADMORE            110
 #define ITEM_HEIGHT_CATBAR              40
 #define ITEM_HEIGHT_ITEM1               160
@@ -60,6 +70,8 @@
 #define SECTION_INSET_ITEM_TOP           0
 #define SECTION_INSET_ITEM_RIGHT         0
 #define SECTION_INSET_ITEM_BOTTOM        0
+
+#define SECTION_INSET_TEST1_PADDING      10
 
 #define ITEM_COLUMNS                     2
 
@@ -136,6 +148,8 @@
         [self registerClass:[SUIItemViewCell class] forSupplementaryViewOfKind:UICollectionElementKindSectionHeader withReuseIdentifier:@REUSE_ID_NAVBAR];
         [self registerClass:[SUICategoryBarViewCell class] forSupplementaryViewOfKind:UICollectionElementKindSectionHeader withReuseIdentifier:@REUSE_ID_CATBAR];
         [self registerClass:[SUIItemViewCell class] forSupplementaryViewOfKind:UICollectionElementKindSectionFooter withReuseIdentifier:@REUSE_ID_LOADMORE];
+        [self registerClass:[SUIInfoViewCell class] forSupplementaryViewOfKind:UICollectionElementKindSectionHeader withReuseIdentifier:@REUSE_ID_INFO_HEADER];
+        [self registerClass:[SUIInfoViewCell class] forSupplementaryViewOfKind:UICollectionElementKindSectionFooter withReuseIdentifier:@REUSE_ID_INFO_FOOTER];
         
         m_isCategoryBarSticky = NO;
         m_minPagingTop = CGFLOAT_MAX;
@@ -155,7 +169,7 @@
     m_sections = [NSMutableDictionary<NSNumber *, NSMutableArray< NSNumber * > *> dictionaryWithCapacity:NUM_OF_ITEMS_IN_CATEGORY_BAR];
     for (NSInteger idx = 0; idx < NUM_OF_ITEMS_IN_CATEGORY_BAR; idx++)
     {
-        NSMutableArray<NSNumber *> *sections = [(@[/*@SECTION_INDEX_NAVBAR, */@SECTION_INDEX_ENTRY, @SECTION_INDEX_CATBAR, @SECTION_INDEX_ITEM1, @SECTION_INDEX_ITEM2]) mutableCopy];
+        NSMutableArray<NSNumber *> *sections = [(@[/*@SECTION_INDEX_NAVBAR, */@SECTION_INDEX_ENTRY, @SECTION_INDEX_TEST1, @SECTION_INDEX_TEST2, @SECTION_INDEX_CATBAR, @SECTION_INDEX_ITEM1, @SECTION_INDEX_ITEM2]) mutableCopy];
         [m_sections setObject:sections forKey:@(idx)];
     }
     

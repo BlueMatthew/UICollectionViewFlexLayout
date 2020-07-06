@@ -20,28 +20,34 @@ public:
     
     CGRect m_frame; // The origin is in the coordinate system of section, should convert to the coordinate system of UICollectionView
 
+private:
+    bool m_isEmpty;
+    
+public:
     inline const CGRect getFrame() const { return m_frame; }
     inline CGRect& getFrame() { return m_frame; }
     
-    UIFlexColumn() : m_frame(CGRectZero)
+    
+    UIFlexColumn() : m_frame(CGRectZero), m_isEmpty(true)
     {
     }
     
-    UIFlexColumn(NSInteger estimatedNumberOfItems)
-    {
-        m_items.reserve(estimatedNumberOfItems);
-    }
-    
-    UIFlexColumn(NSInteger estimatedNumberOfItems, const CGRect &frame) : m_frame(frame)
+    UIFlexColumn(NSInteger estimatedNumberOfItems) : m_frame(CGRectZero), m_isEmpty(true)
     {
         m_items.reserve(estimatedNumberOfItems);
     }
     
-    bool hasItems() const
+    UIFlexColumn(NSInteger estimatedNumberOfItems, const CGRect &frame) : m_frame(frame), m_isEmpty(true)
     {
-        return !m_items.empty();
+        m_items.reserve(estimatedNumberOfItems);
     }
     
+    bool isEmpty() const
+    {
+        return m_isEmpty;
+    }
+    
+    /*
     inline void addItem(UIFlexItem *item, bool vertical)
     {
         m_items.push_back(item);
@@ -49,18 +55,27 @@ public:
         // vertical ? (m_size.height += item->m_size.height) : m_size.width += item->m_size.width;
         vertical ? (m_frame.size.height = item->m_frame.origin.y + item->m_frame.size.height - (*(m_items.begin()))->m_frame.origin.y) : (m_frame.size.width = item->m_frame.origin.x + item->m_frame.size.width - (*(m_items.begin()))->m_frame.origin.x);
     }
+     */
     
-    inline void addItemVertically(UIFlexItem *item)
+    inline void addItemVertically(UIFlexItem *item, bool fake = false)
     {
-        m_items.push_back(item);
-        m_frame.size.height = item->m_frame.origin.y + item->m_frame.size.height - (*(m_items.begin()))->m_frame.origin.y;
-        // m_frame.size.width = item->m_frame.origin.x + item->m_frame.size.width - (*(m_items.begin()))->m_frame.origin.x;
+        if (!fake)
+        {
+            m_items.push_back(item);
+        }
+        m_frame.size.height = CGRectGetMaxY(item->m_frame);
+        // m_frame.size.width = CGRectGetMaxX(item->m_frame);
+        m_isEmpty = false;
     }
     
-    inline void addItemHorizontally(UIFlexItem *item)
+    inline void addItemHorizontally(UIFlexItem *item, bool fake = false)
     {
-        m_items.push_back(item);
-        m_frame.size.width = item->m_frame.origin.x + item->m_frame.size.width - (*(m_items.begin()))->m_frame.origin.x;
+        if (!fake)
+        {
+            m_items.push_back(item);
+        }
+        m_frame.size.width = CGRectGetMaxX(item->m_frame);
+        m_isEmpty = false;
     }
     
     inline std::pair<std::vector<UIFlexItem *>::iterator, std::vector<UIFlexItem *>::iterator> getVirticalItemsInRect(const CGRect& rect)

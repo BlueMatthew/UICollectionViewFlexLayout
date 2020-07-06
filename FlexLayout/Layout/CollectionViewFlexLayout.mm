@@ -47,6 +47,8 @@ typedef UISectionVerticalCompareT<UICollectionViewFlexLayout> UISectionVerticalC
 - (CGSize)getSizeForFooterInSection:(NSInteger)section;
 - (NSInteger)getNumberOfColumnsForSection:(NSInteger)section;
 - (UICollectionViewFlexLayoutMode)getLayoutModeForSection:(NSInteger)section;
+- (BOOL)isFullSpanAtItem:(NSInteger)item forSection:(NSInteger)section;
+- (BOOL)hasFixedSize:(CGSize *)fixedSize forSection:(NSInteger)section;
 
 @end
 
@@ -96,6 +98,8 @@ protected:
                 unsigned int sizeForHeader : 1;
                 unsigned int sizeForFooter : 1;
                 unsigned int layoutModeForSection : 1;
+                unsigned int hasFixedSize : 1;
+                unsigned int isFullSpan : 1;
                 unsigned int numberOfColumns : 1;
                 unsigned int enterStickyMode : 1;
                 unsigned int exitStickyMode : 1;
@@ -912,6 +916,8 @@ protected:
             m_layoutDelegateFlags.sizeForFooter = ([delegate respondsToSelector:@selector(collectionView:layout:referenceSizeForFooterInSection:)]) ? 1 : 0;
             m_layoutDelegateFlags.numberOfColumns = ([delegate respondsToSelector:@selector(collectionView:layout:numberOfColumnsInSection:)]) ? 1 : 0;
             m_layoutDelegateFlags.layoutModeForSection = ([delegate respondsToSelector:@selector(collectionView:layout:layoutModeForSection:)]) ? 1 : 0;
+            m_layoutDelegateFlags.hasFixedSize = ([delegate respondsToSelector:@selector(collectionView:layout:hasFixedSize:forSection:)]) ? 1 : 0;
+            m_layoutDelegateFlags.isFullSpan = ([delegate respondsToSelector:@selector(collectionView:layout:isFullSpanAtItem:forSection:)]) ? 1 : 0;
             m_layoutDelegateFlags.enterStickyMode = [delegate respondsToSelector:@selector(collectionView:layout:headerEnterStickyModeAtSection:withOriginalPoint:)];
             m_layoutDelegateFlags.exitStickyMode = [delegate respondsToSelector:@selector(collectionView:layout:headerExitStickyModeAtSection:)];
         }
@@ -976,6 +982,18 @@ protected:
 {
     [self prepareDelegate];
     return m_layoutDelegateFlags.layoutModeForSection ? [((id<UICollectionViewDelegateFlexLayout>)self.collectionView.delegate) collectionView:self.collectionView layout:self layoutModeForSection:section] : UICollectionViewFlexLayoutModeFlow;
+}
+
+- (BOOL)hasFixedSize:(CGSize *)fixedSize forSection:(NSInteger)section
+{
+    [self prepareDelegate];
+    return m_layoutDelegateFlags.hasFixedSize ? [((id<UICollectionViewDelegateFlexLayout>)self.collectionView.delegate) collectionView:self.collectionView layout:self hasFixedSize:fixedSize forSection:section] : NO;
+}
+
+- (BOOL)isFullSpanAtItem:(NSInteger)item forSection:(NSInteger)section
+{
+    [self prepareDelegate];
+    return m_layoutDelegateFlags.isFullSpan ? [((id<UICollectionViewDelegateFlexLayout>)self.collectionView.delegate) collectionView:self.collectionView layout:self isFullSpanAtItem:item forSection:section] : NO;
 }
 
 - (void)enterStickyModeAt:(NSInteger)section withOriginalPoint:(CGPoint)point

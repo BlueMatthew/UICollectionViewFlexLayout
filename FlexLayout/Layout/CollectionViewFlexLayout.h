@@ -21,8 +21,13 @@ typedef NS_ENUM(NSUInteger, UICollectionViewFlexLayoutMode) {
 
 @protocol UICollectionViewDelegateFlexLayout <UICollectionViewDelegateFlowLayout>
 
+@optional
 // Asks the delegate for layout mode(UICollectionViewFlexLayoutMode) in the specified section. Default value is UICollectionViewFlexLayoutModeFlow
 - (UICollectionViewFlexLayoutMode)collectionView:(UICollectionView *)collectionView layout:(UICollectionViewLayout *)layout layoutModeForSection:(NSInteger)section;
+// Asks the delegate if all items in one section have the same size. If they are, layout will be faster much more.
+- (BOOL)collectionView:(UICollectionView *)collectionView layout:(UICollectionViewLayout *)layout hasFixedSize:(CGSize *)fixedSize forSection:(NSInteger)section;
+// Asks the delegate if the item should be pleace in the whole completed row.
+- (BOOL)collectionView:(UICollectionView *)collectionView layout:(UICollectionViewLayout *)layout isFullSpanAtItem:(NSInteger)item forSection:(NSInteger)section;
 // Asks the delegate for number of columns in the specified section.
 // For FlowLayout, it is better to provide the logical columns and it will help layout manager the memory
 - (NSInteger)collectionView:(UICollectionView *)collectionView layout:(UICollectionViewLayout *)layout numberOfColumnsInSection:(NSInteger)section;

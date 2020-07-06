@@ -14,6 +14,7 @@
 		345496A32490C1B500447FCA /* CategoryBar.m in Sources */ = {isa = PBXBuildFile; fileRef = 345496A12490C1B400447FCA /* CategoryBar.m */; };
 		345496A62490C4E100447FCA /* CategoryBarViewCell.m in Sources */ = {isa = PBXBuildFile; fileRef = 345496A42490C4E100447FCA /* CategoryBarViewCell.m */; };
 		345496A92490DEC300447FCA /* CollectionViewFlexLayoutInvalidationContext.m in Sources */ = {isa = PBXBuildFile; fileRef = 345496A82490DEC200447FCA /* CollectionViewFlexLayoutInvalidationContext.m */; };
+		345E406424B374A700E05585 /* InfoViewCell.m in Sources */ = {isa = PBXBuildFile; fileRef = 345E406324B374A700E05585 /* InfoViewCell.m */; };
 		348475D82490A2B900569952 /* FlexItem.mm in Sources */ = {isa = PBXBuildFile; fileRef = 348475CE2490A2B900569952 /* FlexItem.mm */; };
 		348475D92490A2B900569952 /* CollectionViewFlexLayout.mm in Sources */ = {isa = PBXBuildFile; fileRef = 348475D02490A2B900569952 /* CollectionViewFlexLayout.mm */; };
 		3489126424909FDE00B1A95B /* AppDelegate.m in Sources */ = {isa = PBXBuildFile; fileRef = 3489126324909FDE00B1A95B /* AppDelegate.m */; };
@@ -40,6 +41,8 @@
 		345496A52490C4E100447FCA /* CategoryBarViewCell.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = CategoryBarViewCell.h; sourceTree = "<group>"; };
 		345496A72490DEAF00447FCA /* CollectionViewFlexLayoutInvalidationContext.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = CollectionViewFlexLayoutInvalidationContext.h; sourceTree = "<group>"; };
 		345496A82490DEC200447FCA /* CollectionViewFlexLayoutInvalidationContext.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = CollectionViewFlexLayoutInvalidationContext.m; sourceTree = "<group>"; };
+		345E406224B374A700E05585 /* InfoViewCell.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = InfoViewCell.h; sourceTree = "<group>"; };
+		345E406324B374A700E05585 /* InfoViewCell.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = InfoViewCell.m; sourceTree = "<group>"; };
 		348475C82490A2B800569952 /* FlexRow.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FlexRow.h; sourceTree = "<group>"; };
 		348475C92490A2B800569952 /* FlowSection.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FlowSection.h; sourceTree = "<group>"; };
 		348475CC2490A2B900569952 /* WaterfallSection.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = WaterfallSection.h; sourceTree = "<group>"; };
@@ -77,6 +80,8 @@
 		345496952490C11700447FCA /* ViewCells */ = {
 			isa = PBXGroup;
 			children = (
+				345E406224B374A700E05585 /* InfoViewCell.h */,
+				345E406324B374A700E05585 /* InfoViewCell.m */,
 				345496A52490C4E100447FCA /* CategoryBarViewCell.h */,
 				345496A42490C4E100447FCA /* CategoryBarViewCell.m */,
 				345496982490C14200447FCA /* ImageItemViewCell.h */,
@@ -226,6 +231,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				345E406424B374A700E05585 /* InfoViewCell.m in Sources */,
 				3454969A2490C14200447FCA /* ItemViewCell.m in Sources */,
 				3489126724909FDE00B1A95B /* ViewController.m in Sources */,
 				3489127224909FE200B1A95B /* main.m in Sources */,
