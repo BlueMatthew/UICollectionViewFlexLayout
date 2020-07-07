@@ -20,6 +20,8 @@
     UIImageView *m_imageView;
     UIColor     *m_imageColor;
     NSString    *m_imageUrl;
+    
+    NSInteger   m_updateId;
 }
 
 @end
@@ -38,6 +40,8 @@
         
         m_imageView = [[UIImageView alloc] initWithFrame:CGRectZero];
         [self.contentView addSubview:m_imageView];
+        
+        m_updateId = 0;
     }
     
     return self;
@@ -143,6 +147,8 @@
     [self setImageUrl:imageUrl];
     m_imageColor = color;
     
+    m_updateId ++;
+    
     if (nil == imageUrl || [m_imageUrl isEqualToString:@""])
     {
         if (needDelay)
@@ -150,8 +156,22 @@
             m_imageView.layer.borderWidth = 4;
             m_imageView.layer.borderColor = [color CGColor];
             
-            NSTimeInterval timeInterval = (arc4random() % 10) / 5.0;
-            [self performSelector:@selector(setImageColor:) withObject:color afterDelay:timeInterval];
+            NSTimeInterval timeInterval = (arc4random() % 10) / 5.0;    // 0-2s
+            __block NSInteger updateId = m_updateId;
+            
+            // Delay execution of my block for 10 seconds.
+            __weak __typeof(self) weakSelf = self;
+            __block UIColor *localColor = [color copy];
+            dispatch_after(dispatch_time(DISPATCH_TIME_NOW, timeInterval * NSEC_PER_SEC), dispatch_get_main_queue(), ^{
+                __strong __typeof(weakSelf) strongSelf = weakSelf;
+                if (strongSelf)
+                {
+                    if (updateId == strongSelf->m_updateId)
+                    {
+                        [strongSelf setImageColor:localColor];
+                    }
+                }
+            });
         }
         else
         {

@@ -33,18 +33,26 @@ public:
 
     void prepareLayoutVertically()
     {
+#define VERTICAL_LAYOUT
+        
         // Header
-        UISectionT<TLayout>::m_header.m_frame.size = [UISectionT<TLayout>::m_layout getSizeForHeaderInSection:(UISectionT<TLayout>::m_section)];
+        UISectionT<TLayout>::m_header.getFrame().size = [UISectionT<TLayout>::m_layout getSizeForHeaderInSection:(UISectionT<TLayout>::m_section)];
         
         // Initialize the section height with header height
+#ifdef VERTICAL_LAYOUT
         UISectionT<TLayout>::m_frame.size.height = UISectionT<TLayout>::m_header.getFrame().size.height;
-        // UISectionT<TLayout>::m_frame.size.width = UISectionT<TLayout>::m_header.getFrame().size.width;
+#else
+        UISectionT<TLayout>::m_frame.size.width = UISectionT<TLayout>::m_header.getFrame().size.width;
+#endif // ifdef VERTICAL_LAYOUT
         
         // Items
-        CGPoint originOfRow = UISectionT<TLayout>::m_header.m_frame.origin;
+        CGPoint originOfRow = UISectionT<TLayout>::m_header.getFrame().origin;
         
+#ifdef VERTICAL_LAYOUT
         originOfRow.y += UISectionT<TLayout>::m_header.getFrame().size.height;
-        // originOfRow.x += UISectionT<TLayout>::m_header.getFrame().size.width;
+#else
+        originOfRow.x += UISectionT<TLayout>::m_header.getFrame().size.width;
+#endif // #ifdef VERTICAL_LAYOUT
         
         m_rows.clear();
         UISectionT<TLayout>::clearItems();
@@ -62,9 +70,12 @@ public:
             
             CGFloat minimumLineSpacing = [UISectionT<TLayout>::m_layout getMinimumLineSpacingForSectionAtIndex:(UISectionT<TLayout>::m_section)];
             CGFloat minimumInteritemSpacing = [UISectionT<TLayout>::m_layout getMinimumInteritemSpacingForSectionAtIndex:(UISectionT<TLayout>::m_section)];
-            
+          
+#ifdef VERTICAL_LAYOUT
             CGFloat maximalSizeOfRow = UISectionT<TLayout>::m_frame.size.width - sectionInset.left - sectionInset.right;
-            // CGFloat maximalSizeOfRow = UISectionT<TLayout>::m_frame.size.height - sectionInset.top - sectionInset.bottom;
+#else
+            CGFloat maximalSizeOfRow = UISectionT<TLayout>::m_frame.size.height - sectionInset.top - sectionInset.bottom;
+#endif // #ifdef VERTICAL_LAYOUT
             
             // Layout items
             UIFlexItem *sectionItem = NULL;
@@ -82,22 +93,31 @@ public:
             {
                 sizeOfItem = [UISectionT<TLayout>::m_layout getSizeForItemAtIndexPath:[NSIndexPath indexPathForItem:itemIndex inSection:(UISectionT<TLayout>::m_section)]];
                 
+#ifdef VERTICAL_LAYOUT
                 sizeOfItemInDirection = sizeOfItem.width;
-                // sizeOfItemInDirection = sizeOfItem.height;
+#else
+                sizeOfItemInDirection = sizeOfItem.height;
+#endif // #ifdef VERTICAL_LAYOUT
                 
                 if (NULL != row)
                 {
                     if (row->hasItems())
                     {
-                        availableSizeOfRow = maximalSizeOfRow - row->m_frame.size.width - minimumInteritemSpacing;
-                        // availableRowSize = maximalSizeOfRow - row->m_frame.size.height - minimumInteritemSpacing;
+#ifdef VERTICAL_LAYOUT
+                        availableSizeOfRow = maximalSizeOfRow - row->getFrame().size.width - minimumInteritemSpacing;
+#else
+                        availableSizeOfRow = maximalSizeOfRow - row->getFrame().size.height - minimumInteritemSpacing;
+#endif // #ifdef VERTICAL_LAYOUT
                         
                         if (availableSizeOfRow < sizeOfItemInDirection)
                         {
                             // New Line
                             m_rows.push_back(row);
-                            originOfRow.y += minimumLineSpacing + row->m_frame.size.height;
-                            // originOfRow.x += minimumLineSpacing + row->m_frame.size.width;
+#ifdef VERTICAL_LAYOUT
+                            originOfRow.y += minimumLineSpacing + row->getFrame().size.height;
+#else
+                            originOfRow.x += minimumLineSpacing + row->getFrame().size.width;
+#endif // #ifdef VERTICAL_LAYOUT
                             row = NULL;
                         }
                     }
@@ -106,22 +126,28 @@ public:
                 if (NULL == row)
                 {
                     row = new UIFlexRow();
-                    row->m_frame.origin = originOfRow;
+                    row->getFrame().origin = originOfRow;
                     
                     originOfItem = originOfRow;
                 }
                 
                 if (row->hasItems())
                 {
-                    originOfItem.x = CGRectGetMaxX(row->m_frame) + minimumInteritemSpacing;
-                    // originOfItem.y = CGRectGetMaxY(row->m_frame) + minimumInteritemSpacing;
+#ifdef VERTICAL_LAYOUT
+                    originOfItem.x = CGRectGetMaxX(row->getFrame()) + minimumInteritemSpacing;
+#else
+                    originOfItem.y = CGRectGetMaxY(row->getFrame()) + minimumInteritemSpacing;
+#endif // #ifdef VERTICAL_LAYOUT
                 }
                 
                 sectionItem = new UIFlexItem(itemIndex, originOfItem, sizeOfItem);
                 
                 UISectionT<TLayout>::m_items.push_back(sectionItem);
+#ifdef VERTICAL_LAYOUT
                 row->addItemVertically(sectionItem);
-                // row->addItemHorizontally(sectionItem);
+#else
+                row->addItemHorizontally(sectionItem);
+#endif // #ifdef VERTICAL_LAYOUT
             }
             
             // The last row
@@ -129,38 +155,60 @@ public:
             {
                 m_rows.push_back(row);
                 
+#ifdef VERTICAL_LAYOUT
                 originOfRow.y += row->getFrame().size.height;
-                // originOfRow.x += row->getFrame().size.width;
+#else
+                originOfRow.x += row->getFrame().size.width;
+#endif // #ifdef VERTICAL_LAYOUT
             }
             
+#ifdef VERTICAL_LAYOUT
             originOfRow.y += sectionInset.bottom;
-            // originOfRow.x += sectionInset.right;
+#else
+            originOfRow.x += sectionInset.right;
+#endif // #ifdef VERTICAL_LAYOUT
         }
         
         // Footer
-        UISectionT<TLayout>::m_footer.m_frame.origin.y = originOfRow.y;
-        // UISectionT<TLayout>::m_footer.m_frame.origin.x = originOfRow.x;
+#ifdef VERTICAL_LAYOUT
+        UISectionT<TLayout>::m_footer.getFrame().origin.y = originOfRow.y;
+#else
+        UISectionT<TLayout>::m_footer.getFrame().origin.x = originOfRow.x;
+#endif // #ifdef VERTICAL_LAYOUT
         
         UISectionT<TLayout>::m_footer.getFrame().size = [UISectionT<TLayout>::m_layout getSizeForFooterInSection:(UISectionT<TLayout>::m_section)];
         
-        UISectionT<TLayout>::m_frame.size.height = CGRectGetMaxY(UISectionT<TLayout>::m_footer.m_frame);
-        // UISectionT<TLayout>::m_frame.size.width = CGRectGetMaxX(UISectionT<TLayout>::m_footer.m_frame);
+#ifdef VERTICAL_LAYOUT
+        UISectionT<TLayout>::m_frame.size.height = CGRectGetMaxY(UISectionT<TLayout>::m_footer.getFrame());
+#else
+        UISectionT<TLayout>::m_frame.size.width = CGRectGetMaxX(UISectionT<TLayout>::m_footer.getFrame());
+#endif // #ifdef VERTICAL_LAYOUT
+        
+#undef VERTICAL_LAYOUT
     }
     
     void prepareLayoutHorizontally()
     {
+#undef VERTICAL_LAYOUT
+        
         // Header
-        UISectionT<TLayout>::m_header.m_frame.size = [UISectionT<TLayout>::m_layout getSizeForHeaderInSection:(UISectionT<TLayout>::m_section)];
+        UISectionT<TLayout>::m_header.getFrame().size = [UISectionT<TLayout>::m_layout getSizeForHeaderInSection:(UISectionT<TLayout>::m_section)];
         
         // Initialize the section height with header height
-        // UISectionT<TLayout>::m_frame.size.height = UISectionT<TLayout>::m_header.getFrame().size.height;
+#ifdef VERTICAL_LAYOUT
+        UISectionT<TLayout>::m_frame.size.height = UISectionT<TLayout>::m_header.getFrame().size.height;
+#else
         UISectionT<TLayout>::m_frame.size.width = UISectionT<TLayout>::m_header.getFrame().size.width;
+#endif // ifdef VERTICAL_LAYOUT
         
         // Items
-        CGPoint originOfRow = UISectionT<TLayout>::m_header.m_frame.origin;
+        CGPoint originOfRow = UISectionT<TLayout>::m_header.getFrame().origin;
         
-        // originOfRow.y += UISectionT<TLayout>::m_header.getFrame().size.height;
+#ifdef VERTICAL_LAYOUT
+        originOfRow.y += UISectionT<TLayout>::m_header.getFrame().size.height;
+#else
         originOfRow.x += UISectionT<TLayout>::m_header.getFrame().size.width;
+#endif // #ifdef VERTICAL_LAYOUT
         
         m_rows.clear();
         UISectionT<TLayout>::clearItems();
@@ -179,8 +227,11 @@ public:
             CGFloat minimumLineSpacing = [UISectionT<TLayout>::m_layout getMinimumLineSpacingForSectionAtIndex:(UISectionT<TLayout>::m_section)];
             CGFloat minimumInteritemSpacing = [UISectionT<TLayout>::m_layout getMinimumInteritemSpacingForSectionAtIndex:(UISectionT<TLayout>::m_section)];
             
-            // CGFloat maximalSizeOfRow = UISectionT<TLayout>::m_frame.size.width - sectionInset.left - sectionInset.right;
+#ifdef VERTICAL_LAYOUT
+            CGFloat maximalSizeOfRow = UISectionT<TLayout>::m_frame.size.width - sectionInset.left - sectionInset.right;
+#else
             CGFloat maximalSizeOfRow = UISectionT<TLayout>::m_frame.size.height - sectionInset.top - sectionInset.bottom;
+#endif // #ifdef VERTICAL_LAYOUT
             
             // Layout items
             UIFlexItem *sectionItem = NULL;
@@ -198,22 +249,31 @@ public:
             {
                 sizeOfItem = [UISectionT<TLayout>::m_layout getSizeForItemAtIndexPath:[NSIndexPath indexPathForItem:itemIndex inSection:(UISectionT<TLayout>::m_section)]];
                 
-                // sizeOfItemInDirection = sizeOfItem.width;
+#ifdef VERTICAL_LAYOUT
+                sizeOfItemInDirection = sizeOfItem.width;
+#else
                 sizeOfItemInDirection = sizeOfItem.height;
+#endif // #ifdef VERTICAL_LAYOUT
                 
                 if (NULL != row)
                 {
                     if (row->hasItems())
                     {
-                        // availableSizeOfRow = maximalSizeOfRow - row->m_frame.size.width - minimumInteritemSpacing;
-                        availableSizeOfRow = maximalSizeOfRow - row->m_frame.size.height - minimumInteritemSpacing;
+#ifdef VERTICAL_LAYOUT
+                        availableSizeOfRow = maximalSizeOfRow - row->getFrame().size.width - minimumInteritemSpacing;
+#else
+                        availableSizeOfRow = maximalSizeOfRow - row->getFrame().size.height - minimumInteritemSpacing;
+#endif // #ifdef VERTICAL_LAYOUT
                         
                         if (availableSizeOfRow < sizeOfItemInDirection)
                         {
                             // New Line
                             m_rows.push_back(row);
-                            // originOfRow.y += minimumLineSpacing + row->m_frame.size.height;
-                            originOfRow.x += minimumLineSpacing + row->m_frame.size.width;
+#ifdef VERTICAL_LAYOUT
+                            originOfRow.y += minimumLineSpacing + row->getFrame().size.height;
+#else
+                            originOfRow.x += minimumLineSpacing + row->getFrame().size.width;
+#endif // #ifdef VERTICAL_LAYOUT
                             row = NULL;
                         }
                     }
@@ -222,22 +282,28 @@ public:
                 if (NULL == row)
                 {
                     row = new UIFlexRow();
-                    row->m_frame.origin = originOfRow;
+                    row->getFrame().origin = originOfRow;
                     
                     originOfItem = originOfRow;
                 }
                 
                 if (row->hasItems())
                 {
-                    // originOfItem.x = CGRectGetMaxX(row->m_frame) + minimumInteritemSpacing;
-                    originOfItem.y = CGRectGetMaxY(row->m_frame) + minimumInteritemSpacing;
+#ifdef VERTICAL_LAYOUT
+                    originOfItem.x = CGRectGetMaxX(row->getFrame()) + minimumInteritemSpacing;
+#else
+                    originOfItem.y = CGRectGetMaxY(row->getFrame()) + minimumInteritemSpacing;
+#endif // #ifdef VERTICAL_LAYOUT
                 }
                 
                 sectionItem = new UIFlexItem(itemIndex, originOfItem, sizeOfItem);
                 
                 UISectionT<TLayout>::m_items.push_back(sectionItem);
-                // row->addItemVertically(sectionItem);
+#ifdef VERTICAL_LAYOUT
+                row->addItemVertically(sectionItem);
+#else
                 row->addItemHorizontally(sectionItem);
+#endif // #ifdef VERTICAL_LAYOUT
             }
             
             // The last row
@@ -245,49 +311,66 @@ public:
             {
                 m_rows.push_back(row);
                 
-                // originOfRow.y += row->getFrame().size.height;
+#ifdef VERTICAL_LAYOUT
+                originOfRow.y += row->getFrame().size.height;
+#else
                 originOfRow.x += row->getFrame().size.width;
+#endif // #ifdef VERTICAL_LAYOUT
             }
             
-            // originOfRow.y += sectionInset.bottom;
+#ifdef VERTICAL_LAYOUT
+            originOfRow.y += sectionInset.bottom;
+#else
             originOfRow.x += sectionInset.right;
+#endif // #ifdef VERTICAL_LAYOUT
         }
         
         // Footer
-        // UISectionT<TLayout>::m_footer.m_frame.origin.y = originOfRow.y;
-        UISectionT<TLayout>::m_footer.m_frame.origin.x = originOfRow.x;
+#ifdef VERTICAL_LAYOUT
+        UISectionT<TLayout>::m_footer.getFrame().origin.y = originOfRow.y;
+#else
+        UISectionT<TLayout>::m_footer.getFrame().origin.x = originOfRow.x;
+#endif // #ifdef VERTICAL_LAYOUT
         
         UISectionT<TLayout>::m_footer.getFrame().size = [UISectionT<TLayout>::m_layout getSizeForFooterInSection:(UISectionT<TLayout>::m_section)];
         
-        // UISectionT<TLayout>::m_frame.size.height = CGRectGetMaxY(UISectionT<TLayout>::m_footer.m_frame);
-        UISectionT<TLayout>::m_frame.size.width = CGRectGetMaxX(UISectionT<TLayout>::m_footer.m_frame);
+#ifdef VERTICAL_LAYOUT
+        UISectionT<TLayout>::m_frame.size.height = CGRectGetMaxY(UISectionT<TLayout>::m_footer.getFrame());
+#else
+        UISectionT<TLayout>::m_frame.size.width = CGRectGetMaxX(UISectionT<TLayout>::m_footer.getFrame());
+#endif // #ifdef VERTICAL_LAYOUT
+        
+#undef VERTICAL_LAYOUT
     }
     
     virtual bool getLayoutAttributesForItemsInRect(NSMutableArray<UICollectionViewLayoutAttributes *> *layoutAttributes, const CGRect &rectInSection)
     {
-        bool merged = true;
+        bool matched = false;
         
         std::pair<std::vector<UIFlexRow *>::iterator, std::vector<UIFlexRow *>::iterator> range = IS_CV_VERTICAL(UISectionT<TLayout>::m_layout) ? getVirticalRowsInRect(rectInSection) : getHorizontalRowsInRect(rectInSection);
         
+        
+        std::vector<UIFlexRow *>::iterator lastRow = range.second - 1;
         for (std::vector<UIFlexRow *>::iterator it = range.first; it != range.second; ++it)
         {
-            for (std::vector<UIFlexItem *>::iterator itItem = (*it)->m_items.begin(); itItem != (*it)->m_items.end(); ++itItem)
+            std::pair<std::vector<UIFlexItem *>::iterator, std::vector<UIFlexItem *>::iterator> itemRange = (*it)->getItemIterator();
+            for (std::vector<UIFlexItem *>::iterator itItem = itemRange.first; itItem != itemRange.second; ++itItem)
             {
-                if (CGRectIntersectsRect((*itItem)->getFrame(), rectInSection))
+                if ((it != range.first && it != lastRow) || CGRectIntersectsRect((*itItem)->getFrame(), rectInSection))
                 {
                     // layoutAttributes
-                    NSIndexPath *indexPath = [NSIndexPath indexPathForItem:(*itItem)->m_item inSection:(UISectionT<TLayout>::m_section)];
+                    NSIndexPath *indexPath = [NSIndexPath indexPathForItem:(*itItem)->getItem() inSection:(UISectionT<TLayout>::m_section)];
                     UICollectionViewLayoutAttributes *la = [UISectionT<TLayout>::m_layout layoutAttributesForItemAtIndexPath:indexPath];
                     
-                    la.frame = CGRectMake((*itItem)->m_frame.origin.x + UISectionT<TLayout>::m_frame.origin.x, (*itItem)->m_frame.origin.y + UISectionT<TLayout>::m_frame.origin.y, (*itItem)->m_frame.size.width, (*itItem)->m_frame.size.height);
+                    la.frame = CGRectMake((*itItem)->getFrame().origin.x + UISectionT<TLayout>::m_frame.origin.x, (*itItem)->getFrame().origin.y + UISectionT<TLayout>::m_frame.origin.y, (*itItem)->getFrame().size.width, (*itItem)->getFrame().size.height);
                     
                     [layoutAttributes addObject:la];
-                    merged = false;
+                    matched = true;
                 }
             }
         }
         
-        return merged;
+        return matched;
     }
     
     inline std::pair<std::vector<UIFlexRow *>::iterator, std::vector<UIFlexRow *>::iterator> getVirticalRowsInRect(const CGRect& rect)

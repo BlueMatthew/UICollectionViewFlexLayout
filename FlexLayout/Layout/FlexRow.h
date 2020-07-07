@@ -15,11 +15,12 @@
 
 class UIFlexRow
 {
-public:
+protected:
     std::vector<UIFlexItem *> m_items;
     
     CGRect m_frame; // The origin is in the coordinate system of section, should convert to the coordinate system of UICollectionView
     
+public:
     UIFlexRow() : m_frame(CGRectZero)
     {
     }
@@ -37,13 +38,13 @@ public:
         m_items.push_back(item);
         if (vertical)
         {
-            m_frame.size.width += item->m_frame.size.width;
-            if (m_frame.size.height < item->m_frame.size.height) m_frame.size.height = item->m_frame.size.height;
+            m_frame.size.width += item->getFrame().size.width;
+            if (m_frame.size.height < item->getFrame().size.height) m_frame.size.height = item->getFrame().size.height;
         }
         else
         {
-            m_frame.size.height += item->m_frame.size.height;
-            if (m_frame.size.width < item->m_frame.size.width) m_frame.size.width = item->m_frame.size.width;
+            m_frame.size.height += item->getFrame().size.height;
+            if (m_frame.size.width < item->getFrame().size.width) m_frame.size.width = item->getFrame().size.width;
         }
     }
     
@@ -51,52 +52,60 @@ public:
     {
         m_items.push_back(item);
         
-        m_frame.size.width += item->m_frame.size.width;
-        if (m_frame.size.height < item->m_frame.size.height) m_frame.size.height = item->m_frame.size.height;
+        m_frame.size.width += item->getFrame().size.width;
+        if (m_frame.size.height < item->getFrame().size.height) m_frame.size.height = item->getFrame().size.height;
     }
     
     inline void addItemHorizontally(UIFlexItem *item)
     {
         m_items.push_back(item);
         
-        m_frame.size.height += item->m_frame.size.height;
-        if (m_frame.size.width < item->m_frame.size.width) m_frame.size.width = item->m_frame.size.width;
+        m_frame.size.height += item->getFrame().size.height;
+        if (m_frame.size.width < item->getFrame().size.width) m_frame.size.width = item->getFrame().size.width;
     }
     
-    /*
-     inline pair<vector<UISectionItem *>::iterator, vector<UISectionItem *>::iterator> getVirticalItemsInRect(const CGRect& rect)
-     {
-     return equal_range(items.begin(), items.end(), pair<CGFloat, CGFloat>(rect.origin.y, rect.origin.y + rect.size.height), UISectionItemVerticalCompare());
-     }
-     
-     inline pair<vector<UISectionItem *>::iterator, vector<UISectionItem *>::iterator> getHorizontalItemsInRect(const CGRect& rect)
-     {
-     return equal_range(items.begin(), items.end(), pair<CGFloat, CGFloat>(rect.origin.x, rect.origin.x + rect.size.width), UISectionItemHorizontalCompare());
-     }
-     */
+    inline std::pair<std::vector<UIFlexItem *>::iterator, std::vector<UIFlexItem *>::iterator> getItemIterator()
+    {
+        return std::pair<std::vector<UIFlexItem *>::iterator, std::vector<UIFlexItem *>::iterator>(m_items.begin(), m_items.end());
+    }
+    
+    inline void getItemsInRect(std::vector<UIFlexItem *> &items, const CGRect& rect)
+    {
+        for (std::vector<UIFlexItem *>::iterator it = m_items.begin(); it != m_items.end(); ++it)
+        {
+            if (CGRectIntersectsRect((*it)->getFrame(), rect))
+            {
+                items.push_back(*it);
+            }
+        }
+    }
+    
 };
 
+/*
 struct UIFlexRowItemCompare
 {
     bool operator() ( const UIFlexRow* row, NSInteger item) const
     {
-        return row->m_items[row->m_items.size() - 1]->m_item < item;
+        return row->m_items[row->m_items.size() - 1]->getItem() < item;
     }
     bool operator() ( NSInteger item, const UIFlexRow* row ) const
     {
-        return item < row->m_items[0]->m_item;
+        return item < row->m_items[0]->getItem();
     }
 };
+ */
+
 
 struct UIFlexRowVerticalCompare
 {
     bool operator() ( const UIFlexRow* row, const std::pair<CGFloat, CGFloat>& topBottom) const
     {
-        return row->m_frame.origin.y + row->m_frame.size.height < topBottom.first;
+        return row->getFrame().origin.y + row->getFrame().size.height < topBottom.first;
     }
     bool operator() ( const std::pair<CGFloat, CGFloat>& topBottom, const UIFlexRow* row ) const
     {
-        return topBottom.second < row->m_frame.origin.y;
+        return topBottom.second < row->getFrame().origin.y;
     }
 };
 
@@ -104,11 +113,11 @@ struct UIFlexRowHorizontalCompare
 {
     bool operator() ( const UIFlexRow* row, const std::pair<CGFloat, CGFloat>& leftRight) const
     {
-        return row->m_frame.origin.x + row->m_frame.size.width < leftRight.first;
+        return row->getFrame().origin.x + row->getFrame().size.width < leftRight.first;
     }
     bool operator() ( const std::pair<CGFloat, CGFloat>& leftRight, const UIFlexRow* row ) const
     {
-        return leftRight.second < row->m_frame.origin.x;
+        return leftRight.second < row->getFrame().origin.x;
     }
 };
 

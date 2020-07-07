@@ -15,12 +15,11 @@
 // Column Data for Waterfall Layout
 class UIFlexColumn
 {
-public:
+protected:
     std::vector<UIFlexItem *> m_items;
     
     CGRect m_frame; // The origin is in the coordinate system of section, should convert to the coordinate system of UICollectionView
 
-private:
     bool m_isEmpty;
     
 public:
@@ -63,8 +62,8 @@ public:
         {
             m_items.push_back(item);
         }
-        m_frame.size.height = CGRectGetMaxY(item->m_frame);
-        // m_frame.size.width = CGRectGetMaxX(item->m_frame);
+        m_frame.size.height = CGRectGetMaxY(item->getFrame());
+        // m_frame.size.width = CGRectGetMaxX(item->getFrame());
         m_isEmpty = false;
     }
     
@@ -74,7 +73,7 @@ public:
         {
             m_items.push_back(item);
         }
-        m_frame.size.width = CGRectGetMaxX(item->m_frame);
+        m_frame.size.width = CGRectGetMaxX(item->getFrame());
         m_isEmpty = false;
     }
     
@@ -89,6 +88,7 @@ public:
     }
 };
 
+/*
 struct UIFlexColumnItemCompare
 {
     bool operator() ( const UIFlexColumn* column, NSInteger item) const
@@ -100,12 +100,13 @@ struct UIFlexColumnItemCompare
         return item < column->m_items[0]->m_item;
     }
 };
+*/
 
 struct UIFlexColumnHorizontalCompare
 {
     bool operator() ( const UIFlexColumn* lhs, const UIFlexColumn* rhs) const
     {
-        return lhs->m_frame.size.width < rhs->m_frame.size.width;
+        return lhs->getFrame().size.width < rhs->getFrame().size.width;
     }
 };
 
@@ -113,7 +114,7 @@ struct UIFlexColumnVerticalCompare
 {
     bool operator() ( const UIFlexColumn* lhs, const UIFlexColumn* rhs) const
     {
-        return lhs->m_frame.size.height < rhs->m_frame.size.height;
+        return lhs->getFrame().size.height < rhs->getFrame().size.height;
     }
 };
 

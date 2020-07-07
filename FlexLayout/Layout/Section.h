@@ -37,7 +37,7 @@ public:
 template<class TLayout>
 class UISectionT
 {
-public:
+protected:
     NSInteger m_section;
     TLayout *m_layout;
     
@@ -52,12 +52,12 @@ protected:
         unsigned int reserved : 4;
         unsigned int minimalInvalidatedItem : 24;   // If minimal invalidated item is greater than 2^28, just set sectionInvalidated to 1
     } m_invalidationContext;
-    
-public:
+
     UIFlexItem m_header;
     std::vector<UIFlexItem *> m_items;
     UIFlexItem m_footer;
-    
+
+public:
     UISectionT(UICollectionViewFlexLayout *layout, NSInteger section, const CGRect& frame) : m_section(section), m_layout(layout), m_frame(frame), m_header(0), m_footer(0)
     {
     }
@@ -76,6 +76,7 @@ public:
     
     inline const CGRect getFrame() const { return m_frame; }
     inline CGRect &getFrame() { return m_frame; }
+    inline NSInteger getItemCount() const { return m_items.size(); }
     
     inline const CGRect getItemsFrame() const
     {
@@ -106,7 +107,7 @@ public:
         rectInSection.origin.y -= m_frame.origin.y;
         
         // Header
-        if (!CGSizeEqualToSize(m_header.m_frame.size, CGSizeZero) && CGRectIntersectsRect(m_header.getFrame(), rectInSection))
+        if (!CGSizeEqualToSize(m_header.getFrame().size, CGSizeZero) && CGRectIntersectsRect(m_header.getFrame(), rectInSection))
         {
             UICollectionViewLayoutAttributes *la = [m_layout layoutAttributesForSupplementaryViewOfKind:UICollectionElementKindSectionHeader atIndexPath:[NSIndexPath indexPathForItem:0 inSection:m_section]];
             
@@ -122,7 +123,7 @@ public:
         }
         
         // Footer
-        if (!CGSizeEqualToSize(m_footer.m_frame.size, CGSizeZero) && CGRectIntersectsRect(m_footer.getFrame(), rectInSection))
+        if (!CGSizeEqualToSize(m_footer.getFrame().size, CGSizeZero) && CGRectIntersectsRect(m_footer.getFrame(), rectInSection))
         {
             UICollectionViewLayoutAttributes *la = [m_layout layoutAttributesForSupplementaryViewOfKind:UICollectionElementKindSectionFooter atIndexPath:[NSIndexPath indexPathForItem:0 inSection:m_section]];
             
@@ -188,6 +189,54 @@ public:
             (*it)->clearLayoutAttributes();
         }
     }
+    
+    UICollectionViewLayoutAttributes *buildLayoutAttributesForItem(Class layoutAttributesClass, NSIndexPath *indexPath)
+    {
+        if (indexPath.item >= m_items.size())
+        {
+            return nil;
+        }
+        
+        UIFlexItem *item = m_items[indexPath.item];
+        return item->buildLayoutAttributesForCell(layoutAttributesClass, indexPath, m_frame.origin);
+    }
+    
+    UICollectionViewLayoutAttributes *buildLayoutAttributesForSupplementaryView(Class layoutAttributesClass, NSString *elementKind, NSIndexPath *indexPath)
+    {
+        UIFlexItem *item = NULL;
+        if ([elementKind isEqualToString:UICollectionElementKindSectionHeader])
+        {
+            item = &m_header;
+        }
+        else if ([elementKind isEqualToString:UICollectionElementKindSectionFooter])
+        {
+            item = &m_footer;
+        }
+        
+        if (NULL == item)
+        {
+            return nil;
+        }
+        
+        return item->buildLayoutAttributesForSupplementaryView(layoutAttributesClass, elementKind, indexPath, m_frame.origin);
+    }
+    
+    UICollectionViewLayoutAttributes *buildLayoutAttributesForDecorationView(Class layoutAttributesClass, NSString *elementKind, NSIndexPath *indexPath)
+    {
+        // UISection *section = m_sections[indexPath.section];
+        
+        NSCAssert(NO, @"Not implemented yet.");
+        
+        return nil;
+        // return item->buildLayoutAttributesForDecorationView([UICollectionViewFlexLayout layoutAttributesClass], elementKind, indexPath, section->m_frame.origin);
+        
+        // UICollectionViewLayoutAttributes *layoutAttributes = [[super layoutAttributesForDecorationViewOfKind:elementKind atIndexPath:indexPath] copy];
+        // UICollectionViewLayoutAttributes *layoutAttributes = [super layoutAttributesForDecorationViewOfKind:elementKind atIndexPath:indexPath];
+        // UISection *section = m_sections[indexPath.section];
+        // TODO: Should adjust size???
+        // return section->adjustLayoutAttributes(layoutAttributes, indexPath);
+    }
+
 };
 
 template<class TLayout>
@@ -195,11 +244,11 @@ struct UISectionVerticalCompareT
 {
     bool operator() (const UISectionT<TLayout>* section, const std::pair<CGFloat, CGFloat>& topBottom) const
     {
-        return section->m_frame.origin.y + section->m_frame.size.height < topBottom.first;
+        return section->getFrame().origin.y + section->getFrame().size.height < topBottom.first;
     }
     bool operator() (const std::pair<CGFloat, CGFloat>& topBottom, const UISectionT<TLayout>* section) const
     {
-        return topBottom.second < section->m_frame.origin.y;
+        return topBottom.second < section->getFrame().origin.y;
     }
 };
 
@@ -208,11 +257,11 @@ struct UISectionHorizontalCompareT
 {
     bool operator() (const UISectionT<TLayout>* section, const std::pair<CGFloat, CGFloat>& leftRight) const
     {
-        return section->m_frame.origin.x + section->m_frame.size.width < leftRight.first;
+        return section->getFrame().origin.x + section->getFrame().size.width < leftRight.first;
     }
     bool operator() (const std::pair<CGFloat, CGFloat>& leftRight, const UISectionT<TLayout>* section) const
     {
-        return leftRight.second < section->m_frame.origin.x;
+        return leftRight.second < section->getFrame().origin.x;
     }
 };
 

@@ -34,13 +34,13 @@ public:
 #define VERTICAL_LAYOUT
         
         // Header
-        UISectionT<TLayout>::m_header.m_frame.size = [UISectionT<TLayout>::m_layout getSizeForHeaderInSection:UISectionT<TLayout>::m_section];
+        UISectionT<TLayout>::m_header.getFrame().size = [UISectionT<TLayout>::m_layout getSizeForHeaderInSection:UISectionT<TLayout>::m_section];
         
         // Items
 #ifdef VERTICAL_LAYOUT
-        UISectionT<TLayout>::m_frame.size.height = UISectionT<TLayout>::m_header.m_frame.size.height;
+        UISectionT<TLayout>::m_frame.size.height = UISectionT<TLayout>::m_header.getFrame().size.height;
 #else
-        UISectionT<TLayout>::m_frame.size.width = UISectionT<TLayout>::m_header.m_frame.size.width;
+        UISectionT<TLayout>::m_frame.size.width = UISectionT<TLayout>::m_header.getFrame().size.width;
 #endif // #ifdef VERTICAL_LAYOUT
         
         m_columns.clear();
@@ -123,11 +123,11 @@ public:
 
                 // Add spacing for the item which is not first one
 #ifdef VERTICAL_LAYOUT
-                originOfItem.x = (*itOfTargetColumn)->m_frame.origin.x;
-                originOfItem.y = CGRectGetMaxY((*itOfTargetColumn)->m_frame) + ((*itOfTargetColumn)->isEmpty() ? 0.0f : minimumLineSpacing);
+                originOfItem.x = (*itOfTargetColumn)->getFrame().origin.x;
+                originOfItem.y = CGRectGetMaxY((*itOfTargetColumn)->getFrame()) + ((*itOfTargetColumn)->isEmpty() ? 0.0f : minimumLineSpacing);
 #else
-                originOfItem.x = CGRectGetMaxX((*itOfTargetColumn)->m_frame) + ((*itOfTargetColumn)->isEmpty() ? 0.0f : minimumLineSpacing);
-                originOfItem.y = (*itOfTargetColumn)->m_frame.origin.y;
+                originOfItem.x = CGRectGetMaxX((*itOfTargetColumn)->getFrame()) + ((*itOfTargetColumn)->isEmpty() ? 0.0f : minimumLineSpacing);
+                originOfItem.y = (*itOfTargetColumn)->getFrame().origin.y;
 #endif // #ifdef VERTICAL_LAYOUT
                 
                 UIFlexItem *sectionItem = new UIFlexItem(item, originOfItem, [UISectionT<TLayout>::m_layout getSizeForItemAtIndexPath:[NSIndexPath indexPathForItem:item inSection:(UISectionT<TLayout>::m_section)]]);
@@ -160,19 +160,19 @@ public:
             std::vector<UIFlexColumn *>::iterator columnItOfMaximalSize = max_element(m_columns.begin(), m_columns.end(), compare);
             
 #ifdef VERTICAL_LAYOUT
-            UISectionT<TLayout>::m_frame.size.height += (*columnItOfMaximalSize)->m_frame.size.height + sectionInset.top + sectionInset.bottom;
+            UISectionT<TLayout>::getFrame().size.height += (*columnItOfMaximalSize)->getFrame().size.height + sectionInset.top + sectionInset.bottom;
 #else
-            UISectionT<TLayout>::m_frame.size.width += (*columnItOfMaximalSize)->m_frame.size.width + sectionInset.left + sectionInset.right;
+            UISectionT<TLayout>::getFrame().size.width += (*columnItOfMaximalSize)->getFrame().size.width + sectionInset.left + sectionInset.right;
 #endif // #ifdef VERTICAL_LAYOUT
         }
         
         // Footer
-        UISectionT<TLayout>::m_footer.m_frame.size = [UISectionT<TLayout>::m_layout getSizeForFooterInSection:(UISectionT<TLayout>::m_section)];
+        UISectionT<TLayout>::m_footer.getFrame().size = [UISectionT<TLayout>::m_layout getSizeForFooterInSection:(UISectionT<TLayout>::m_section)];
      
 #ifdef VERTICAL_LAYOUT
-        UISectionT<TLayout>::m_frame.size.height += UISectionT<TLayout>::m_footer.m_frame.size.height;
+        UISectionT<TLayout>::m_frame.size.height += UISectionT<TLayout>::m_footer.getFrame().size.height;
 #else
-        UISectionT<TLayout>::m_frame.size.width += UISectionT<TLayout>::m_footer.m_frame.size.width;
+        UISectionT<TLayout>::m_frame.size.width += UISectionT<TLayout>::m_footer.getFrame().size.width;
 #endif // #ifdef VERTICAL_LAYOUT
 
 #undef VERTICAL_LAYOUT
@@ -185,13 +185,13 @@ public:
 #undef VERTICAL_LAYOUT
         
         // Header
-        UISectionT<TLayout>::m_header.m_frame.size = [UISectionT<TLayout>::m_layout getSizeForHeaderInSection:UISectionT<TLayout>::m_section];
+        UISectionT<TLayout>::m_header.getFrame().size = [UISectionT<TLayout>::m_layout getSizeForHeaderInSection:UISectionT<TLayout>::m_section];
         
         // Items
 #ifdef VERTICAL_LAYOUT
-        UISectionT<TLayout>::m_frame.size.height = UISectionT<TLayout>::m_header.m_frame.size.height;
+        UISectionT<TLayout>::m_frame.size.height = UISectionT<TLayout>::m_header.getFrame().size.height;
 #else
-        UISectionT<TLayout>::m_frame.size.width = UISectionT<TLayout>::m_header.m_frame.size.width;
+        UISectionT<TLayout>::m_frame.size.width = UISectionT<TLayout>::m_header.getFrame().size.width;
 #endif // #ifdef VERTICAL_LAYOUT
         
         m_columns.clear();
@@ -274,11 +274,11 @@ public:
                 
                 // Add spacing for the item which is not first one
 #ifdef VERTICAL_LAYOUT
-                originOfItem.x = (*itOfTargetColumn)->m_frame.origin.x;
-                originOfItem.y = CGRectGetMaxY((*itOfTargetColumn)->m_frame) + ((*itOfTargetColumn)->isEmpty() ? 0.0f : minimumLineSpacing);
+                originOfItem.x = (*itOfTargetColumn)->getFrame().origin.x;
+                originOfItem.y = CGRectGetMaxY((*itOfTargetColumn)->getFrame()) + ((*itOfTargetColumn)->isEmpty() ? 0.0f : minimumLineSpacing);
 #else
-                originOfItem.x = CGRectGetMaxX((*itOfTargetColumn)->m_frame) + ((*itOfTargetColumn)->isEmpty() ? 0.0f : minimumLineSpacing);
-                originOfItem.y = (*itOfTargetColumn)->m_frame.origin.y;
+                originOfItem.x = CGRectGetMaxX((*itOfTargetColumn)->getFrame()) + ((*itOfTargetColumn)->isEmpty() ? 0.0f : minimumLineSpacing);
+                originOfItem.y = (*itOfTargetColumn)->getFrame().origin.y;
 #endif // #ifdef VERTICAL_LAYOUT
                 
                 UIFlexItem *sectionItem = new UIFlexItem(item, originOfItem, [UISectionT<TLayout>::m_layout getSizeForItemAtIndexPath:[NSIndexPath indexPathForItem:item inSection:(UISectionT<TLayout>::m_section)]]);
@@ -311,19 +311,19 @@ public:
             std::vector<UIFlexColumn *>::iterator columnItOfMaximalSize = max_element(m_columns.begin(), m_columns.end(), compare);
             
 #ifdef VERTICAL_LAYOUT
-            UISectionT<TLayout>::m_frame.size.height += (*columnItOfMaximalSize)->m_frame.size.height + sectionInset.top + sectionInset.bottom;
+            UISectionT<TLayout>::getFrame().size.height += (*columnItOfMaximalSize)->getFrame().size.height + sectionInset.top + sectionInset.bottom;
 #else
-            UISectionT<TLayout>::m_frame.size.width += (*columnItOfMaximalSize)->m_frame.size.width + sectionInset.left + sectionInset.right;
+            UISectionT<TLayout>::getFrame().size.width += (*columnItOfMaximalSize)->getFrame().size.width + sectionInset.left + sectionInset.right;
 #endif // #ifdef VERTICAL_LAYOUT
         }
         
         // Footer
-        UISectionT<TLayout>::m_footer.m_frame.size = [UISectionT<TLayout>::m_layout getSizeForFooterInSection:(UISectionT<TLayout>::m_section)];
+        UISectionT<TLayout>::m_footer.getFrame().size = [UISectionT<TLayout>::m_layout getSizeForFooterInSection:(UISectionT<TLayout>::m_section)];
         
 #ifdef VERTICAL_LAYOUT
-        UISectionT<TLayout>::m_frame.size.height += UISectionT<TLayout>::m_footer.m_frame.size.height;
+        UISectionT<TLayout>::m_frame.size.height += UISectionT<TLayout>::m_footer.getFrame().size.height;
 #else
-        UISectionT<TLayout>::m_frame.size.width += UISectionT<TLayout>::m_footer.m_frame.size.width;
+        UISectionT<TLayout>::m_frame.size.width += UISectionT<TLayout>::m_footer.getFrame().size.width;
 #endif // #ifdef VERTICAL_LAYOUT
 
 #undef VERTICAL_LAYOUT
@@ -341,7 +341,7 @@ public:
             for (std::vector<UIFlexItem *>::iterator itItem = range.first; itItem != range.second; ++itItem)
             {
                 // layoutAttributes
-                NSIndexPath *indexPath = [NSIndexPath indexPathForItem:(*itItem)->m_item inSection:(UISectionT<TLayout>::m_section)];
+                NSIndexPath *indexPath = [NSIndexPath indexPathForItem:(*itItem)->getItem() inSection:(UISectionT<TLayout>::m_section)];
                 UICollectionViewLayoutAttributes *la = [UISectionT<TLayout>::m_layout layoutAttributesForItemAtIndexPath:indexPath];
                 
                 la.frame = CGRectMake((*itItem)->getFrame().origin.x + UISectionT<TLayout>::m_frame.origin.x, (*itItem)->getFrame().origin.y + UISectionT<TLayout>::m_frame.origin.y, (*itItem)->getFrame().size.width, (*itItem)->getFrame().size.height);

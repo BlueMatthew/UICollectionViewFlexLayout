@@ -18,11 +18,12 @@
 
 class UIFlexItem
 {
-public:
+private:
     NSInteger m_item;
     CGRect m_frame; // The origin is in the coordinate system of section, should convert to the coordinate system of UICollectionView
     UICollectionViewLayoutAttributes *m_la;
-    
+   
+public:
     UIFlexItem() : m_item(0), m_frame(CGRectZero), m_la(NULL)
     {
     }
@@ -35,6 +36,7 @@ public:
     {
     }
     
+    inline NSInteger getItem() const { return m_item; }
     inline CGRect &getFrame() { return m_frame; }
     inline const CGRect getFrame() const { return m_frame; }
     
@@ -52,11 +54,11 @@ struct UISectionItemCompare
 {
     bool operator() ( const UIFlexItem* item, NSInteger itemToCompare) const
     {
-        return item->m_item < itemToCompare;
+        return item->getItem() < itemToCompare;
     }
     bool operator() ( NSInteger itemToCompare, const UIFlexItem* item ) const
     {
-        return itemToCompare < item->m_item;
+        return itemToCompare < item->getItem();
     }
 };
 
@@ -64,11 +66,11 @@ struct UIFlexItemVerticalCompare
 {
     bool operator() ( const UIFlexItem* item, const std::pair<CGFloat, CGFloat>& topBottom) const
     {
-        return item->m_frame.origin.y + item->m_frame.size.height < topBottom.first;
+        return item->getFrame().origin.y + item->getFrame().size.height < topBottom.first;
     }
     bool operator() ( const std::pair<CGFloat, CGFloat>& topBottom, const UIFlexItem* item ) const
     {
-        return topBottom.second < item->m_frame.origin.y;
+        return topBottom.second < item->getFrame().origin.y;
     }
 };
 
@@ -76,11 +78,11 @@ struct UIFlexItemHorizontalCompare
 {
     bool operator() ( const UIFlexItem* item, const std::pair<CGFloat, CGFloat>& leftRight) const
     {
-        return item->m_frame.origin.x + item->m_frame.size.width < leftRight.first;
+        return item->getFrame().origin.x + item->getFrame().size.width < leftRight.first;
     }
     bool operator() ( const std::pair<CGFloat, CGFloat>& leftRight, const UIFlexItem* item ) const
     {
-        return leftRight.second < item->m_frame.origin.x;
+        return leftRight.second < item->getFrame().origin.x;
     }
 };
 

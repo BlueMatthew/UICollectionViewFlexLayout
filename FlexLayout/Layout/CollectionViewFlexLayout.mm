@@ -1,5 +1,5 @@
 //
-//  CollectionViewFlexLayout.m
+//  CollectionViewFlexLayout.mm
 //  FlexLayout
 //
 //  Created by Matthew Shi on 2020/6/6.
@@ -798,16 +798,13 @@ protected:
 
 - (UICollectionViewLayoutAttributes *)layoutAttributesForItemAtIndexPath:(NSIndexPath *)indexPath
 {
-    UISection *section = NULL;
-    if (indexPath.section >= m_sections.size() || indexPath.item >= (section = m_sections[indexPath.section])->m_items.size())
+    if (indexPath.section >= m_sections.size())
     {
         return nil;
     }
     
-    UIFlexItem *item = section->m_items[indexPath.item];
-    UICollectionViewLayoutAttributes *la = item->buildLayoutAttributesForCell([UICollectionViewFlexLayout layoutAttributesClass], indexPath, section->m_frame.origin);
-
-    return la;
+    UISection *section = m_sections[indexPath.section];
+    return section->buildLayoutAttributesForItem([UICollectionViewFlexLayout layoutAttributesClass], indexPath);
 }
 
 - (UICollectionViewLayoutAttributes *)layoutAttributesForSupplementaryViewOfKind:(NSString *)elementKind atIndexPath:(NSIndexPath *)indexPath
@@ -819,24 +816,8 @@ protected:
     
     UISection *section = m_sections[indexPath.section];
     
-    UIFlexItem *item = NULL;
-    if ([elementKind isEqualToString:UICollectionElementKindSectionHeader])
-    {
-        item = &(section->m_header);
-    }
-    else if ([elementKind isEqualToString:UICollectionElementKindSectionFooter])
-    {
-        item = &(section->m_footer);
-    }
     
-    if (NULL == item)
-    {
-        return nil;
-    }
-    
-    UICollectionViewLayoutAttributes *la = item->buildLayoutAttributesForSupplementaryView([UICollectionViewFlexLayout layoutAttributesClass], elementKind, indexPath, section->m_frame.origin);
-
-    return la;
+    return section->buildLayoutAttributesForSupplementaryView([UICollectionViewFlexLayout layoutAttributesClass], elementKind, indexPath);
 }
 
 - (UICollectionViewLayoutAttributes *)layoutAttributesForDecorationViewOfKind:(NSString *)elementKind atIndexPath:(NSIndexPath *)indexPath
@@ -846,18 +827,8 @@ protected:
         return nil;
     }
     
-    // UISection *section = m_sections[indexPath.section];
-    
-    NSAssert(NO, @"Not implemented yet.");
-    
-    return nil;
-    // return item->buildLayoutAttributesForDecorationView([UICollectionViewFlexLayout layoutAttributesClass], elementKind, indexPath, section->m_frame.origin);
-    
-    // UICollectionViewLayoutAttributes *layoutAttributes = [[super layoutAttributesForDecorationViewOfKind:elementKind atIndexPath:indexPath] copy];
-    // UICollectionViewLayoutAttributes *layoutAttributes = [super layoutAttributesForDecorationViewOfKind:elementKind atIndexPath:indexPath];
-    // UISection *section = m_sections[indexPath.section];
-    // TODO: Should adjust size???
-    // return section->adjustLayoutAttributes(layoutAttributes, indexPath);
+    UISection *section = m_sections[indexPath.section];
+    return section->buildLayoutAttributesForDecorationView([UICollectionViewFlexLayout layoutAttributesClass], elementKind, indexPath);
 }
 
 - (void)prepareForTransitionFromLayout:(UICollectionViewLayout *)oldLayout;
@@ -882,7 +853,7 @@ protected:
     }
     UISection *section = m_sections[m_sections.size() - 1];
     
-    return IS_CV_VERTICAL(self) ? CGSizeMake(self.collectionView.bounds.size.width, section->m_frame.origin.y + section->m_frame.size.height) : CGSizeMake(section->m_frame.origin.x + section->m_frame.size.width, self.collectionView.bounds.size.width);
+    return IS_CV_VERTICAL(self) ? CGSizeMake(self.collectionView.bounds.size.width, section->getFrame().origin.y + section->getFrame().size.height) : CGSizeMake(section->getFrame().origin.x + section->getFrame().size.width, self.collectionView.bounds.size.width);
 }
 
 #pragma mark - Utility Functions
