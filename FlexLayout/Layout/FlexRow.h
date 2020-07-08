@@ -82,45 +82,8 @@ public:
     
 };
 
-/*
-struct UIFlexRowItemCompare
-{
-    bool operator() ( const UIFlexRow* row, NSInteger item) const
-    {
-        return row->m_items[row->m_items.size() - 1]->getItem() < item;
-    }
-    bool operator() ( NSInteger item, const UIFlexRow* row ) const
-    {
-        return item < row->m_items[0]->getItem();
-    }
-};
- */
-
-
-struct UIFlexRowVerticalCompare
-{
-    bool operator() ( const UIFlexRow* row, const std::pair<CGFloat, CGFloat>& topBottom) const
-    {
-        return row->getFrame().origin.y + row->getFrame().size.height < topBottom.first;
-    }
-    bool operator() ( const std::pair<CGFloat, CGFloat>& topBottom, const UIFlexRow* row ) const
-    {
-        return topBottom.second < row->getFrame().origin.y;
-    }
-};
-
-struct UIFlexRowHorizontalCompare
-{
-    bool operator() ( const UIFlexRow* row, const std::pair<CGFloat, CGFloat>& leftRight) const
-    {
-        return row->getFrame().origin.x + row->getFrame().size.width < leftRight.first;
-    }
-    bool operator() ( const std::pair<CGFloat, CGFloat>& leftRight, const UIFlexRow* row ) const
-    {
-        return leftRight.second < row->getFrame().origin.x;
-    }
-};
-
+typedef UIVerticalCompare<UIFlexRow> UIFlexRowVerticalCompare;
+typedef UIHorizontalCompare<UIFlexRow> UIFlexRowHorizontalCompare;
 
 
 #endif /* FlexRow_h */

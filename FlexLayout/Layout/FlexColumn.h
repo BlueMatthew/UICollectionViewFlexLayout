@@ -88,21 +88,7 @@ public:
     }
 };
 
-/*
-struct UIFlexColumnItemCompare
-{
-    bool operator() ( const UIFlexColumn* column, NSInteger item) const
-    {
-        return column->m_items[column->m_items.size() - 1]->m_item < item;
-    }
-    bool operator() ( NSInteger item, const UIFlexColumn* column ) const
-    {
-        return item < column->m_items[0]->m_item;
-    }
-};
-*/
-
-struct UIFlexColumnHorizontalCompare
+struct UIFlexColumnHorizontalSizeCompare
 {
     bool operator() ( const UIFlexColumn* lhs, const UIFlexColumn* rhs) const
     {
@@ -110,7 +96,7 @@ struct UIFlexColumnHorizontalCompare
     }
 };
 
-struct UIFlexColumnVerticalCompare
+struct UIFlexColumnVerticalSizeCompare
 {
     bool operator() ( const UIFlexColumn* lhs, const UIFlexColumn* rhs) const
     {

@@ -239,30 +239,5 @@ public:
 
 };
 
-template<class TLayout>
-struct UISectionVerticalCompareT
-{
-    bool operator() (const UISectionT<TLayout>* section, const std::pair<CGFloat, CGFloat>& topBottom) const
-    {
-        return section->getFrame().origin.y + section->getFrame().size.height < topBottom.first;
-    }
-    bool operator() (const std::pair<CGFloat, CGFloat>& topBottom, const UISectionT<TLayout>* section) const
-    {
-        return topBottom.second < section->getFrame().origin.y;
-    }
-};
-
-template<class TLayout>
-struct UISectionHorizontalCompareT
-{
-    bool operator() (const UISectionT<TLayout>* section, const std::pair<CGFloat, CGFloat>& leftRight) const
-    {
-        return section->getFrame().origin.x + section->getFrame().size.width < leftRight.first;
-    }
-    bool operator() (const std::pair<CGFloat, CGFloat>& leftRight, const UISectionT<TLayout>* section) const
-    {
-        return leftRight.second < section->getFrame().origin.x;
-    }
-};
 
 #endif /* Section_h */

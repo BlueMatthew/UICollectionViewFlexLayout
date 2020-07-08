@@ -50,40 +50,33 @@ public:
     UICollectionViewLayoutAttributes* buildLayoutAttributesForDecorationView(Class layoutAttributesClass, NSString *representedElementKind, NSIndexPath *indexPath, CGPoint sectionOrigin);
 };
 
-struct UISectionItemCompare
+template<typename T>
+struct UIVerticalCompare
 {
-    bool operator() ( const UIFlexItem* item, NSInteger itemToCompare) const
-    {
-        return item->getItem() < itemToCompare;
-    }
-    bool operator() ( NSInteger itemToCompare, const UIFlexItem* item ) const
-    {
-        return itemToCompare < item->getItem();
-    }
-};
-
-struct UIFlexItemVerticalCompare
-{
-    bool operator() ( const UIFlexItem* item, const std::pair<CGFloat, CGFloat>& topBottom) const
+    bool operator() ( const T* item, const std::pair<CGFloat, CGFloat>& topBottom) const
     {
         return item->getFrame().origin.y + item->getFrame().size.height < topBottom.first;
     }
-    bool operator() ( const std::pair<CGFloat, CGFloat>& topBottom, const UIFlexItem* item ) const
+    bool operator() ( const std::pair<CGFloat, CGFloat>& topBottom, const T* item ) const
     {
         return topBottom.second < item->getFrame().origin.y;
     }
 };
 
-struct UIFlexItemHorizontalCompare
+template<typename T>
+struct UIHorizontalCompare
 {
-    bool operator() ( const UIFlexItem* item, const std::pair<CGFloat, CGFloat>& leftRight) const
+    bool operator() ( const T* item, const std::pair<CGFloat, CGFloat>& leftRight) const
     {
         return item->getFrame().origin.x + item->getFrame().size.width < leftRight.first;
     }
-    bool operator() ( const std::pair<CGFloat, CGFloat>& leftRight, const UIFlexItem* item ) const
+    bool operator() ( const std::pair<CGFloat, CGFloat>& leftRight, const T* item ) const
     {
         return leftRight.second < item->getFrame().origin.x;
     }
 };
+
+typedef UIVerticalCompare<UIFlexItem> UIFlexItemVerticalCompare;
+typedef UIHorizontalCompare<UIFlexItem> UIFlexItemHorizontalCompare;
 
 #endif /* FlexItem_h */

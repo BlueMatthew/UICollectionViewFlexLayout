@@ -32,8 +32,9 @@
 typedef UISectionT<UICollectionViewFlexLayout> UISection;
 typedef UIFlowSectionT<UICollectionViewFlexLayout> UIFlowSection;
 typedef UIWaterfallSectionT<UICollectionViewFlexLayout> UIWaterfallSection;
-typedef UISectionHorizontalCompareT<UICollectionViewFlexLayout> UISectionHorizontalCompare;
-typedef UISectionVerticalCompareT<UICollectionViewFlexLayout> UISectionVerticalCompare;
+typedef UIVerticalCompare<UISection> UISectionVerticalCompare;
+typedef UIHorizontalCompare<UISection> UISectionHorizontalCompare;
+
 
 @interface UICollectionViewFlexLayout ()
 

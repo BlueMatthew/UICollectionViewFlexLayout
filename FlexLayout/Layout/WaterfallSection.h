@@ -108,9 +108,9 @@ public:
             
             // Comparator object is small, create for both orientations
 #ifdef VERTICAL_LAYOUT
-            UIFlexColumnVerticalCompare compare;
+            UIFlexColumnVerticalSizeCompare compare;
 #else
-            UIFlexColumnHorizontalCompare compare;
+            UIFlexColumnHorizontalSizeCompare compare;
 #endif
             
             CGPoint originOfItem = CGPointZero;
@@ -259,9 +259,9 @@ public:
             
             // Comparator object is small, create for both orientations
 #ifdef VERTICAL_LAYOUT
-            UIFlexColumnVerticalCompare compare;
+            UIFlexColumnVerticalSizeCompare compare;
 #else
-            UIFlexColumnHorizontalCompare compare;
+            UIFlexColumnHorizontalSizeCompare compare;
 #endif
             
             CGPoint originOfItem = CGPointZero;
