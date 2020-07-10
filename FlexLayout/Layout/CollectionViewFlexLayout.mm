@@ -561,10 +561,16 @@ protected:
 {
     [super prepareLayout];
     
-    // [self prepareDelegate];
-    
     if (m_layoutInvalidated)
     {
+#ifdef DEBUG
+        double time = 0.0f;
+        double prevTime = 0.0;
+        
+        prevTime = [[NSDate date] timeIntervalSince1970] * 1000;
+        
+#endif
+
         for (std::vector<UISection *>::iterator it = m_sections.begin(); it != m_sections.end(); delete *it, ++it);
         m_sections.clear();
         
@@ -588,6 +594,14 @@ protected:
         }
         
         m_layoutInvalidated = NO;
+        
+#ifdef DEBUG
+        time = [[NSDate date] timeIntervalSince1970] * 1000;
+        
+        NSLog(@"PERF prepareLayout takes %0.2f ms", time - prevTime);
+        
+#endif
+
     }
 }
 
@@ -719,14 +733,6 @@ protected:
         items.clear();
     }
 
-#ifdef DEBUG
-    time = [[NSDate date] timeIntervalSince1970] * 1000;
-    // CFAbsoluteTime linkTime = (CFAbsoluteTimeGetCurrent() - startTime);
-    
-    // NSLog(@"PERF elementsInRect filter takes %0.2f ms", time - prevTime);
-    // prevTime = time;
-#endif
-    
     NSMutableArray<UICollectionViewLayoutAttributes *> *newLayoutAttributesArray = nil; // Sticky Headers, Paging Views ...
     
     if (!m_stickyHeaders.empty())
@@ -825,14 +831,7 @@ protected:
             
         }
     }
-    
-#ifdef DEBUG
-    time = [[NSDate date] timeIntervalSince1970] * 1000;
-    // CFAbsoluteTime linkTime = (CFAbsoluteTimeGetCurrent() - startTime);
-    
-    // NSLog(@"PERF elementsInRect sticky takes %0.2f ms", time - prevTime);
-    // prevTime = time;
-#endif
+
     // PagingOffset
     if (m_pagingSection != NSNotFound && !CGPointEqualToPoint(m_pagingOffset, CGPointZero))
     {
@@ -863,10 +862,7 @@ protected:
 
 #ifdef DEBUG
     time = [[NSDate date] timeIntervalSince1970] * 1000;
-    // CFAbsoluteTime linkTime = (CFAbsoluteTimeGetCurrent() - startTime);
-    
-    NSLog(@"PERF elementsInRect takes %0.2f ms", time - prevTime);
-    
+    NSLog(@"PERF elementsInRect takes %0.2f ms", time - prevTime);    
 #endif
     
     return newLayoutAttributesArray;
