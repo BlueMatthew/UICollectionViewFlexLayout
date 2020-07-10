@@ -9,7 +9,7 @@
 #ifndef FlexPage_h
 #define FlexPage_h
 
-#import "Section.h"
+#import "FlexSection.h"
 #include <vector>
 
 namespace nsflex

@@ -44,9 +44,9 @@
 		345E406224B374A700E05585 /* InfoViewCell.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = InfoViewCell.h; sourceTree = "<group>"; };
 		345E406324B374A700E05585 /* InfoViewCell.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = InfoViewCell.m; sourceTree = "<group>"; };
 		348475C82490A2B800569952 /* FlexRow.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FlexRow.h; sourceTree = "<group>"; };
-		348475C92490A2B800569952 /* FlowSection.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FlowSection.h; sourceTree = "<group>"; };
-		348475CC2490A2B900569952 /* WaterfallSection.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = WaterfallSection.h; sourceTree = "<group>"; };
-		348475CD2490A2B900569952 /* Section.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Section.h; sourceTree = "<group>"; };
+		348475C92490A2B800569952 /* FlexFlowSection.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FlexFlowSection.h; sourceTree = "<group>"; };
+		348475CC2490A2B900569952 /* FlexWaterfallSection.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FlexWaterfallSection.h; sourceTree = "<group>"; };
+		348475CD2490A2B900569952 /* FlexSection.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FlexSection.h; sourceTree = "<group>"; };
 		348475D02490A2B900569952 /* CollectionViewFlexLayout.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = CollectionViewFlexLayout.mm; sourceTree = "<group>"; };
 		348475D12490A2B900569952 /* CollectionViewFlexLayout.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = CollectionViewFlexLayout.h; sourceTree = "<group>"; };
 		348475D22490A2B900569952 /* FlexColumn.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FlexColumn.h; sourceTree = "<group>"; };
@@ -145,13 +145,13 @@
 				34058D3724B762C400CE2CEA /* Graphics.h */,
 				348475D12490A2B900569952 /* CollectionViewFlexLayout.h */,
 				348475D02490A2B900569952 /* CollectionViewFlexLayout.mm */,
-				348475C92490A2B800569952 /* FlowSection.h */,
-				348475CD2490A2B900569952 /* Section.h */,
+				348475C92490A2B800569952 /* FlexFlowSection.h */,
+				348475CD2490A2B900569952 /* FlexSection.h */,
 				348475D22490A2B900569952 /* FlexColumn.h */,
 				348475D42490A2B900569952 /* FlexItem.h */,
 				348475D32490A2B900569952 /* FlexPage.h */,
 				348475C82490A2B800569952 /* FlexRow.h */,
-				348475CC2490A2B900569952 /* WaterfallSection.h */,
+				348475CC2490A2B900569952 /* FlexWaterfallSection.h */,
 				345496A72490DEAF00447FCA /* CollectionViewFlexLayoutInvalidationContext.h */,
 				345496A82490DEC200447FCA /* CollectionViewFlexLayoutInvalidationContext.m */,
 			);

@@ -15,8 +15,8 @@
 #import "FlexRow.h"
 #import "FlexColumn.h"
 #import "FlexPage.h"
-#import "FlowSection.h"
-#import "WaterfallSection.h"
+#import "FlexFlowSection.h"
+#import "FlexWaterfallSection.h"
 #include <vector>
 #include <map>
 #include <memory>

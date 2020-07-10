@@ -9,7 +9,7 @@
 #ifndef FlowSection_h
 #define FlowSection_h
 
-#include "Section.h"
+#include "FlexSection.h"
 #include "FlexRow.h"
 #include <utility>
 #include <memory>

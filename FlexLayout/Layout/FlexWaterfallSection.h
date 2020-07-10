@@ -9,7 +9,7 @@
 #ifndef WaterfallSection_h
 #define WaterfallSection_h
 
-#import "Section.h"
+#import "FlexSection.h"
 #import "FlexColumn.h"
 
 namespace nsflex
