@@ -48,9 +48,9 @@
 
 #define NUM_OF_ITEMS_IN_CATEGORY_BAR    8
 
-#define NUM_OF_ITEMS_IN_SECTION_ENTRY   2
-#define NUM_OF_ITEMS_IN_SECTION_TEST1   4
-#define NUM_OF_ITEMS_IN_SECTION_TEST2   4
+#define NUM_OF_ITEMS_IN_SECTION_ENTRY   1
+#define NUM_OF_ITEMS_IN_SECTION_TEST1   1
+#define NUM_OF_ITEMS_IN_SECTION_TEST2   1
 #define NUM_OF_ITEMS_IN_SECTION_ITEM1   20
 #define NUM_OF_ITEMS_IN_SECTION_ITEM2   20
 
@@ -92,6 +92,8 @@
     NSNumber                        *m_loadMoreColor;
     
     NSMutableArray<NSMutableDictionary *>                       *m_entries;
+    NSMutableArray<NSMutableDictionary *>                       *m_test1;
+    NSMutableArray<NSMutableDictionary *>                       *m_test2;
     
     NSMutableArray< NSMutableArray<NSMutableDictionary *> *>    *m_items1;
     NSMutableArray< NSMutableArray<NSMutableDictionary *> *>    *m_items2;
@@ -177,15 +179,38 @@
     m_catColor = UIColorFromRGB(0xFEA460);   // sandybrown
     m_loadMoreColor = [NSNumber numberWithUnsignedLong:0xFFDCB4];
     
+    int bgColorIndex = 0;
     unsigned int entryColors[] = {0x7CFC00, 0x32CD32, 0x006400, 0x9ACD32, 0x00FA9A, 0x98FB98, 0x808000, 0x6B8E23};
     m_entries = [[NSMutableArray<NSMutableDictionary *> alloc] initWithCapacity:NUM_OF_ITEMS_IN_SECTION_ENTRY];
-    for (NSInteger idx = 0; idx < NUM_OF_ITEMS_IN_SECTION_ENTRY; idx++)
+    for (NSInteger idx = 0; idx < NUM_OF_ITEMS_IN_SECTION_ENTRY; idx++, bgColorIndex++)
     {
         NSMutableDictionary *item = [[NSMutableDictionary alloc] initWithCapacity:4];
-        NSNumber *bgColor = [NSNumber numberWithUnsignedLong:entryColors[idx % (sizeof(entryColors) / sizeof(unsigned int))]];
+        NSNumber *bgColor = [NSNumber numberWithUnsignedLong:entryColors[bgColorIndex % (sizeof(entryColors) / sizeof(unsigned int))]];
         [item setObject:bgColor forKey:@"bgColor"];
         [item setObject:[NSString stringWithFormat:@"Entry %ld", idx] forKey:@"text"];
         [m_entries addObject:item];
+    }
+    
+    m_test1 = [[NSMutableArray<NSMutableDictionary *> alloc] initWithCapacity:NUM_OF_ITEMS_IN_SECTION_TEST1];
+    bgColorIndex++;
+    for (NSInteger idx = 0; idx < NUM_OF_ITEMS_IN_SECTION_TEST1; idx++, bgColorIndex++)
+    {
+        NSMutableDictionary *item = [[NSMutableDictionary alloc] initWithCapacity:4];
+        NSNumber *bgColor = [NSNumber numberWithUnsignedLong:entryColors[bgColorIndex % (sizeof(entryColors) / sizeof(unsigned int))]];
+        [item setObject:bgColor forKey:@"bgColor"];
+        [item setObject:[NSString stringWithFormat:@"Test1 %ld", idx] forKey:@"text"];
+        [m_test1 addObject:item];
+    }
+    
+    m_test2 = [[NSMutableArray<NSMutableDictionary *> alloc] initWithCapacity:NUM_OF_ITEMS_IN_SECTION_TEST2];
+    bgColorIndex++;
+    for (NSInteger idx = 0; idx < NUM_OF_ITEMS_IN_SECTION_TEST2; idx++, bgColorIndex++)
+    {
+        NSMutableDictionary *item = [[NSMutableDictionary alloc] initWithCapacity:4];
+        NSNumber *bgColor = [NSNumber numberWithUnsignedLong:entryColors[bgColorIndex % (sizeof(entryColors) / sizeof(unsigned int))]];
+        [item setObject:bgColor forKey:@"bgColor"];
+        [item setObject:[NSString stringWithFormat:@"Test2 %ld", idx] forKey:@"text"];
+        [m_test2 addObject:item];
     }
     
     unsigned int itemColors[] = {0xB0E0E6, 0x87CEFA, 0x87CEEB, 0x00BFFF, 0x1E90FF, 0x6495ED, 0x4169E1, 0x0000FF, 0xB0E0E6, 0x87CEFA, 0x87CEEB, 0x00BFFF, 0x1E90FF, 0x6495ED, 0x4169E1, 0x0000FF};
@@ -448,6 +473,14 @@
         {
             numberOfItemsInSection = NUM_OF_ITEMS_IN_SECTION_ENTRY;
         }
+        else if (SECTION_INDEX_TEST1 == section)
+        {
+            numberOfItemsInSection = NUM_OF_ITEMS_IN_SECTION_TEST1;
+        }
+        else if (SECTION_INDEX_TEST2 == section)
+        {
+            numberOfItemsInSection = NUM_OF_ITEMS_IN_SECTION_TEST2;
+        }
         else if (SECTION_INDEX_ITEM1 == section)
         {
             // items
@@ -483,6 +516,14 @@
     if (collectionView == self)
     {
         if (SECTION_INDEX_ENTRY == indexPath.section)
+        {
+            return CGSizeMake(self.bounds.size.width, ITEM_HEIGHT_ENTRY);
+        }
+        else if (SECTION_INDEX_TEST1 == indexPath.section)
+        {
+            return CGSizeMake(self.bounds.size.width, ITEM_HEIGHT_ENTRY);
+        }
+        else if (SECTION_INDEX_TEST2 == indexPath.section)
         {
             return CGSizeMake(self.bounds.size.width, ITEM_HEIGHT_ENTRY);
         }
@@ -534,7 +575,7 @@
     {
         if (SECTION_INDEX_ENTRY == section)
         {
-            return CGSizeMake(self.bounds.size.width, ITEM_HEIGHT_LOADMORE);
+            // return CGSizeMake(self.bounds.size.width, ITEM_HEIGHT_LOADMORE);
         }
     }
     
@@ -617,6 +658,20 @@
         SUIImageItemViewCell *cell = (SUIImageItemViewCell *)[collectionView dequeueReusableCellWithReuseIdentifier:@REUSE_ID_ITEM1 forIndexPath:indexPath];
         cell.fullLineMode = (ITEM_COLUMNS == 1);
         [cell updateDataSource:[self itemDictForItem1:indexPath.item AtPage:page]];
+        return cell;
+    }
+    else if (indexPath.section == SECTION_INDEX_TEST2)
+    {
+        SUIItemViewCell *cell = (SUIItemViewCell *)[collectionView dequeueReusableCellWithReuseIdentifier:@REUSE_ID_ENTRY forIndexPath:indexPath];
+        NSMutableDictionary *entry = [m_test2 objectAtIndex:indexPath.item];
+        [cell updateDataSource:entry];
+        return cell;
+    }
+    else if (indexPath.section == SECTION_INDEX_TEST1)
+    {
+        SUIItemViewCell *cell = (SUIItemViewCell *)[collectionView dequeueReusableCellWithReuseIdentifier:@REUSE_ID_ENTRY forIndexPath:indexPath];
+        NSMutableDictionary *entry = [m_test1 objectAtIndex:indexPath.item];
+        [cell updateDataSource:entry];
         return cell;
     }
     else if (indexPath.section == SECTION_INDEX_ENTRY)

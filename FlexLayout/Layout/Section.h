@@ -15,34 +15,51 @@
 #include <algorithm>
 
 #import "FlexItem.h"
-#import "LayoutUtils.h"
+
+namespace nsflex
+{
 
 /*
-class SectionContextAdapter
+// Required interfaces for TLayout!!!
+class TLayoutImpl
 {
 public:
 
-    bool isVertical() const;
-    NSInteger numberOfItems() const;
-    NSInteger numberOfColumns() const;
-    UIEdgeInsets insets() const;
-    CGSize sizeForHeader() const;
-    CGSize sizeForFooter() const;
-    CGSize sizeForItem(NSInteger item);
-    CGFloat minimumLineSpacing() const;
-    CGFloat minimumInteritemSpacing() const;
+ bool isVertical() const;
+ TInt m_layout->getNumberOfItemsInSection(TInt section) const;
+ SizeT<TCoordinate> m_layout->getSizeForItem(TInt section, TInt item) const;
+ InsetsT<TCoordinate> getInsetForSection(TInt section) const;
+ TCoordinate getMinimumLineSpacingForSection(TInt section) const;
+ TCoordinate getMinimumInteritemSpacingForSection(TInt section) const;
+ SizeT<TCoordinate> getSizeForHeaderInSection(TInt section) const;
+ inline SizeT<TCoordinate> getSizeForFooterInSection(TInt section) const;
+ TInt getNumberOfColumnsForSection(TInt section) const;
+ bool isFullSpanAtItem(TInt section, TInt item) const ;
+ bool hasFixedSize(TInt section, SizeT<TCoordinate> *fixedSize);
+
 };
 */
 
-template<class TLayout>
-class UISectionT
+template<class TLayout, class TInt, class TCoordinate>
+class FlexSectionT
 {
+public:
+    typedef TCoordinate CoordinateType;
+    typedef FlexItemT<TInt, TCoordinate> FlexItem;
+    typedef PointT<TCoordinate> Point;
+    typedef SizeT<TCoordinate> Size;
+    typedef RectT<TCoordinate> Rect;
+    typedef InsetsT<TCoordinate> Insets;
+    
 protected:
-    NSInteger m_section;
+    TInt m_section;
+    Rect m_frame; // // The origin is in the coordinate system of section, should convert to the coordinate system of UICollectionView
+
+private:
+    // FlexSectionT implements all required methods and sub-class doesn't need to access this member variable directly
+    // So set it private
     TLayout *m_layout;
-    
-    CGRect m_frame; // 基于当前Section区域的位置，使用时需要转为CollectionView坐标
-    
+
 protected:
     struct {
         unsigned int sectionInvalidated : 1;    // The whole section is invalidated
@@ -53,16 +70,18 @@ protected:
         unsigned int minimalInvalidatedItem : 24;   // If minimal invalidated item is greater than 2^28, just set sectionInvalidated to 1
     } m_invalidationContext;
 
-    UIFlexItem m_header;
-    std::vector<UIFlexItem *> m_items;
-    UIFlexItem m_footer;
+    FlexItem m_header;
+    std::vector<FlexItem *> m_items;
+    FlexItem m_footer;
 
 public:
-    UISectionT(UICollectionViewFlexLayout *layout, NSInteger section, const CGRect& frame) : m_section(section), m_layout(layout), m_frame(frame), m_header(0), m_footer(0)
+    FlexSectionT(TLayout *layout, TInt section, const Rect& frame) : m_section(section), m_layout(layout), m_frame(frame), m_header(0), m_footer(0)
     {
+        m_header.setHeader(true);
+        m_footer.setFooter(true);
     }
     
-    virtual ~UISectionT()
+    virtual ~FlexSectionT()
     {
         m_layout = nil;
         clearItems();
@@ -70,68 +89,77 @@ public:
     
     inline void clearItems()
     {
-        for(std::vector<UIFlexItem *>::iterator it = m_items.begin(); it != m_items.end(); delete *it, ++it);
+        for(typename std::vector<FlexItem *>::iterator it = m_items.begin(); it != m_items.end(); delete *it, ++it);
         m_items.clear();
     }
     
-    inline const CGRect getFrame() const { return m_frame; }
-    inline CGRect &getFrame() { return m_frame; }
-    inline NSInteger getItemCount() const { return m_items.size(); }
+    inline TInt getSection() const { return m_section; }
+    inline const Rect getFrame() const { return m_frame; }
+    inline Rect &getFrame() { return m_frame; }
+    inline TInt getItemCount() const { return m_items.size(); }
     
-    inline const CGRect getItemsFrame() const
+    inline const Rect getItemFrameInView(TInt item) const
     {
-        return IS_CV_VERTICAL(m_layout) ? CGRectMake(m_frame.origin.x, m_frame.origin.y + m_header.getFrame().size.height, m_frame.size.width, m_frame.size.height - m_header.getFrame().size.height - m_footer.getFrame().size.height) : CGRectMake(m_frame.origin.x + m_header.getFrame().origin.x, m_frame.origin.y, m_frame.size.width - m_header.getFrame().size.width - m_footer.getFrame().size.width, m_frame.size.height);
+#ifdef DEBUG
+        assert(item < m_items.size());
+#endif // DEBUG
+        return getFrameInView(m_items[item]->getFrame());
+    }
+    
+    inline const Rect getHeaderFrameInView() const
+    {
+        return getFrameInView(m_header.getFrame());
+    }
+    
+    inline const Rect getFooterFrameInView() const
+    {
+        return getFrameInView(m_footer.getFrame());
+    }
+    
+    inline const Rect getItemsFrame() const
+    {
+        return isVertical() ? Rect(m_frame.origin.x, m_frame.origin.y + m_header.getFrame().size.height, m_frame.size.width, m_frame.size.height - m_header.getFrame().size.height - m_footer.getFrame().size.height) : Rect(m_frame.origin.x + m_header.getFrame().origin.x, m_frame.origin.y, m_frame.size.width - m_header.getFrame().size.width - m_footer.getFrame().size.width, m_frame.size.height);
     }
 
-    void prepareLayout()
+    void prepareLayout(const Rect &bounds)
     {
-        IS_CV_VERTICAL(UISectionT<TLayout>::m_layout) ? prepareLayoutVertically() : prepareLayoutHorizontally();
+        isVertical() ? prepareLayoutVertically(bounds) : prepareLayoutHorizontally(bounds);
     }
     
-    virtual void prepareLayoutVertically() = 0;
-    virtual void prepareLayoutHorizontally() = 0;
-    virtual BOOL getLayoutAttributesForItemsInRect(NSMutableArray<UICollectionViewLayoutAttributes *> *layoutAttributes, const CGRect &rectInSection) = 0;
-    
-    bool getLayoutAttributesInRect(NSMutableArray<UICollectionViewLayoutAttributes *> *layoutAttributes, const CGRect &rect)
+    bool filterInRect(std::vector<FlexItem *> &items, const Rect &rect)
     {
-        bool merged = false;
+        bool matched = false;
         
-        CGRect rectInSection = CGRectIntersection(*((CGRect *)&m_frame.origin), rect);
-        if (CGRectIsEmpty(rectInSection))
+        Rect rectInSection = Rect::intersectRects(m_frame, rect);
+        if (rectInSection.empty())
         {
-            return merged;
+            return matched;
         }
         
-        // 转成section坐标系
-        rectInSection.origin.x -= m_frame.origin.x;
-        rectInSection.origin.y -= m_frame.origin.y;
+        // Convert to coodinate of section
+        rectInSection.offset( -m_frame.origin.x, -m_frame.origin.y);
         
         // Header
-        if (!CGSizeEqualToSize(m_header.getFrame().size, CGSizeZero) && CGRectIntersectsRect(m_header.getFrame(), rectInSection))
+        if (!m_header.getFrame().empty() && rectInSection.intersects(m_header.getFrame()))
         {
-            UICollectionViewLayoutAttributes *la = [m_layout layoutAttributesForSupplementaryViewOfKind:UICollectionElementKindSectionHeader atIndexPath:[NSIndexPath indexPathForItem:0 inSection:m_section]];
-            
-            [layoutAttributes addObject:la];
-            merged = true;
-            // la.frame = CGRectMake(la.frame.origin.x, la.frame.origin.y, la.frame.size.width, la.frame.size.height);
+            items.push_back(&m_header);
+            matched = true;
         }
         
         // Items
-        if (getLayoutAttributesForItemsInRect(layoutAttributes, rectInSection))
+        if (filterItemsInRect(items, rectInSection))
         {
-            merged = true;
+            matched = true;
         }
         
         // Footer
-        if (!CGSizeEqualToSize(m_footer.getFrame().size, CGSizeZero) && CGRectIntersectsRect(m_footer.getFrame(), rectInSection))
+        if (!m_footer.getFrame().size.empty() && m_footer.getFrame().intersects(rectInSection))
         {
-            UICollectionViewLayoutAttributes *la = [m_layout layoutAttributesForSupplementaryViewOfKind:UICollectionElementKindSectionFooter atIndexPath:[NSIndexPath indexPathForItem:0 inSection:m_section]];
-            
-            [layoutAttributes addObject:la];
-            merged = true;
+            items.push_back(&m_footer);
+            matched = true;
         }
         
-        return merged;
+        return matched;
     }
     
     void resetInvalidationContext()
@@ -160,12 +188,12 @@ public:
         m_invalidationContext.footerInvalidated = 1;
     }
     
-    void invalidateItem(NSInteger item)
+    void invalidateItem(TInt item)
     {
         m_invalidationContext.sectionInvalidated = 1;
         unsigned int maximum = ~0;
         maximum = (maximum >> 8);
-        if (item > (NSInteger)maximum)
+        if (item > (TInt)maximum)
         {
             m_invalidationContext.sectionInvalidated = 1;
             m_invalidationContext.minimalInvalidatedItem = maximum;
@@ -175,69 +203,150 @@ public:
             m_invalidationContext.minimalInvalidatedItem = (unsigned int)item;
         }
     }
-    
-    void clearLayoutAttributes(NSInteger item = 0)
-    {
-        if (item >= m_items.size())
-        {
-            return;
-        }
-        
-        std::vector<UIFlexItem *>::iterator it = m_items.begin() + item;
-        for (; it != m_items.end(); ++it)
-        {
-            (*it)->clearLayoutAttributes();
-        }
-    }
-    
-    UICollectionViewLayoutAttributes *buildLayoutAttributesForItem(Class layoutAttributesClass, NSIndexPath *indexPath)
-    {
-        if (indexPath.item >= m_items.size())
-        {
-            return nil;
-        }
-        
-        UIFlexItem *item = m_items[indexPath.item];
-        return item->buildLayoutAttributesForCell(layoutAttributesClass, indexPath, m_frame.origin);
-    }
-    
-    UICollectionViewLayoutAttributes *buildLayoutAttributesForSupplementaryView(Class layoutAttributesClass, NSString *elementKind, NSIndexPath *indexPath)
-    {
-        UIFlexItem *item = NULL;
-        if ([elementKind isEqualToString:UICollectionElementKindSectionHeader])
-        {
-            item = &m_header;
-        }
-        else if ([elementKind isEqualToString:UICollectionElementKindSectionFooter])
-        {
-            item = &m_footer;
-        }
-        
-        if (NULL == item)
-        {
-            return nil;
-        }
-        
-        return item->buildLayoutAttributesForSupplementaryView(layoutAttributesClass, elementKind, indexPath, m_frame.origin);
-    }
-    
-    UICollectionViewLayoutAttributes *buildLayoutAttributesForDecorationView(Class layoutAttributesClass, NSString *elementKind, NSIndexPath *indexPath)
-    {
-        // UISection *section = m_sections[indexPath.section];
-        
-        NSCAssert(NO, @"Not implemented yet.");
-        
-        return nil;
-        // return item->buildLayoutAttributesForDecorationView([UICollectionViewFlexLayout layoutAttributesClass], elementKind, indexPath, section->m_frame.origin);
-        
-        // UICollectionViewLayoutAttributes *layoutAttributes = [[super layoutAttributesForDecorationViewOfKind:elementKind atIndexPath:indexPath] copy];
-        // UICollectionViewLayoutAttributes *layoutAttributes = [super layoutAttributesForDecorationViewOfKind:elementKind atIndexPath:indexPath];
-        // UISection *section = m_sections[indexPath.section];
-        // TODO: Should adjust size???
-        // return section->adjustLayoutAttributes(layoutAttributes, indexPath);
-    }
 
+protected:
+    
+    inline void prepareLayoutVertically(const Rect &bounds)
+    {
+#define INTERNAL_VERTICAL_LAYOUT
+        
+        // Header
+        m_header.getFrame().size = getSizeForHeader();
+        
+        // Initialize the section height with header height
+#ifdef INTERNAL_VERTICAL_LAYOUT
+        m_frame.size.height = m_header.getFrame().height();
+#else
+        m_frame.size.width = m_header.getFrame().width();
+#endif // ifdef INTERNAL_VERTICAL_LAYOUT
+
+        
+#ifdef INTERNAL_VERTICAL_LAYOUT
+        Point pt = prepareLayoutWithItemsVertically(bounds);
+#else
+        Point pt = prepareLayoutWithItemsHorizontally(bounds);
+#endif // #ifdef INTERNAL_VERTICAL_LAYOUT
+
+        // Footer
+        m_footer.getFrame().origin = pt;
+        m_footer.getFrame().size = getSizeForFooter();
+
+#ifdef INTERNAL_VERTICAL_LAYOUT
+        m_frame.size.height = m_footer.getFrame().bottom();
+#else
+        m_frame.size.width = m_footer.getFrame().right();
+#endif // #ifdef INTERNAL_VERTICAL_LAYOUT
+
+#undef INTERNAL_VERTICAL_LAYOUT
+        
+    }
+    
+    /// DON"T EDIT THE CODE DIRECTLY
+    /// Update the code in the function of "vertically" first and then sync the commented code of "horizontally" parts
+    inline void prepareLayoutHorizontally(const Rect &bounds)
+    {
+#undef INTERNAL_VERTICAL_LAYOUT
+
+        // Header
+        m_header.getFrame().size = getSizeForHeader();
+        
+        // Initialize the section height with header height
+#ifdef INTERNAL_VERTICAL_LAYOUT
+        m_frame.size.height = m_header.getFrame().height();
+#else
+        m_frame.size.width = m_header.getFrame().width();
+#endif // ifdef INTERNAL_VERTICAL_LAYOUT
+        
+        
+#ifdef INTERNAL_VERTICAL_LAYOUT
+        Point pt = prepareLayoutWithItemsVertically(bounds);
+#else
+        Point pt = prepareLayoutWithItemsHorizontally(bounds);
+#endif // #ifdef INTERNAL_VERTICAL_LAYOUT
+        
+        // Footer
+        m_footer.getFrame().origin = pt;
+        m_footer.getFrame().size = getSizeForFooter();
+        
+#ifdef INTERNAL_VERTICAL_LAYOUT
+        m_frame.size.height = m_footer.getFrame().bottom();
+#else
+        m_frame.size.width = m_footer.getFrame().right();
+#endif // #ifdef INTERNAL_VERTICAL_LAYOUT
+        
+
+#undef INTERNAL_VERTICAL_LAYOUT
+    }
+    
+    virtual Point prepareLayoutWithItemsVertically(const Rect &bounds) = 0;
+    virtual Point prepareLayoutWithItemsHorizontally(const Rect &bounds) = 0;
+    
+    virtual bool filterItemsInRect(std::vector<FlexItem *> &items, const Rect &rectInSection) = 0;
+    
+    inline const Rect getFrameInView(const Rect& rect) const
+    {
+        Rect rectInView = rect;
+        rectInView.offset(m_frame.origin.x, m_frame.origin.y);
+        return rectInView;
+    }
+    
+    
+    // Layout Adapter Functions Begin
+    inline bool isVertical() const { return m_layout->isVertical(); }
+    
+    inline TInt getNumberOfItems() const
+    {
+        return m_layout->getNumberOfItemsInSection(m_section);
+    }
+    
+    inline Size getSizeForItem(TInt item) const
+    {
+        return m_layout->getSizeForItem(m_section, item);
+    }
+    
+    inline Insets getInsets() const
+    {
+        return m_layout->getInsetForSection(m_section);
+    }
+    
+    inline TCoordinate getMinimumLineSpacing() const
+    {
+        return m_layout->getMinimumLineSpacingForSection(m_section);
+    }
+    
+    inline TCoordinate getMinimumInteritemSpacing() const
+    {
+        return m_layout->getMinimumInteritemSpacingForSection(m_section);
+    }
+    
+    inline Size getSizeForHeader() const
+    {
+        return m_layout->getSizeForHeaderInSection(m_section);
+    }
+    
+    inline Size getSizeForFooter() const
+    {
+        return m_layout->getSizeForFooterInSection(m_section);
+    }
+    
+    inline TInt getNumberOfColumns() const
+    {
+        return m_layout->getNumberOfColumnsForSection(m_section);
+    }
+    
+    inline bool isFullSpanAtItem(TInt item) const
+    {
+        return m_layout->isFullSpanAtItem(m_section, item);
+    }
+    
+    inline bool hasFixedSize(TInt section, Size *fixedSize) const
+    {
+        return m_layout->hasFixedSize(m_section, fixedSize);
+    }
+    // Layout Adapter Functions End
+    
 };
 
-
+} // namespace nsflex
+    
 #endif /* Section_h */

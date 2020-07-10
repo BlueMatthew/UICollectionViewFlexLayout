@@ -15,356 +15,322 @@
 #include <memory>
 
 
-template<class TLayout>
-class UIFlowSectionT : public UISectionT<TLayout>
+namespace nsflex
 {
-public:
-    std::vector<UIFlexRow *> m_rows;
     
-    UIFlowSectionT(TLayout *layout, NSInteger section, const CGRect frame) : UISectionT<TLayout>(layout, section, frame)
+template<typename TLayout, typename TInt, typename TCoordinate>
+class FlexFlowSectionT : public FlexSectionT<TLayout, TInt, TCoordinate>
+{
+protected:
+    typedef FlexSectionT<TLayout, TInt, TCoordinate> BaseSection;
+    typedef PointT<TCoordinate> Point;
+    typedef SizeT<TCoordinate> Size;
+    typedef RectT<TCoordinate> Rect;
+    typedef InsetsT<TCoordinate> Insets;
+    typedef FlexItemT<TInt, TCoordinate> FlexItem;
+    typedef FlexRowT<TInt, TCoordinate> FlexRow;
+    typedef FlexVerticalCompareT<FlexRow> UIFlexRowVerticalCompare;
+    typedef FlexHorizontalCompareT<FlexRow> UIFlexRowHorizontalCompare;
+
+    
+public:
+    std::vector<FlexRow *> m_rows;
+    
+    FlexFlowSectionT(TLayout *layout, TInt section, const Rect &frame) : BaseSection(layout, section, frame)
     {
     }
     
-    virtual ~UIFlowSectionT()
+    virtual ~FlexFlowSectionT()
     {
-        for(std::vector<UIFlexRow *>::iterator it = m_rows.begin(); it != m_rows.end(); delete *it, ++it);
+        clearRows();
+    }
+    
+protected:
+    inline void clearRows()
+    {
+        for(typename std::vector<FlexRow *>::iterator it = m_rows.begin(); it != m_rows.end(); delete *it, ++it);
         m_rows.clear();
     }
 
-    void prepareLayoutVertically()
+    Point prepareLayoutWithItemsVertically(const Rect &bounds)
     {
-#define VERTICAL_LAYOUT
-        
-        // Header
-        UISectionT<TLayout>::m_header.getFrame().size = [UISectionT<TLayout>::m_layout getSizeForHeaderInSection:(UISectionT<TLayout>::m_section)];
-        
-        // Initialize the section height with header height
-#ifdef VERTICAL_LAYOUT
-        UISectionT<TLayout>::m_frame.size.height = UISectionT<TLayout>::m_header.getFrame().size.height;
-#else
-        UISectionT<TLayout>::m_frame.size.width = UISectionT<TLayout>::m_header.getFrame().size.width;
-#endif // ifdef VERTICAL_LAYOUT
-        
+#define INTERNAL_VERTICAL_LAYOUT
+
         // Items
-        CGPoint originOfRow = UISectionT<TLayout>::m_header.getFrame().origin;
+        clearRows();
+        BaseSection::clearItems();
         
-#ifdef VERTICAL_LAYOUT
-        originOfRow.y += UISectionT<TLayout>::m_header.getFrame().size.height;
+#ifdef INTERNAL_VERTICAL_LAYOUT
+        Point originOfRow(BaseSection::m_header.getFrame().left(), BaseSection::m_header.getFrame().bottom());
 #else
-        originOfRow.x += UISectionT<TLayout>::m_header.getFrame().size.width;
-#endif // #ifdef VERTICAL_LAYOUT
+        Point originOfRow(BaseSection::m_header.getFrame().right(), BaseSection::m_header.getFrame().top());
+#endif // #ifdef INTERNAL_VERTICAL_LAYOUT
         
-        m_rows.clear();
-        UISectionT<TLayout>::clearItems();
-        
-        NSInteger numberOfItems = [UISectionT<TLayout>::m_layout.collectionView numberOfItemsInSection:(UISectionT<TLayout>::m_section)];
-        if (numberOfItems > 0)
+        TInt numberOfItems = BaseSection::getNumberOfItems();
+        if (numberOfItems == 0)
         {
-            UIEdgeInsets sectionInset = [UISectionT<TLayout>::m_layout getInsetForSectionAtIndex:(UISectionT<TLayout>::m_section)];
-            
-            UISectionT<TLayout>::m_items.reserve(numberOfItems);
-            
-            // For FlowLayout, there is no column property but we still try to get the number of columns, and use it to estimate the number of rows
-            NSInteger numberOfColumns = [UISectionT<TLayout>::m_layout getNumberOfColumnsForSection:(UISectionT<TLayout>::m_section)];
-            m_rows.reserve(numberOfColumns > 0 ? ceil(numberOfItems / numberOfColumns) : numberOfItems);
-            
-            CGFloat minimumLineSpacing = [UISectionT<TLayout>::m_layout getMinimumLineSpacingForSectionAtIndex:(UISectionT<TLayout>::m_section)];
-            CGFloat minimumInteritemSpacing = [UISectionT<TLayout>::m_layout getMinimumInteritemSpacingForSectionAtIndex:(UISectionT<TLayout>::m_section)];
-          
-#ifdef VERTICAL_LAYOUT
-            CGFloat maximalSizeOfRow = UISectionT<TLayout>::m_frame.size.width - sectionInset.left - sectionInset.right;
-#else
-            CGFloat maximalSizeOfRow = UISectionT<TLayout>::m_frame.size.height - sectionInset.top - sectionInset.bottom;
-#endif // #ifdef VERTICAL_LAYOUT
-            
-            // Layout items
-            UIFlexItem *sectionItem = NULL;
-            UIFlexRow *row = NULL;
-            
-            CGPoint originOfItem = originOfRow;
-            CGFloat availableSizeOfRow = 0.0f;
-            CGSize sizeOfItem = CGSizeZero;
-            CGFloat sizeOfItemInDirection = 0.0f;
-            
-            originOfRow.x += sectionInset.left;
-            originOfRow.y += sectionInset.top;
-            
-            for (NSInteger itemIndex = 0; itemIndex < numberOfItems; itemIndex++)
-            {
-                sizeOfItem = [UISectionT<TLayout>::m_layout getSizeForItemAtIndexPath:[NSIndexPath indexPathForItem:itemIndex inSection:(UISectionT<TLayout>::m_section)]];
-                
-#ifdef VERTICAL_LAYOUT
-                sizeOfItemInDirection = sizeOfItem.width;
-#else
-                sizeOfItemInDirection = sizeOfItem.height;
-#endif // #ifdef VERTICAL_LAYOUT
-                
-                if (NULL != row)
-                {
-                    if (row->hasItems())
-                    {
-#ifdef VERTICAL_LAYOUT
-                        availableSizeOfRow = maximalSizeOfRow - row->getFrame().size.width - minimumInteritemSpacing;
-#else
-                        availableSizeOfRow = maximalSizeOfRow - row->getFrame().size.height - minimumInteritemSpacing;
-#endif // #ifdef VERTICAL_LAYOUT
-                        
-                        if (availableSizeOfRow < sizeOfItemInDirection)
-                        {
-                            // New Line
-                            m_rows.push_back(row);
-#ifdef VERTICAL_LAYOUT
-                            originOfRow.y += minimumLineSpacing + row->getFrame().size.height;
-#else
-                            originOfRow.x += minimumLineSpacing + row->getFrame().size.width;
-#endif // #ifdef VERTICAL_LAYOUT
-                            row = NULL;
-                        }
-                    }
-                }
-                
-                if (NULL == row)
-                {
-                    row = new UIFlexRow();
-                    row->getFrame().origin = originOfRow;
-                    
-                    originOfItem = originOfRow;
-                }
-                
-                if (row->hasItems())
-                {
-#ifdef VERTICAL_LAYOUT
-                    originOfItem.x = CGRectGetMaxX(row->getFrame()) + minimumInteritemSpacing;
-#else
-                    originOfItem.y = CGRectGetMaxY(row->getFrame()) + minimumInteritemSpacing;
-#endif // #ifdef VERTICAL_LAYOUT
-                }
-                
-                sectionItem = new UIFlexItem(itemIndex, originOfItem, sizeOfItem);
-                
-                UISectionT<TLayout>::m_items.push_back(sectionItem);
-#ifdef VERTICAL_LAYOUT
-                row->addItemVertically(sectionItem);
-#else
-                row->addItemHorizontally(sectionItem);
-#endif // #ifdef VERTICAL_LAYOUT
-            }
-            
-            // The last row
-            if (NULL != row)
-            {
-                m_rows.push_back(row);
-                
-#ifdef VERTICAL_LAYOUT
-                originOfRow.y += row->getFrame().size.height;
-#else
-                originOfRow.x += row->getFrame().size.width;
-#endif // #ifdef VERTICAL_LAYOUT
-            }
-            
-#ifdef VERTICAL_LAYOUT
-            originOfRow.y += sectionInset.bottom;
-#else
-            originOfRow.x += sectionInset.right;
-#endif // #ifdef VERTICAL_LAYOUT
+            return originOfRow;
         }
         
-        // Footer
-#ifdef VERTICAL_LAYOUT
-        UISectionT<TLayout>::m_footer.getFrame().origin.y = originOfRow.y;
+        Insets sectionInset = BaseSection::getInsets();
+        
+        BaseSection::m_items.reserve(numberOfItems);
+        
+        // For FlowLayout, there is no column property but we still try to get the number of columns, and use it to estimate the number of rows
+        TInt numberOfColumns = BaseSection::getNumberOfColumns();
+        m_rows.reserve(numberOfColumns > 0 ? ceil(numberOfItems / numberOfColumns) : numberOfItems);
+        
+        TCoordinate minimumLineSpacing = BaseSection::getMinimumLineSpacing();
+        TCoordinate minimumInteritemSpacing = BaseSection::getMinimumInteritemSpacing();
+        
+#ifdef INTERNAL_VERTICAL_LAYOUT
+        TCoordinate maximalSizeOfRow = BaseSection::m_frame.width() - sectionInset.left - sectionInset.right;
 #else
-        UISectionT<TLayout>::m_footer.getFrame().origin.x = originOfRow.x;
-#endif // #ifdef VERTICAL_LAYOUT
+        TCoordinate maximalSizeOfRow = BaseSection::m_frame.height() - sectionInset.top - sectionInset.bottom;
+#endif // #ifdef INTERNAL_VERTICAL_LAYOUT
         
-        UISectionT<TLayout>::m_footer.getFrame().size = [UISectionT<TLayout>::m_layout getSizeForFooterInSection:(UISectionT<TLayout>::m_section)];
+        // Layout items
+        FlexItem *sectionItem = NULL;
+        FlexRow *row = NULL;
         
-#ifdef VERTICAL_LAYOUT
-        UISectionT<TLayout>::m_frame.size.height = CGRectGetMaxY(UISectionT<TLayout>::m_footer.getFrame());
-#else
-        UISectionT<TLayout>::m_frame.size.width = CGRectGetMaxX(UISectionT<TLayout>::m_footer.getFrame());
-#endif // #ifdef VERTICAL_LAYOUT
+        Rect frameOfItem(originOfRow.x, originOfRow.y, 0, 0);
+        TCoordinate availableSizeOfRow = 0.0f;
+        TCoordinate sizeOfItemInDirection = 0.0f;
         
-#undef VERTICAL_LAYOUT
-    }
-    
-    void prepareLayoutHorizontally()
-    {
-#undef VERTICAL_LAYOUT
+        originOfRow.x += sectionInset.left;
+        originOfRow.y += sectionInset.top;
         
-        // Header
-        UISectionT<TLayout>::m_header.getFrame().size = [UISectionT<TLayout>::m_layout getSizeForHeaderInSection:(UISectionT<TLayout>::m_section)];
-        
-        // Initialize the section height with header height
-#ifdef VERTICAL_LAYOUT
-        UISectionT<TLayout>::m_frame.size.height = UISectionT<TLayout>::m_header.getFrame().size.height;
-#else
-        UISectionT<TLayout>::m_frame.size.width = UISectionT<TLayout>::m_header.getFrame().size.width;
-#endif // ifdef VERTICAL_LAYOUT
-        
-        // Items
-        CGPoint originOfRow = UISectionT<TLayout>::m_header.getFrame().origin;
-        
-#ifdef VERTICAL_LAYOUT
-        originOfRow.y += UISectionT<TLayout>::m_header.getFrame().size.height;
-#else
-        originOfRow.x += UISectionT<TLayout>::m_header.getFrame().size.width;
-#endif // #ifdef VERTICAL_LAYOUT
-        
-        m_rows.clear();
-        UISectionT<TLayout>::clearItems();
-        
-        NSInteger numberOfItems = [UISectionT<TLayout>::m_layout.collectionView numberOfItemsInSection:(UISectionT<TLayout>::m_section)];
-        if (numberOfItems > 0)
+        for (TInt itemIndex = 0; itemIndex < numberOfItems; itemIndex++)
         {
-            UIEdgeInsets sectionInset = [UISectionT<TLayout>::m_layout getInsetForSectionAtIndex:(UISectionT<TLayout>::m_section)];
+            frameOfItem.size = BaseSection::getSizeForItem(itemIndex);
             
-            UISectionT<TLayout>::m_items.reserve(numberOfItems);
-            
-            // For FlowLayout, there is no column property but we still try to get the number of columns, and use it to estimate the number of rows
-            NSInteger numberOfColumns = [UISectionT<TLayout>::m_layout getNumberOfColumnsForSection:(UISectionT<TLayout>::m_section)];
-            m_rows.reserve(numberOfColumns > 0 ? ceil(numberOfItems / numberOfColumns) : numberOfItems);
-            
-            CGFloat minimumLineSpacing = [UISectionT<TLayout>::m_layout getMinimumLineSpacingForSectionAtIndex:(UISectionT<TLayout>::m_section)];
-            CGFloat minimumInteritemSpacing = [UISectionT<TLayout>::m_layout getMinimumInteritemSpacingForSectionAtIndex:(UISectionT<TLayout>::m_section)];
-            
-#ifdef VERTICAL_LAYOUT
-            CGFloat maximalSizeOfRow = UISectionT<TLayout>::m_frame.size.width - sectionInset.left - sectionInset.right;
+#ifdef INTERNAL_VERTICAL_LAYOUT
+            sizeOfItemInDirection = frameOfItem.width();
 #else
-            CGFloat maximalSizeOfRow = UISectionT<TLayout>::m_frame.size.height - sectionInset.top - sectionInset.bottom;
-#endif // #ifdef VERTICAL_LAYOUT
+            sizeOfItemInDirection = frameOfItem.height();
+#endif // #ifdef INTERNAL_VERTICAL_LAYOUT
             
-            // Layout items
-            UIFlexItem *sectionItem = NULL;
-            UIFlexRow *row = NULL;
-            
-            CGPoint originOfItem = originOfRow;
-            CGFloat availableSizeOfRow = 0.0f;
-            CGSize sizeOfItem = CGSizeZero;
-            CGFloat sizeOfItemInDirection = 0.0f;
-            
-            originOfRow.x += sectionInset.left;
-            originOfRow.y += sectionInset.top;
-            
-            for (NSInteger itemIndex = 0; itemIndex < numberOfItems; itemIndex++)
-            {
-                sizeOfItem = [UISectionT<TLayout>::m_layout getSizeForItemAtIndexPath:[NSIndexPath indexPathForItem:itemIndex inSection:(UISectionT<TLayout>::m_section)]];
-                
-#ifdef VERTICAL_LAYOUT
-                sizeOfItemInDirection = sizeOfItem.width;
-#else
-                sizeOfItemInDirection = sizeOfItem.height;
-#endif // #ifdef VERTICAL_LAYOUT
-                
-                if (NULL != row)
-                {
-                    if (row->hasItems())
-                    {
-#ifdef VERTICAL_LAYOUT
-                        availableSizeOfRow = maximalSizeOfRow - row->getFrame().size.width - minimumInteritemSpacing;
-#else
-                        availableSizeOfRow = maximalSizeOfRow - row->getFrame().size.height - minimumInteritemSpacing;
-#endif // #ifdef VERTICAL_LAYOUT
-                        
-                        if (availableSizeOfRow < sizeOfItemInDirection)
-                        {
-                            // New Line
-                            m_rows.push_back(row);
-#ifdef VERTICAL_LAYOUT
-                            originOfRow.y += minimumLineSpacing + row->getFrame().size.height;
-#else
-                            originOfRow.x += minimumLineSpacing + row->getFrame().size.width;
-#endif // #ifdef VERTICAL_LAYOUT
-                            row = NULL;
-                        }
-                    }
-                }
-                
-                if (NULL == row)
-                {
-                    row = new UIFlexRow();
-                    row->getFrame().origin = originOfRow;
-                    
-                    originOfItem = originOfRow;
-                }
-                
-                if (row->hasItems())
-                {
-#ifdef VERTICAL_LAYOUT
-                    originOfItem.x = CGRectGetMaxX(row->getFrame()) + minimumInteritemSpacing;
-#else
-                    originOfItem.y = CGRectGetMaxY(row->getFrame()) + minimumInteritemSpacing;
-#endif // #ifdef VERTICAL_LAYOUT
-                }
-                
-                sectionItem = new UIFlexItem(itemIndex, originOfItem, sizeOfItem);
-                
-                UISectionT<TLayout>::m_items.push_back(sectionItem);
-#ifdef VERTICAL_LAYOUT
-                row->addItemVertically(sectionItem);
-#else
-                row->addItemHorizontally(sectionItem);
-#endif // #ifdef VERTICAL_LAYOUT
-            }
-            
-            // The last row
             if (NULL != row)
             {
-                m_rows.push_back(row);
-                
-#ifdef VERTICAL_LAYOUT
-                originOfRow.y += row->getFrame().size.height;
+                if (row->hasItems())
+                {
+#ifdef INTERNAL_VERTICAL_LAYOUT
+                    availableSizeOfRow = maximalSizeOfRow - row->getFrame().width() - minimumInteritemSpacing;
 #else
-                originOfRow.x += row->getFrame().size.width;
-#endif // #ifdef VERTICAL_LAYOUT
+                    availableSizeOfRow = maximalSizeOfRow - row->getFrame().height() - minimumInteritemSpacing;
+#endif // #ifdef INTERNAL_VERTICAL_LAYOUT
+                    
+                    if (availableSizeOfRow < sizeOfItemInDirection)
+                    {
+                        // New Line
+                        m_rows.push_back(row);
+#ifdef INTERNAL_VERTICAL_LAYOUT
+                        originOfRow.y += minimumLineSpacing + row->getFrame().height();
+#else
+                        originOfRow.x += minimumLineSpacing + row->getFrame().width();
+#endif // #ifdef INTERNAL_VERTICAL_LAYOUT
+                        row = NULL;
+                    }
+                }
             }
             
-#ifdef VERTICAL_LAYOUT
-            originOfRow.y += sectionInset.bottom;
+            if (NULL == row)
+            {
+                row = new FlexRow();
+                row->getFrame().origin = originOfRow;
+                
+                frameOfItem.origin = originOfRow;
+            }
+            
+            if (row->hasItems())
+            {
+#ifdef INTERNAL_VERTICAL_LAYOUT
+                frameOfItem.origin.x = row->getFrame().right() + minimumInteritemSpacing;
 #else
-            originOfRow.x += sectionInset.right;
-#endif // #ifdef VERTICAL_LAYOUT
+                frameOfItem.origin.y = row->getFrame().bottom() + minimumInteritemSpacing;
+#endif // #ifdef INTERNAL_VERTICAL_LAYOUT
+            }
+            
+            sectionItem = new FlexItem(itemIndex, frameOfItem);
+            
+            BaseSection::m_items.push_back(sectionItem);
+#ifdef INTERNAL_VERTICAL_LAYOUT
+            row->addItemVertically(sectionItem);
+#else
+            row->addItemHorizontally(sectionItem);
+#endif // #ifdef INTERNAL_VERTICAL_LAYOUT
         }
         
-        // Footer
-#ifdef VERTICAL_LAYOUT
-        UISectionT<TLayout>::m_footer.getFrame().origin.y = originOfRow.y;
+        // The last row
+        if (NULL != row)
+        {
+            m_rows.push_back(row);
+            
+#ifdef INTERNAL_VERTICAL_LAYOUT
+            originOfRow.y += row->getFrame().height();
 #else
-        UISectionT<TLayout>::m_footer.getFrame().origin.x = originOfRow.x;
-#endif // #ifdef VERTICAL_LAYOUT
+            originOfRow.x += row->getFrame().width();
+#endif // #ifdef INTERNAL_VERTICAL_LAYOUT
+        }
         
-        UISectionT<TLayout>::m_footer.getFrame().size = [UISectionT<TLayout>::m_layout getSizeForFooterInSection:(UISectionT<TLayout>::m_section)];
-        
-#ifdef VERTICAL_LAYOUT
-        UISectionT<TLayout>::m_frame.size.height = CGRectGetMaxY(UISectionT<TLayout>::m_footer.getFrame());
+#ifdef INTERNAL_VERTICAL_LAYOUT
+        originOfRow.y += sectionInset.bottom;
 #else
-        UISectionT<TLayout>::m_frame.size.width = CGRectGetMaxX(UISectionT<TLayout>::m_footer.getFrame());
-#endif // #ifdef VERTICAL_LAYOUT
+        originOfRow.x += sectionInset.right;
+#endif // #ifdef INTERNAL_VERTICAL_LAYOUT
         
-#undef VERTICAL_LAYOUT
+        return originOfRow;
+
+#undef INTERNAL_VERTICAL_LAYOUT
     }
     
-    virtual bool getLayoutAttributesForItemsInRect(NSMutableArray<UICollectionViewLayoutAttributes *> *layoutAttributes, const CGRect &rectInSection)
+    Point prepareLayoutWithItemsHorizontally(const Rect &bounds)
+    {
+#undef INTERNAL_VERTICAL_LAYOUT
+
+        // Items
+        clearRows();
+        BaseSection::clearItems();
+        
+#ifdef INTERNAL_VERTICAL_LAYOUT
+        Point originOfRow(BaseSection::m_header.getFrame().left(), BaseSection::m_header.getFrame().bottom());
+#else
+        Point originOfRow(BaseSection::m_header.getFrame().right(), BaseSection::m_header.getFrame().top());
+#endif // #ifdef INTERNAL_VERTICAL_LAYOUT
+        
+        TInt numberOfItems = BaseSection::getNumberOfItems();
+        if (numberOfItems == 0)
+        {
+            return originOfRow;
+        }
+        
+        Insets sectionInset = BaseSection::getInsets();
+        
+        BaseSection::m_items.reserve(numberOfItems);
+        
+        // For FlowLayout, there is no column property but we still try to get the number of columns, and use it to estimate the number of rows
+        TInt numberOfColumns = BaseSection::getNumberOfColumns();
+        m_rows.reserve(numberOfColumns > 0 ? ceil(numberOfItems / numberOfColumns) : numberOfItems);
+        
+        TCoordinate minimumLineSpacing = BaseSection::getMinimumLineSpacing();
+        TCoordinate minimumInteritemSpacing = BaseSection::getMinimumInteritemSpacing();
+        
+#ifdef INTERNAL_VERTICAL_LAYOUT
+        TCoordinate maximalSizeOfRow = BaseSection::m_frame.width() - sectionInset.left - sectionInset.right;
+#else
+        TCoordinate maximalSizeOfRow = BaseSection::m_frame.height() - sectionInset.top - sectionInset.bottom;
+#endif // #ifdef INTERNAL_VERTICAL_LAYOUT
+        
+        // Layout items
+        FlexItem *sectionItem = NULL;
+        FlexRow *row = NULL;
+        
+        Rect frameOfItem(originOfRow.x, originOfRow.y, 0, 0);
+        TCoordinate availableSizeOfRow = 0.0f;
+        TCoordinate sizeOfItemInDirection = 0.0f;
+        
+        originOfRow.x += sectionInset.left;
+        originOfRow.y += sectionInset.top;
+        
+        for (TInt itemIndex = 0; itemIndex < numberOfItems; itemIndex++)
+        {
+            frameOfItem.size = BaseSection::getSizeForItem(itemIndex);
+            
+#ifdef INTERNAL_VERTICAL_LAYOUT
+            sizeOfItemInDirection = frameOfItem.width();
+#else
+            sizeOfItemInDirection = frameOfItem.height();
+#endif // #ifdef INTERNAL_VERTICAL_LAYOUT
+            
+            if (NULL != row)
+            {
+                if (row->hasItems())
+                {
+#ifdef INTERNAL_VERTICAL_LAYOUT
+                    availableSizeOfRow = maximalSizeOfRow - row->getFrame().width() - minimumInteritemSpacing;
+#else
+                    availableSizeOfRow = maximalSizeOfRow - row->getFrame().height() - minimumInteritemSpacing;
+#endif // #ifdef INTERNAL_VERTICAL_LAYOUT
+                    
+                    if (availableSizeOfRow < sizeOfItemInDirection)
+                    {
+                        // New Line
+                        m_rows.push_back(row);
+#ifdef INTERNAL_VERTICAL_LAYOUT
+                        originOfRow.y += minimumLineSpacing + row->getFrame().height();
+#else
+                        originOfRow.x += minimumLineSpacing + row->getFrame().width();
+#endif // #ifdef INTERNAL_VERTICAL_LAYOUT
+                        row = NULL;
+                    }
+                }
+            }
+            
+            if (NULL == row)
+            {
+                row = new FlexRow();
+                row->getFrame().origin = originOfRow;
+                
+                frameOfItem.origin = originOfRow;
+            }
+            
+            if (row->hasItems())
+            {
+#ifdef INTERNAL_VERTICAL_LAYOUT
+                frameOfItem.origin.x = row->getFrame().right() + minimumInteritemSpacing;
+#else
+                frameOfItem.origin.y = row->getFrame().bottom() + minimumInteritemSpacing;
+#endif // #ifdef INTERNAL_VERTICAL_LAYOUT
+            }
+            
+            sectionItem = new FlexItem(itemIndex, frameOfItem);
+            
+            BaseSection::m_items.push_back(sectionItem);
+#ifdef INTERNAL_VERTICAL_LAYOUT
+            row->addItemVertically(sectionItem);
+#else
+            row->addItemHorizontally(sectionItem);
+#endif // #ifdef INTERNAL_VERTICAL_LAYOUT
+        }
+        
+        // The last row
+        if (NULL != row)
+        {
+            m_rows.push_back(row);
+            
+#ifdef INTERNAL_VERTICAL_LAYOUT
+            originOfRow.y += row->getFrame().height();
+#else
+            originOfRow.x += row->getFrame().width();
+#endif // #ifdef INTERNAL_VERTICAL_LAYOUT
+        }
+        
+#ifdef INTERNAL_VERTICAL_LAYOUT
+        originOfRow.y += sectionInset.bottom;
+#else
+        originOfRow.x += sectionInset.right;
+#endif // #ifdef INTERNAL_VERTICAL_LAYOUT
+        
+        return originOfRow;
+
+#undef INTERNAL_VERTICAL_LAYOUT
+    }
+    
+    bool filterItemsInRect(std::vector<FlexItem *> &items, const Rect &rectInSection)
     {
         bool matched = false;
         
-        std::pair<std::vector<UIFlexRow *>::iterator, std::vector<UIFlexRow *>::iterator> range = IS_CV_VERTICAL(UISectionT<TLayout>::m_layout) ? getVirticalRowsInRect(rectInSection) : getHorizontalRowsInRect(rectInSection);
+        std::pair<typename std::vector<FlexRow *>::iterator, typename std::vector<FlexRow *>::iterator> range = BaseSection::isVertical() ? getVirticalRowsInRect(rectInSection) : getHorizontalRowsInRect(rectInSection);
         
-        
-        std::vector<UIFlexRow *>::iterator lastRow = range.second - 1;
-        for (std::vector<UIFlexRow *>::iterator it = range.first; it != range.second; ++it)
+        typename std::vector<FlexRow *>::iterator lastRow = range.second - 1;
+        for (typename std::vector<FlexRow *>::iterator it = range.first; it != range.second; ++it)
         {
-            std::pair<std::vector<UIFlexItem *>::iterator, std::vector<UIFlexItem *>::iterator> itemRange = (*it)->getItemIterator();
-            for (std::vector<UIFlexItem *>::iterator itItem = itemRange.first; itItem != itemRange.second; ++itItem)
+            std::pair<typename std::vector<FlexItem *>::iterator, typename std::vector<FlexItem *>::iterator> itemRange = (*it)->getItemIterator();
+            for (typename std::vector<FlexItem *>::iterator itItem = itemRange.first; itItem != itemRange.second; ++itItem)
             {
-                if ((it != range.first && it != lastRow) || CGRectIntersectsRect((*itItem)->getFrame(), rectInSection))
+                if ((it != range.first && it != lastRow) || (*itItem)->getFrame().intersects(rectInSection))
                 {
-                    // layoutAttributes
-                    NSIndexPath *indexPath = [NSIndexPath indexPathForItem:(*itItem)->getItem() inSection:(UISectionT<TLayout>::m_section)];
-                    UICollectionViewLayoutAttributes *la = [UISectionT<TLayout>::m_layout layoutAttributesForItemAtIndexPath:indexPath];
-                    
-                    la.frame = CGRectMake((*itItem)->getFrame().origin.x + UISectionT<TLayout>::m_frame.origin.x, (*itItem)->getFrame().origin.y + UISectionT<TLayout>::m_frame.origin.y, (*itItem)->getFrame().size.width, (*itItem)->getFrame().size.height);
-                    
-                    [layoutAttributes addObject:la];
+                    items.push_back(*itItem);
                     matched = true;
                 }
             }
@@ -373,19 +339,19 @@ public:
         return matched;
     }
     
-    inline std::pair<std::vector<UIFlexRow *>::iterator, std::vector<UIFlexRow *>::iterator> getVirticalRowsInRect(const CGRect& rect)
+    inline std::pair<typename std::vector<FlexRow *>::iterator, typename std::vector<FlexRow *>::iterator> getVirticalRowsInRect(const Rect& rect)
     {
-        return std::equal_range(m_rows.begin(), m_rows.end(), std::pair<CGFloat, CGFloat>(rect.origin.y, rect.origin.y + rect.size.height), UIFlexRowVerticalCompare());
+        return std::equal_range(m_rows.begin(), m_rows.end(), std::pair<TCoordinate, TCoordinate>(rect.top(), rect.bottom()), UIFlexRowVerticalCompare());
     }
     
-    inline std::pair<std::vector<UIFlexRow *>::iterator, std::vector<UIFlexRow *>::iterator> getHorizontalRowsInRect(const CGRect& rect)
+    inline std::pair<typename std::vector<FlexRow *>::iterator, typename std::vector<FlexRow *>::iterator> getHorizontalRowsInRect(const Rect& rect)
     {
-        return std::equal_range(m_rows.begin(), m_rows.end(), std::pair<CGFloat, CGFloat>(rect.origin.x, rect.origin.x + rect.size.width), UIFlexRowHorizontalCompare());
+        return std::equal_range(m_rows.begin(), m_rows.end(), std::pair<TCoordinate, TCoordinate>(rect.left(), rect.right()), UIFlexRowHorizontalCompare());
     }
     
     
 };
 
-
+} // namespace nsflex
 
 #endif /* FlowSection_h */

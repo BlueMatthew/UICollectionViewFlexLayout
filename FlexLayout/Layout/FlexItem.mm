@@ -9,7 +9,10 @@
 #import "FlexItem.h"
 #import <UIKit/UIKit.h>
 
-UICollectionViewLayoutAttributes* UIFlexItem::buildLayoutAttributesForCell(Class layoutAttributesClass, NSIndexPath *indexPath, CGPoint sectionOrigin)
+namespace nsflex
+{
+
+UICollectionViewLayoutAttributes* FlexItem::buildLayoutAttributesForCell(Class layoutAttributesClass, NSIndexPath *indexPath, CGPoint sectionOrigin)
 {
     if (nil == m_la)
     {
@@ -20,7 +23,7 @@ UICollectionViewLayoutAttributes* UIFlexItem::buildLayoutAttributesForCell(Class
     return m_la;
 }
 
-UICollectionViewLayoutAttributes* UIFlexItem::buildLayoutAttributesForSupplementaryView(Class layoutAttributesClass, NSString *representedElementKind, NSIndexPath *indexPath, CGPoint sectionOrigin)
+UICollectionViewLayoutAttributes* FlexItem::buildLayoutAttributesForSupplementaryView(Class layoutAttributesClass, NSString *representedElementKind, NSIndexPath *indexPath, CGPoint sectionOrigin)
 {
     if (nil == m_la)
     {
@@ -31,7 +34,7 @@ UICollectionViewLayoutAttributes* UIFlexItem::buildLayoutAttributesForSupplement
     return m_la;
 }
 
-UICollectionViewLayoutAttributes* UIFlexItem::buildLayoutAttributesForDecorationView(Class layoutAttributesClass, NSString *representedElementKind, NSIndexPath *indexPath, CGPoint sectionOrigin)
+UICollectionViewLayoutAttributes* FlexItem::buildLayoutAttributesForDecorationView(Class layoutAttributesClass, NSString *representedElementKind, NSIndexPath *indexPath, CGPoint sectionOrigin)
 {
     if (nil == m_la)
     {
@@ -40,4 +43,6 @@ UICollectionViewLayoutAttributes* UIFlexItem::buildLayoutAttributesForDecoration
     m_la.frame = CGRectMake(m_frame.origin.x + sectionOrigin.x, m_frame.origin.y + sectionOrigin.y, m_frame.size.width, m_frame.size.height);
     
     return m_la;
+}
+
 }

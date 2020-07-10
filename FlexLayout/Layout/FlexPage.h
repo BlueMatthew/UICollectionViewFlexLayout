@@ -12,6 +12,11 @@
 #import "Section.h"
 #include <vector>
 
+namespace nsflex
+{
+
 // typedef std::vector<UISectionT<TLayout> *> UIFlexPageSections;
+
+} // namespace nsflex
 
 #endif /* FlexPage_h */

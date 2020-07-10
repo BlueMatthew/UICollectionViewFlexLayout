@@ -12,71 +12,118 @@
 #import <Foundation/Foundation.h>
 #import <CoreGraphics/CoreGraphics.h>
 #include <map>
+#include "Graphics.h"
+
 
 @class UICollectionViewLayoutAttributes;
 @class NSIndexPath;
 
-class UIFlexItem
+namespace nsflex
 {
-private:
-    NSInteger m_item;
-    CGRect m_frame; // The origin is in the coordinate system of section, should convert to the coordinate system of UICollectionView
-    UICollectionViewLayoutAttributes *m_la;
-   
+
+template <typename TInt, typename TCoordinate>
+class FlexItemT
+{
 public:
-    UIFlexItem() : m_item(0), m_frame(CGRectZero), m_la(NULL)
+    typedef TCoordinate CoordinateType;
+    typedef RectT<TCoordinate> Rect;
+
+private:
+    TInt m_item;
+    Rect m_frame; // The origin is in the coordinate system of section, should convert to the coordinate system of UICollectionView
+    union {
+        struct
+        {
+            unsigned int m_header : 1;
+            unsigned int m_footer : 1;
+            unsigned int m_decoration : 1;
+            unsigned int m_placeHolder : 1;
+            unsigned int m_fullSpan : 1;
+        };
+        unsigned int m_flags;
+    };
+
+public:
+    FlexItemT() : m_item(0), m_frame(), m_flags(0)
     {
     }
     
-    UIFlexItem(NSInteger item) : m_item(item), m_frame(CGRectZero), m_la(NULL)
+    FlexItemT(TInt item) : m_item(item), m_frame(), m_flags(0)
     {
     }
     
-    UIFlexItem(NSInteger item, CGPoint origin, CGSize size) : m_item(item), m_frame ({.origin = origin, .size = size})
+    FlexItemT(TInt item, const Rect &frame) : m_item(item), m_frame(frame), m_flags(0)
     {
     }
     
-    inline NSInteger getItem() const { return m_item; }
-    inline CGRect &getFrame() { return m_frame; }
-    inline const CGRect getFrame() const { return m_frame; }
+    bool isHeader() const { return m_header; }
+    void setHeader(bool header) { m_header = header ? 1 : 0; }
     
-    void clearLayoutAttributes()
-    {
-        m_la = nil;
-    }
+    bool isFooter() const { return m_footer; }
+    void setFooter(bool footer) { m_footer = footer ? 1 : 0; }
     
-    UICollectionViewLayoutAttributes* buildLayoutAttributesForCell(Class layoutAttributesClass, NSIndexPath *indexPath, CGPoint sectionOrigin);
-    UICollectionViewLayoutAttributes* buildLayoutAttributesForSupplementaryView(Class layoutAttributesClass, NSString *representedElementKind, NSIndexPath *indexPath, CGPoint sectionOrigin);
-    UICollectionViewLayoutAttributes* buildLayoutAttributesForDecorationView(Class layoutAttributesClass, NSString *representedElementKind, NSIndexPath *indexPath, CGPoint sectionOrigin);
+    bool isDecoration() const { return m_decoration; }
+    void setDecoration(bool decoration) { m_decoration = decoration ? 1 : 0; }
+    
+    bool isItem() const { return !(m_header || m_footer || m_decoration); }
+    
+    bool isFullSpan() const { return m_fullSpan; }
+    void setFullSpan(bool fullSpan) { m_fullSpan = fullSpan ? 1 : 0; }
+    
+    bool isPlaceHolder() const { return m_placeHolder; }
+    void setPlaceHolder(bool placeHolder) { m_placeHolder = placeHolder ? 1 : 0; }
+
+    inline TInt getItem() const { return m_item; }
+    inline Rect &getFrame() { return m_frame; }
+    inline const Rect getFrame() const { return m_frame; }
+
 };
 
 template<typename T>
-struct UIVerticalCompare
+struct FlexVerticalCompareT
 {
-    bool operator() ( const T* item, const std::pair<CGFloat, CGFloat>& topBottom) const
+    bool operator() ( const T* item, const std::pair<typename T::CoordinateType, typename T::CoordinateType>& topBottom) const
     {
-        return item->getFrame().origin.y + item->getFrame().size.height < topBottom.first;
+        return item->getFrame().bottom() < topBottom.first;
     }
-    bool operator() ( const std::pair<CGFloat, CGFloat>& topBottom, const T* item ) const
+    bool operator() ( const std::pair<typename T::CoordinateType, typename T::CoordinateType>& topBottom, const T* item ) const
     {
-        return topBottom.second < item->getFrame().origin.y;
+        return topBottom.second < item->getFrame().top();
     }
 };
 
 template<typename T>
-struct UIHorizontalCompare
+struct FlexHorizontalCompareT
 {
-    bool operator() ( const T* item, const std::pair<CGFloat, CGFloat>& leftRight) const
+    bool operator() ( const T* item, const std::pair<typename T::CoordinateType, typename T::CoordinateType>& leftRight) const
     {
-        return item->getFrame().origin.x + item->getFrame().size.width < leftRight.first;
+        return item->getFrame().right() < leftRight.first;
     }
-    bool operator() ( const std::pair<CGFloat, CGFloat>& leftRight, const T* item ) const
+    bool operator() ( const std::pair<typename T::CoordinateType, typename T::CoordinateType>& leftRight, const T* item ) const
     {
-        return leftRight.second < item->getFrame().origin.x;
+        return leftRight.second < item->getFrame().left();
+    }
+};
+  
+template<typename T>
+struct FlexHorizontalSizeCompare
+{
+    bool operator() ( const T* lhs, const T* rhs) const
+    {
+        return lhs->getFrame().width() < rhs->getFrame().width();
     }
 };
 
-typedef UIVerticalCompare<UIFlexItem> UIFlexItemVerticalCompare;
-typedef UIHorizontalCompare<UIFlexItem> UIFlexItemHorizontalCompare;
+template<typename T>
+struct FlexVerticalSizeCompare
+{
+    bool operator() ( const T* lhs, const T* rhs) const
+    {
+        return lhs->getFrame().height() < rhs->getFrame().height();
+    }
+};
+
+    
+} // namespace nsflex
 
 #endif /* FlexItem_h */

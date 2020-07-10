@@ -9,6 +9,9 @@
 #ifndef LayoutUtils_h
 #define LayoutUtils_h
 
+namespace nsflex
+{
+
 class DirectionalTransformor
 {
 public:
@@ -83,4 +86,6 @@ public:
 #define CV_SIZE(layout, size) (IS_CV_VERTICAL(layout) ? size.width : size.height)
 #define CV_ORIGIN(layout, point) (IS_CV_VERTICAL(layout) ? point.y : point.x)
 
+} // namespace nsflex
+    
 #endif /* LayoutUtils_h */
