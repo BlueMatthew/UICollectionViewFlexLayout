@@ -63,6 +63,27 @@ typedef nsflex::FlexHorizontalCompareT<UISection> UISectionHorizontalCompare;
 
 @end
 
+inline CGRect CGRectFromFlexRect(const nsflex::Rect& rect)
+{
+    CGRect result;
+    result.origin.x = rect.left();
+    result.origin.y = rect.top();
+    result.size.width = rect.width();
+    result.size.height = rect.height();
+    
+    return result;
+}
+
+inline nsflex::Size FlexSizeFromCGSize(const CGSize& size)
+{
+    Size result;
+    result.width = size.width;
+    result.height = size.height;
+    
+    return result;
+}
+
+
 namespace nsflex
 {
     class LayoutAdapter
@@ -88,7 +109,7 @@ namespace nsflex
         inline Size getSizeForItem(NSInteger section, NSInteger item) const
         {
             CGSize size = [m_layout getSizeForItemAtIndexPath:[NSIndexPath indexPathForItem:item inSection:section]];
-            return (Size &)(*(reinterpret_cast<Size *>(&size)));    // unsafe convertion but...
+            return FlexSizeFromCGSize(size);
         }
         
         inline Insets getInsetForSection(NSInteger section) const
@@ -110,20 +131,19 @@ namespace nsflex
         inline Size getSizeForHeaderInSection(NSInteger section) const
         {
             CGSize size = [m_layout getSizeForHeaderInSection:section];
-            return (Size &)(*(reinterpret_cast<Size *>(&size)));    // unsafe convertion but...
+            return FlexSizeFromCGSize(size);
         }
         
         inline Size getSizeForFooterInSection(NSInteger section) const
         {
             CGSize size = [m_layout getSizeForFooterInSection:section];
-            return (Size &)(*(reinterpret_cast<Size *>(&size)));    // unsafe convertion but...
+            return FlexSizeFromCGSize(size);
         }
         
         inline NSInteger getNumberOfColumnsForSection(NSInteger section) const
         {
             return [m_layout getNumberOfColumnsForSection:section];
         }
-        
         
         inline bool isFullSpanAtItem(NSInteger section, NSInteger item) const
         {
@@ -136,26 +156,13 @@ namespace nsflex
             BOOL hasFixedSize = [m_layout hasFixedSize:&size forSection:section];
             if (NULL != fixedSize)
             {
-                fixedSize->width = size.width;
-                fixedSize->height = size.height;
+                *fixedSize = FlexSizeFromCGSize(size);
             }
             
             return hasFixedSize;
         }
     };
 }
-
-inline CGRect CGRectFromFlexRect(const nsflex::Rect& rect)
-{
-    CGRect result;
-    result.origin.x = rect.left();
-    result.origin.y = rect.top();
-    result.size.width = rect.width();
-    result.size.height = rect.height();
-    
-    return result;
-}
-
 
 /*
 class UICollectionViewFlexLayoutSectionContextAdapter

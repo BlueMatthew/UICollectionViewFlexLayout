@@ -9,14 +9,8 @@
 #ifndef FlexItem_h
 #define FlexItem_h
 
-#import <Foundation/Foundation.h>
-#import <CoreGraphics/CoreGraphics.h>
 #include <map>
 #include "Graphics.h"
-
-
-@class UICollectionViewLayoutAttributes;
-@class NSIndexPath;
 
 namespace nsflex
 {

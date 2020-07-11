@@ -9,7 +9,6 @@
 #ifndef Section_h
 #define Section_h
 
-#import <UIKit/UIKit.h>
 #include <vector>
 #include <map>
 #include <algorithm>
@@ -83,7 +82,7 @@ public:
     
     virtual ~FlexSectionT()
     {
-        m_layout = nil;
+        m_layout = NULL;
         clearItems();
     }
     
