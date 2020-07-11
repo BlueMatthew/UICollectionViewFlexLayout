@@ -76,7 +76,7 @@ inline CGRect CGRectFromFlexRect(const nsflex::Rect& rect)
 
 inline nsflex::Size FlexSizeFromCGSize(const CGSize& size)
 {
-    Size result;
+    nsflex::Size result;
     result.width = size.width;
     result.height = size.height;
     
