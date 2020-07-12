@@ -36,8 +36,8 @@ typedef nsflex::FlexHorizontalCompareT<FlexItem> FlexItemHorizontalCompare;
 
 
 typedef nsflex::FlexSectionT<nsflex::LayoutAdapter, NSInteger, CGFloat> UISection;
-typedef nsflex::FlexFlowSectionT<nsflex::LayoutAdapter, NSInteger, CGFloat> UIFlowSection;
-typedef nsflex::FlexWaterfallSectionT<nsflex::LayoutAdapter, NSInteger, CGFloat> UIWaterfallSection;
+typedef nsflex::FlexFlowSectionT<UISection> UIFlowSection;
+typedef nsflex::FlexWaterfallSectionT<UISection> UIWaterfallSection;
 typedef nsflex::FlexVerticalCompareT<UISection> UISectionVerticalCompare;
 typedef nsflex::FlexHorizontalCompareT<UISection> UISectionHorizontalCompare;
 
@@ -150,16 +150,16 @@ namespace nsflex
             return [m_layout isFullSpanAtItem:item forSection:section];
         }
         
-        inline bool hasFixedSize(NSInteger section, Size *fixedSize) const
+        inline bool hasFixedItemSize(NSInteger section, Size *fixedItemSize) const
         {
             CGSize size = CGSizeZero;
-            BOOL hasFixedSize = [m_layout hasFixedSize:&size forSection:section];
-            if (NULL != fixedSize)
+            BOOL hasFixedItemSize = [m_layout hasFixedSize:&size forSection:section];
+            if (NULL != fixedItemSize)
             {
-                *fixedSize = FlexSizeFromCGSize(size);
+                *fixedItemSize = FlexSizeFromCGSize(size);
             }
             
-            return hasFixedSize;
+            return hasFixedItemSize;
         }
     };
 }

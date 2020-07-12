@@ -25,16 +25,16 @@ class TLayoutImpl
 public:
 
  bool isVertical() const;
- TInt m_layout->getNumberOfItemsInSection(TInt section) const;
- SizeT<TCoordinate> m_layout->getSizeForItem(TInt section, TInt item) const;
+ TInt getNumberOfItemsInSection(TInt section) const;
+ SizeT<TCoordinate> getSizeForItem(TInt section, TInt item) const;
  InsetsT<TCoordinate> getInsetForSection(TInt section) const;
  TCoordinate getMinimumLineSpacingForSection(TInt section) const;
  TCoordinate getMinimumInteritemSpacingForSection(TInt section) const;
  SizeT<TCoordinate> getSizeForHeaderInSection(TInt section) const;
- inline SizeT<TCoordinate> getSizeForFooterInSection(TInt section) const;
+ SizeT<TCoordinate> getSizeForFooterInSection(TInt section) const;
  TInt getNumberOfColumnsForSection(TInt section) const;
  bool isFullSpanAtItem(TInt section, TInt item) const ;
- bool hasFixedSize(TInt section, SizeT<TCoordinate> *fixedSize);
+ bool hasFixedItemSize(TInt section, SizeT<TCoordinate> *fixedItemSize) const;
 
 };
 */
@@ -43,6 +43,8 @@ template<class TLayout, class TInt, class TCoordinate>
 class FlexSectionT
 {
 public:
+    typedef TLayout LayoutType;
+    typedef TInt IntType;
     typedef TCoordinate CoordinateType;
     typedef FlexItemT<TInt, TCoordinate> FlexItem;
     typedef PointT<TCoordinate> Point;

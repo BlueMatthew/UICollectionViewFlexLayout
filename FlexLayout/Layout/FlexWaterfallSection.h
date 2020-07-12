@@ -15,23 +15,25 @@
 namespace nsflex
 {
 
-template<typename TLayout, typename TInt, typename TCoordinate>
-class FlexWaterfallSectionT : public FlexSectionT<TLayout, TInt, TCoordinate>
+template<typename TBaseSection>
+class FlexWaterfallSectionT : public TBaseSection
 {
 protected:
-    typedef FlexSectionT<TLayout, TInt, TCoordinate> BaseSection;
-    typedef PointT<TCoordinate> Point;
-    typedef SizeT<TCoordinate> Size;
-    typedef RectT<TCoordinate> Rect;
-    typedef InsetsT<TCoordinate> Insets;
-    typedef FlexItemT<TInt, TCoordinate> FlexItem;
+    typedef typename TBaseSection::LayoutType TLayout;
+    typedef typename TBaseSection::IntType TInt;
+    typedef typename TBaseSection::CoordinateType TCoordinate;
+    typedef typename TBaseSection::Point Point;
+    typedef typename TBaseSection::Size Size;
+    typedef typename TBaseSection::Rect Rect;
+    typedef typename TBaseSection::Insets Insets;
+    typedef typename TBaseSection::FlexItem FlexItem;
     typedef FlexColumnT<TInt, TCoordinate> FlexColumn;
 
 public:
     std::vector<FlexItem *> m_placeHolderItems;
     std::vector<FlexColumn *> m_columns;
     
-    FlexWaterfallSectionT(TLayout *layout, TInt section, const Rect &frame) : BaseSection(layout, section, frame)
+    FlexWaterfallSectionT(TLayout *layout, TInt section, const Rect &frame) : TBaseSection(layout, section, frame)
     {
     }
     
@@ -56,29 +58,29 @@ protected:
 
         // Items
         clearColumns();
-        BaseSection::clearItems();
+        TBaseSection::clearItems();
         
 #ifdef INTERNAL_VERTICAL_LAYOUT
-        Rect frameOfColumn(bounds.left(), BaseSection::m_header.getFrame().bottom(), 0, 0);
+        Rect frameOfColumn(bounds.left(), TBaseSection::m_header.getFrame().bottom(), 0, 0);
 #else
         Rect frameOfColumn(BaseSection::m_header.getFrame().right(), bounds.top(), 0, 0);
 #endif // #ifdef INTERNAL_VERTICAL_LAYOUT
 
-        TInt numberOfItems = BaseSection::getNumberOfItems();
+        TInt numberOfItems = TBaseSection::getNumberOfItems();
         if (numberOfItems == 0)
         {
             return frameOfColumn.origin;
         }
         
-        BaseSection::m_items.reserve(numberOfItems);
+        TBaseSection::m_items.reserve(numberOfItems);
             
-        Insets sectionInset = BaseSection::getInsets();
+        Insets sectionInset = TBaseSection::getInsets();
         
-        TCoordinate minimumLineSpacing = BaseSection::getMinimumLineSpacing();
-        TCoordinate minimumInteritemSpacing = BaseSection::getMinimumInteritemSpacing();
+        TCoordinate minimumLineSpacing = TBaseSection::getMinimumLineSpacing();
+        TCoordinate minimumInteritemSpacing = TBaseSection::getMinimumInteritemSpacing();
         
         // Get Number of Columns
-        TInt numberOfColumns = BaseSection::getNumberOfColumns();
+        TInt numberOfColumns = TBaseSection::getNumberOfColumns();
         if (numberOfColumns < 1)
         {
             numberOfColumns = 1;
@@ -89,7 +91,7 @@ protected:
         TCoordinate sizeOfColumn = 0.0;
         
 #ifdef INTERNAL_VERTICAL_LAYOUT
-        TCoordinate availableSizeOfColumn = BaseSection::m_frame.size.width - sectionInset.left - sectionInset.right;
+        TCoordinate availableSizeOfColumn = TBaseSection::m_frame.size.width - sectionInset.left - sectionInset.right;
         frameOfColumn.origin.y += sectionInset.top;
 #else
         TCoordinate availableSizeOfColumn = BaseSection::m_frame.size.height - sectionInset.top - sectionInset.bottom;
@@ -137,7 +139,7 @@ protected:
         Rect frameOfItem;
         for (TInt itemIndex = 0; itemIndex < numberOfItems; itemIndex++)
         {
-            bool isFullSpan = BaseSection::isFullSpanAtItem(itemIndex);
+            bool isFullSpan = TBaseSection::isFullSpanAtItem(itemIndex);
             
             // Find the column with lowest hight
             itOfTargetColumn = isFullSpan ? max_element(m_columns.begin(), m_columns.end(), compare) : min_element(m_columns.begin(), m_columns.end(), compare);
@@ -151,7 +153,7 @@ protected:
             frameOfItem.origin.y = (*itOfTargetColumn)->getFrame().top();
 #endif // #ifdef INTERNAL_VERTICAL_LAYOUT
             
-            frameOfItem.size = BaseSection::getSizeForItem(itemIndex);
+            frameOfItem.size = TBaseSection::getSizeForItem(itemIndex);
             FlexItem *item = new FlexItem(itemIndex, frameOfItem);
 
             if (isFullSpan)
@@ -183,7 +185,7 @@ protected:
             (*itOfTargetColumn)->addItemHorizontally(item);
 #endif // #ifdef INTERNAL_VERTICAL_LAYOUT
 
-            BaseSection::m_items.push_back(item);
+            TBaseSection::m_items.push_back(item);
         }
         
         // Find the column with highest height
@@ -207,29 +209,29 @@ protected:
 
         // Items
         clearColumns();
-        BaseSection::clearItems();
+        TBaseSection::clearItems();
         
 #ifdef INTERNAL_VERTICAL_LAYOUT
         Rect frameOfColumn(bounds.left(), BaseSection::m_header.getFrame().bottom(), 0, 0);
 #else
-        Rect frameOfColumn(BaseSection::m_header.getFrame().right(), bounds.top(), 0, 0);
+        Rect frameOfColumn(TBaseSection::m_header.getFrame().right(), bounds.top(), 0, 0);
 #endif // #ifdef INTERNAL_VERTICAL_LAYOUT
         
-        TInt numberOfItems = BaseSection::getNumberOfItems();
+        TInt numberOfItems = TBaseSection::getNumberOfItems();
         if (numberOfItems == 0)
         {
             return frameOfColumn.origin;
         }
         
-        BaseSection::m_items.reserve(numberOfItems);
+        TBaseSection::m_items.reserve(numberOfItems);
         
-        Insets sectionInset = BaseSection::getInsets();
+        Insets sectionInset = TBaseSection::getInsets();
         
-        TCoordinate minimumLineSpacing = BaseSection::getMinimumLineSpacing();
-        TCoordinate minimumInteritemSpacing = BaseSection::getMinimumInteritemSpacing();
+        TCoordinate minimumLineSpacing = TBaseSection::getMinimumLineSpacing();
+        TCoordinate minimumInteritemSpacing = TBaseSection::getMinimumInteritemSpacing();
         
         // Get Number of Columns
-        TInt numberOfColumns = BaseSection::getNumberOfColumns();
+        TInt numberOfColumns = TBaseSection::getNumberOfColumns();
         if (numberOfColumns < 1)
         {
             numberOfColumns = 1;
@@ -243,7 +245,7 @@ protected:
         TCoordinate availableSizeOfColumn = BaseSection::m_frame.size.width - sectionInset.left - sectionInset.right;
         frameOfColumn.origin.y += sectionInset.top;
 #else
-        TCoordinate availableSizeOfColumn = BaseSection::m_frame.size.height - sectionInset.top - sectionInset.bottom;
+        TCoordinate availableSizeOfColumn = TBaseSection::m_frame.size.height - sectionInset.top - sectionInset.bottom;
         frameOfColumn.origin.x += sectionInset.left;
 #endif // #ifdef INTERNAL_VERTICAL_LAYOUT
         
@@ -288,7 +290,7 @@ protected:
         Rect frameOfItem;
         for (TInt itemIndex = 0; itemIndex < numberOfItems; itemIndex++)
         {
-            bool isFullSpan = BaseSection::isFullSpanAtItem(itemIndex);
+            bool isFullSpan = TBaseSection::isFullSpanAtItem(itemIndex);
             
             // Find the column with lowest hight
             itOfTargetColumn = isFullSpan ? max_element(m_columns.begin(), m_columns.end(), compare) : min_element(m_columns.begin(), m_columns.end(), compare);
@@ -302,7 +304,7 @@ protected:
             frameOfItem.origin.y = (*itOfTargetColumn)->getFrame().top();
 #endif // #ifdef INTERNAL_VERTICAL_LAYOUT
             
-            frameOfItem.size = BaseSection::getSizeForItem(itemIndex);
+            frameOfItem.size = TBaseSection::getSizeForItem(itemIndex);
             FlexItem *item = new FlexItem(itemIndex, frameOfItem);
             
             if (isFullSpan)
@@ -334,7 +336,7 @@ protected:
             (*itOfTargetColumn)->addItemHorizontally(item);
 #endif // #ifdef INTERNAL_VERTICAL_LAYOUT
             
-            BaseSection::m_items.push_back(item);
+            TBaseSection::m_items.push_back(item);
         }
         
         // Find the column with highest height
@@ -357,7 +359,7 @@ protected:
         // Items
         for (typename std::vector<FlexColumn *>::iterator it = m_columns.begin(); it != m_columns.end(); ++it)
         {
-            std::pair<typename std::vector<FlexItem *>::iterator, typename std::vector<FlexItem *>::iterator> range = BaseSection::isVertical() ? (*it)->getVirticalItemsInRect(rectInSection) : (*it)->getHorizontalItemsInRect(rectInSection);
+            std::pair<typename std::vector<FlexItem *>::iterator, typename std::vector<FlexItem *>::iterator> range = TBaseSection::isVertical() ? (*it)->getVirticalItemsInRect(rectInSection) : (*it)->getHorizontalItemsInRect(rectInSection);
             
             for (typename std::vector<FlexItem *>::iterator itItem = range.first; itItem != range.second; ++itItem)
             {

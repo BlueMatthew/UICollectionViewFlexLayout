@@ -18,25 +18,26 @@
 namespace nsflex
 {
     
-template<typename TLayout, typename TInt, typename TCoordinate>
-class FlexFlowSectionT : public FlexSectionT<TLayout, TInt, TCoordinate>
+template<class TBaseSection>
+class FlexFlowSectionT : public TBaseSection
 {
 protected:
-    typedef FlexSectionT<TLayout, TInt, TCoordinate> BaseSection;
-    typedef PointT<TCoordinate> Point;
-    typedef SizeT<TCoordinate> Size;
-    typedef RectT<TCoordinate> Rect;
-    typedef InsetsT<TCoordinate> Insets;
-    typedef FlexItemT<TInt, TCoordinate> FlexItem;
+    typedef typename TBaseSection::LayoutType TLayout;
+    typedef typename TBaseSection::IntType TInt;
+    typedef typename TBaseSection::CoordinateType TCoordinate;
+    typedef typename TBaseSection::Point Point;
+    typedef typename TBaseSection::Size Size;
+    typedef typename TBaseSection::Rect Rect;
+    typedef typename TBaseSection::Insets Insets;
+    typedef typename TBaseSection::FlexItem FlexItem;
     typedef FlexRowT<TInt, TCoordinate> FlexRow;
     typedef FlexVerticalCompareT<FlexRow> UIFlexRowVerticalCompare;
     typedef FlexHorizontalCompareT<FlexRow> UIFlexRowHorizontalCompare;
 
-    
 public:
     std::vector<FlexRow *> m_rows;
     
-    FlexFlowSectionT(TLayout *layout, TInt section, const Rect &frame) : BaseSection(layout, section, frame)
+    FlexFlowSectionT(TLayout *layout, TInt section, const Rect &frame) : TBaseSection(layout, section, frame)
     {
     }
     
@@ -58,33 +59,33 @@ protected:
 
         // Items
         clearRows();
-        BaseSection::clearItems();
+        TBaseSection::clearItems();
         
 #ifdef INTERNAL_VERTICAL_LAYOUT
-        Point originOfRow(BaseSection::m_header.getFrame().left(), BaseSection::m_header.getFrame().bottom());
+        Point originOfRow(TBaseSection::m_header.getFrame().left(), TBaseSection::m_header.getFrame().bottom());
 #else
         Point originOfRow(BaseSection::m_header.getFrame().right(), BaseSection::m_header.getFrame().top());
 #endif // #ifdef INTERNAL_VERTICAL_LAYOUT
         
-        TInt numberOfItems = BaseSection::getNumberOfItems();
+        TInt numberOfItems = TBaseSection::getNumberOfItems();
         if (numberOfItems == 0)
         {
             return originOfRow;
         }
         
-        Insets sectionInset = BaseSection::getInsets();
+        Insets sectionInset = TBaseSection::getInsets();
         
-        BaseSection::m_items.reserve(numberOfItems);
+        TBaseSection::m_items.reserve(numberOfItems);
         
         // For FlowLayout, there is no column property but we still try to get the number of columns, and use it to estimate the number of rows
-        TInt numberOfColumns = BaseSection::getNumberOfColumns();
+        TInt numberOfColumns = TBaseSection::getNumberOfColumns();
         m_rows.reserve(numberOfColumns > 0 ? ceil(numberOfItems / numberOfColumns) : numberOfItems);
         
-        TCoordinate minimumLineSpacing = BaseSection::getMinimumLineSpacing();
-        TCoordinate minimumInteritemSpacing = BaseSection::getMinimumInteritemSpacing();
+        TCoordinate minimumLineSpacing = TBaseSection::getMinimumLineSpacing();
+        TCoordinate minimumInteritemSpacing = TBaseSection::getMinimumInteritemSpacing();
         
 #ifdef INTERNAL_VERTICAL_LAYOUT
-        TCoordinate maximalSizeOfRow = BaseSection::m_frame.width() - sectionInset.left - sectionInset.right;
+        TCoordinate maximalSizeOfRow = TBaseSection::m_frame.width() - sectionInset.left - sectionInset.right;
 #else
         TCoordinate maximalSizeOfRow = BaseSection::m_frame.height() - sectionInset.top - sectionInset.bottom;
 #endif // #ifdef INTERNAL_VERTICAL_LAYOUT
@@ -102,7 +103,7 @@ protected:
         
         for (TInt itemIndex = 0; itemIndex < numberOfItems; itemIndex++)
         {
-            frameOfItem.size = BaseSection::getSizeForItem(itemIndex);
+            frameOfItem.size = TBaseSection::getSizeForItem(itemIndex);
             
 #ifdef INTERNAL_VERTICAL_LAYOUT
             sizeOfItemInDirection = frameOfItem.width();
@@ -153,7 +154,7 @@ protected:
             
             sectionItem = new FlexItem(itemIndex, frameOfItem);
             
-            BaseSection::m_items.push_back(sectionItem);
+            TBaseSection::m_items.push_back(sectionItem);
 #ifdef INTERNAL_VERTICAL_LAYOUT
             row->addItemVertically(sectionItem);
 #else
@@ -190,35 +191,35 @@ protected:
 
         // Items
         clearRows();
-        BaseSection::clearItems();
+        TBaseSection::clearItems();
         
 #ifdef INTERNAL_VERTICAL_LAYOUT
         Point originOfRow(BaseSection::m_header.getFrame().left(), BaseSection::m_header.getFrame().bottom());
 #else
-        Point originOfRow(BaseSection::m_header.getFrame().right(), BaseSection::m_header.getFrame().top());
+        Point originOfRow(TBaseSection::m_header.getFrame().right(), TBaseSection::m_header.getFrame().top());
 #endif // #ifdef INTERNAL_VERTICAL_LAYOUT
         
-        TInt numberOfItems = BaseSection::getNumberOfItems();
+        TInt numberOfItems = TBaseSection::getNumberOfItems();
         if (numberOfItems == 0)
         {
             return originOfRow;
         }
         
-        Insets sectionInset = BaseSection::getInsets();
+        Insets sectionInset = TBaseSection::getInsets();
         
-        BaseSection::m_items.reserve(numberOfItems);
+        TBaseSection::m_items.reserve(numberOfItems);
         
         // For FlowLayout, there is no column property but we still try to get the number of columns, and use it to estimate the number of rows
-        TInt numberOfColumns = BaseSection::getNumberOfColumns();
+        TInt numberOfColumns = TBaseSection::getNumberOfColumns();
         m_rows.reserve(numberOfColumns > 0 ? ceil(numberOfItems / numberOfColumns) : numberOfItems);
         
-        TCoordinate minimumLineSpacing = BaseSection::getMinimumLineSpacing();
-        TCoordinate minimumInteritemSpacing = BaseSection::getMinimumInteritemSpacing();
+        TCoordinate minimumLineSpacing = TBaseSection::getMinimumLineSpacing();
+        TCoordinate minimumInteritemSpacing = TBaseSection::getMinimumInteritemSpacing();
         
 #ifdef INTERNAL_VERTICAL_LAYOUT
         TCoordinate maximalSizeOfRow = BaseSection::m_frame.width() - sectionInset.left - sectionInset.right;
 #else
-        TCoordinate maximalSizeOfRow = BaseSection::m_frame.height() - sectionInset.top - sectionInset.bottom;
+        TCoordinate maximalSizeOfRow = TBaseSection::m_frame.height() - sectionInset.top - sectionInset.bottom;
 #endif // #ifdef INTERNAL_VERTICAL_LAYOUT
         
         // Layout items
@@ -234,7 +235,7 @@ protected:
         
         for (TInt itemIndex = 0; itemIndex < numberOfItems; itemIndex++)
         {
-            frameOfItem.size = BaseSection::getSizeForItem(itemIndex);
+            frameOfItem.size = TBaseSection::getSizeForItem(itemIndex);
             
 #ifdef INTERNAL_VERTICAL_LAYOUT
             sizeOfItemInDirection = frameOfItem.width();
@@ -285,7 +286,7 @@ protected:
             
             sectionItem = new FlexItem(itemIndex, frameOfItem);
             
-            BaseSection::m_items.push_back(sectionItem);
+            TBaseSection::m_items.push_back(sectionItem);
 #ifdef INTERNAL_VERTICAL_LAYOUT
             row->addItemVertically(sectionItem);
 #else
@@ -320,7 +321,7 @@ protected:
     {
         bool matched = false;
         
-        std::pair<typename std::vector<FlexRow *>::iterator, typename std::vector<FlexRow *>::iterator> range = BaseSection::isVertical() ? getVirticalRowsInRect(rectInSection) : getHorizontalRowsInRect(rectInSection);
+        std::pair<typename std::vector<FlexRow *>::iterator, typename std::vector<FlexRow *>::iterator> range = TBaseSection::isVertical() ? getVirticalRowsInRect(rectInSection) : getHorizontalRowsInRect(rectInSection);
         
         typename std::vector<FlexRow *>::iterator lastRow = range.second - 1;
         for (typename std::vector<FlexRow *>::iterator it = range.first; it != range.second; ++it)
