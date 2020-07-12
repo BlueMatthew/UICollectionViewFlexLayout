@@ -88,6 +88,11 @@ public:
         clearItems();
     }
     
+    FlexItem *getItem(TInt itemIndex) const
+    {
+        return (itemIndex < m_items.size()) ? m_items[itemIndex] : NULL;
+    }
+    
     inline void clearItems()
     {
         for(typename std::vector<FlexItem *>::iterator it = m_items.begin(); it != m_items.end(); delete *it, ++it);
