@@ -34,7 +34,7 @@ public:
     {
     }
     
-    inline const Rect& getFrame() const { return m_frame; }
+    inline const Rect getFrame() const { return m_frame; }
     inline Rect& getFrame() { return m_frame; }
     
     bool hasItems() const

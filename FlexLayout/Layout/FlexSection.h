@@ -26,14 +26,13 @@ public:
 
  bool isVertical() const;
  TInt getNumberOfItemsInSection(TInt section) const;
- SizeT<TCoordinate> getSizeForItem(TInt section, TInt item) const;
+ SizeT<TCoordinate> getSizeForItem(TInt section, TInt item, bool *isFullSpan) const;
  InsetsT<TCoordinate> getInsetForSection(TInt section) const;
  TCoordinate getMinimumLineSpacingForSection(TInt section) const;
  TCoordinate getMinimumInteritemSpacingForSection(TInt section) const;
  SizeT<TCoordinate> getSizeForHeaderInSection(TInt section) const;
  SizeT<TCoordinate> getSizeForFooterInSection(TInt section) const;
  TInt getNumberOfColumnsForSection(TInt section) const;
- bool isFullSpanAtItem(TInt section, TInt item) const ;
  bool hasFixedItemSize(TInt section, SizeT<TCoordinate> *fixedItemSize) const;
 
 };
@@ -132,7 +131,7 @@ public:
         isVertical() ? prepareLayoutVertically(bounds) : prepareLayoutHorizontally(bounds);
     }
     
-    bool filterInRect(std::vector<FlexItem *> &items, const Rect &rect)
+    bool filterInRect(std::vector<const FlexItem *> &items, const Rect &rect) const
     {
         bool matched = false;
         
@@ -287,11 +286,11 @@ protected:
     virtual Point prepareLayoutWithItemsVertically(const Rect &bounds) = 0;
     virtual Point prepareLayoutWithItemsHorizontally(const Rect &bounds) = 0;
     
-    virtual bool filterItemsInRect(std::vector<FlexItem *> &items, const Rect &rectInSection) = 0;
+    virtual bool filterItemsInRect(std::vector<const FlexItem *> &items, const Rect &rectInSection) const = 0;
     
     inline const Rect getFrameInView(const Rect& rect) const
     {
-        Rect rectInView = rect;
+        Rect rectInView(rect);
         rectInView.offset(m_frame.origin.x, m_frame.origin.y);
         return rectInView;
     }
@@ -305,9 +304,9 @@ protected:
         return m_layout->getNumberOfItemsInSection(m_section);
     }
     
-    inline Size getSizeForItem(TInt item) const
+    inline Size getSizeForItem(TInt item, bool *isFullSpan) const
     {
-        return m_layout->getSizeForItem(m_section, item);
+        return m_layout->getSizeForItem(m_section, item, isFullSpan);
     }
     
     inline Insets getInsets() const

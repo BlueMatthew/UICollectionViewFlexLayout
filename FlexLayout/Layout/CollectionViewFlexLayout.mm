@@ -106,9 +106,13 @@ namespace nsflex
             return [m_layout getNumberOfItemsInSection:section];
         }
         
-        inline Size getSizeForItem(NSInteger section, NSInteger item) const
+        inline Size getSizeForItem(NSInteger section, NSInteger item, bool *isFullSpan) const
         {
             CGSize size = [m_layout getSizeForItemAtIndexPath:[NSIndexPath indexPathForItem:item inSection:section]];
+            if (isFullSpan != NULL)
+            {
+                *isFullSpan = [m_layout isFullSpanAtItem:item forSection:section];
+            }
             return FlexSizeFromCGSize(size);
         }
         
@@ -143,11 +147,6 @@ namespace nsflex
         inline NSInteger getNumberOfColumnsForSection(NSInteger section) const
         {
             return [m_layout getNumberOfColumnsForSection:section];
-        }
-        
-        inline bool isFullSpanAtItem(NSInteger section, NSInteger item) const
-        {
-            return [m_layout isFullSpanAtItem:item forSection:section];
         }
         
         inline bool hasFixedItemSize(NSInteger section, Size *fixedItemSize) const
@@ -227,6 +226,7 @@ protected:
     
     std::map<NSInteger, BOOL> m_stickyHeaders; // Section Index -> Sticy Status(YES/NO)
     
+    CGSize m_contentSize;
     BOOL m_layoutInvalidated;
     
     NSMutableDictionary<NSIndexPath *, UICollectionViewLayoutAttributes *> *m_itemLayoutAttributes;
@@ -268,7 +268,12 @@ protected:
         
         m_layoutAdapter = new nsflex::LayoutAdapter(self);
         
+        m_contentSize = CGSizeZero;
         m_layoutInvalidated = YES;
+        
+        m_itemLayoutAttributes = [NSMutableDictionary dictionaryWithCapacity:8];
+        m_headerLayoutAttributes = [NSMutableDictionary dictionaryWithCapacity:4];
+        m_footerLayoutAttributes = [NSMutableDictionary dictionaryWithCapacity:2];
     }
     return self;
 }
@@ -303,7 +308,12 @@ protected:
         
         m_layoutAdapter = new nsflex::LayoutAdapter(self);
         
+        m_contentSize = CGSizeZero;
         m_layoutInvalidated = YES;
+        
+        m_itemLayoutAttributes = [NSMutableDictionary dictionaryWithCapacity:8];
+        m_headerLayoutAttributes = [NSMutableDictionary dictionaryWithCapacity:4];
+        m_footerLayoutAttributes = [NSMutableDictionary dictionaryWithCapacity:2];
     }
     return self;
 }
@@ -560,6 +570,8 @@ protected:
         IS_CV_VERTICAL(self) ? (*it)->getFrame().origin.y = position : (*it)->getFrame().origin.x = position;
         position += IS_CV_VERTICAL(self) ? ((*it)->getFrame().size.height) : ((*it)->getFrame().size.width);
     }
+    
+    [self calcContentSize];
 }
 
 #pragma mark - Overrides
@@ -586,7 +598,7 @@ protected:
         UICollectionView *cv = self.collectionView;
         
         UIEdgeInsets insets = cv.contentInset;
-        nsflex::Rect bounds(cv.contentInset.left, insets.top, cv.bounds.size.width - insets.left - insets.right, cv.bounds.size.height - insets.top - insets.bottom);
+        nsflex::Rect bounds(insets.left, insets.top, cv.bounds.size.width - insets.left - insets.right, cv.bounds.size.height - insets.top - insets.bottom);
         for (NSInteger index = 0; index < numberOfSections; index++)
         {
             // Calc Section Frame
@@ -600,7 +612,12 @@ protected:
             m_sections.push_back(pSection);
         }
         
+        [self calcContentSize];
         m_layoutInvalidated = NO;
+        
+        [m_itemLayoutAttributes removeAllObjects];
+        [m_headerLayoutAttributes removeAllObjects];
+        [m_footerLayoutAttributes removeAllObjects];
         
 #ifdef DEBUG
         time = [[NSDate date] timeIntervalSince1970] * 1000;
@@ -608,7 +625,7 @@ protected:
         NSLog(@"PERF prepareLayout takes %0.2f ms", time - prevTime);
         
 #endif
-
+        
     }
 }
 
@@ -685,7 +702,7 @@ protected:
     
     nsflex::Rect visibleRect(contentOffset.x, contentOffset.y, self.collectionView.bounds.size.width, self.collectionView.bounds.size.height);
     
-    std::pair<std::vector<UISection *>::iterator, std::vector<UISection *>::iterator> range = IS_CV_VERTICAL(self) ? std::equal_range(m_sections.begin(), m_sections.end(), std::pair<CGFloat, CGFloat>(visibleRect.origin.y, visibleRect.origin.y + visibleRect.size.height), UISectionVerticalCompare()) : std::equal_range(m_sections.begin(), m_sections.end(), std::pair<CGFloat, CGFloat>(visibleRect.origin.x, visibleRect.origin.x + visibleRect.size.width), UISectionHorizontalCompare());
+    std::pair<std::vector<UISection *>::const_iterator, std::vector<UISection *>::const_iterator> range = IS_CV_VERTICAL(self) ? std::equal_range(m_sections.begin(), m_sections.end(), std::pair<CGFloat, CGFloat>(visibleRect.origin.y, visibleRect.origin.y + visibleRect.size.height), UISectionVerticalCompare()) : std::equal_range(m_sections.begin(), m_sections.end(), std::pair<CGFloat, CGFloat>(visibleRect.origin.x, visibleRect.origin.x + visibleRect.size.width), UISectionHorizontalCompare());
     if (range.first == range.second)
     {
         // No Sections
@@ -695,9 +712,9 @@ protected:
     
     
     NSMutableArray<UICollectionViewLayoutAttributes *> *layoutAttributesArray = [NSMutableArray array];
-    std::vector<FlexItem *> items;
+    std::vector<const FlexItem *> items;
     UICollectionViewLayoutAttributes *la = nil;
-    for (std::vector<UISection *>::iterator it = range.first; it != range.second; ++it)
+    for (std::vector<UISection *>::const_iterator it = range.first; it != range.second; ++it)
     {
         (*it)->filterInRect(items, visibleRect);
         if (items.empty())
@@ -705,7 +722,7 @@ protected:
             continue;
         }
 
-        for (std::vector<FlexItem *>::const_iterator itItem = items.begin(); itItem != items.end(); ++itItem)
+        for (std::vector<const FlexItem *>::const_iterator itItem = items.begin(); itItem != items.end(); ++itItem)
         {
             if ((*itItem)->isPlaceHolder()) continue;
             
@@ -803,7 +820,7 @@ protected:
             
             if (m_stackedStickyHeaders)
             {
-                origin.y = MAX(contentOffset.y + totalHeaderSize + contentInset.top, origin.y);
+                origin.y = MAX(contentOffset.y + totalHeaderSize - contentInset.top, origin.y);
                 
                 layoutAttributes.frame = (CGRect){ .origin = CGPointMake(origin.x, origin.y), .size = layoutAttributes.frame.size };
             }
@@ -811,7 +828,7 @@ protected:
             {
                 CGRect frameItems = CGRectFromFlexRect(m_sections[it->first]->getItemsFrame());
                 origin.y = MIN(
-                               MAX(contentOffset.y + contentInset.top + contentInset.top, (frameItems.origin.y - headerSize)),
+                               MAX(contentOffset.y + contentInset.top, (frameItems.origin.y - headerSize)),
                                (CGRectGetMaxY(frameItems) - headerSize)
                                );
                 
@@ -869,7 +886,14 @@ protected:
 
 #ifdef DEBUG
     time = [[NSDate date] timeIntervalSince1970] * 1000;
-    NSLog(@"PERF elementsInRect takes %0.2f ms", time - prevTime);    
+    NSLog(@"PERF elementsInRect takes %0.2f ms", time - prevTime);
+    static int inrect = 0;
+    inrect ++;
+    
+    for (UICollectionViewLayoutAttributes *la in newLayoutAttributesArray)
+    {
+        NSLog(@"DBGORG-%ld: Item [%ld-%ld]: (%f-%f)-(%f-%f)", inrect, la.indexPath.section, la.indexPath.item, la.frame.origin.x, la.frame.origin.y, la.frame.size.width, la.frame.size.height);
+    }
 #endif
     
     return newLayoutAttributesArray;
@@ -1003,7 +1027,7 @@ protected:
     }
     UISection *section = m_sections[indexPath.section];
     
-    layoutAttributes.frame = CGRectFromFlexRect(section->getItemFrameInView(indexPath.item));
+    layoutAttributes.frame = CGRectOffset(CGRectFromFlexRect(section->getItemFrameInView(indexPath.item)), -self.collectionView.contentInset.left, -self.collectionView.contentInset.top);
     return layoutAttributes;
 }
 
@@ -1013,7 +1037,7 @@ protected:
     if ([UICollectionElementKindSectionHeader isEqualToString:elementKind])
     {
         layoutAttributes = [m_headerLayoutAttributes objectForKey:indexPath];
-        if (NULL == layoutAttributes)
+        if (nil == layoutAttributes)
         {
             layoutAttributes = [[UICollectionViewFlexLayout layoutAttributesClass] layoutAttributesForSupplementaryViewOfKind:elementKind withIndexPath:indexPath];
             [m_headerLayoutAttributes setObject:layoutAttributes forKey:indexPath];
@@ -1021,13 +1045,13 @@ protected:
         if (indexPath.section < m_sections.size())
         {
             UISection *section = m_sections[indexPath.section];
-            layoutAttributes.frame = CGRectFromFlexRect(section->getHeaderFrameInView());
+            layoutAttributes.frame = CGRectOffset(CGRectFromFlexRect(section->getHeaderFrameInView()), -self.collectionView.contentInset.left, -self.collectionView.contentInset.top);
         }
     }
     else if ([UICollectionElementKindSectionFooter isEqualToString:elementKind])
     {
         layoutAttributes = [m_footerLayoutAttributes objectForKey:indexPath];
-        if (NULL == layoutAttributes)
+        if (nil == layoutAttributes)
         {
             layoutAttributes = [[UICollectionViewFlexLayout layoutAttributesClass] layoutAttributesForSupplementaryViewOfKind:elementKind withIndexPath:indexPath];
             [m_footerLayoutAttributes setObject:layoutAttributes forKey:indexPath];
@@ -1035,7 +1059,7 @@ protected:
         if (indexPath.section < m_sections.size())
         {
             UISection *section = m_sections[indexPath.section];
-            layoutAttributes.frame = CGRectFromFlexRect(section->getFooterFrameInView());
+            layoutAttributes.frame = CGRectOffset(CGRectFromFlexRect(section->getFooterFrameInView()), -self.collectionView.contentInset.left, -self.collectionView.contentInset.top);
         }
     }
     
@@ -1070,17 +1094,29 @@ protected:
     [self prepareDelegate];
 }
 
-- (CGSize)collectionViewContentSize {
-    if (m_sections.size() == 0)
-    {
-        return CGSizeZero;
-    }
-    UISection *section = m_sections[m_sections.size() - 1];
-    
-    return IS_CV_VERTICAL(self) ? CGSizeMake(self.collectionView.bounds.size.width, section->getFrame().origin.y + section->getFrame().size.height) : CGSizeMake(section->getFrame().origin.x + section->getFrame().size.width, self.collectionView.bounds.size.width);
+- (CGSize)collectionViewContentSize
+{
+    return m_contentSize;
 }
 
 #pragma mark - Utility Functions
+
+- (void)calcContentSize
+{
+    m_contentSize = self.collectionView.bounds.size;
+    UIEdgeInsets insets = self.collectionView.contentInset;
+    
+    if (IS_CV_VERTICAL(self))
+    {
+        m_contentSize.width -= (insets.left + insets.right);
+        m_contentSize.height = m_sections.empty() ? 0 : (m_sections.back()->getFrame().bottom() - m_sections.front()->getFrame().top());
+    }
+    else
+    {
+        m_contentSize.width = m_sections.empty() ? 0 : (m_sections.back()->getFrame().right() - m_sections.front()->getFrame().left());
+        m_contentSize.height -= (insets.top + insets.bottom);
+    }
+}
 
 - (void)prepareDelegate
 {

@@ -51,8 +51,8 @@
 #define NUM_OF_ITEMS_IN_SECTION_ENTRY   1
 #define NUM_OF_ITEMS_IN_SECTION_TEST1   1
 #define NUM_OF_ITEMS_IN_SECTION_TEST2   1
-#define NUM_OF_ITEMS_IN_SECTION_ITEM1   2000
-#define NUM_OF_ITEMS_IN_SECTION_ITEM2   20
+#define NUM_OF_ITEMS_IN_SECTION_ITEM1   10
+#define NUM_OF_ITEMS_IN_SECTION_ITEM2   2
 
 #define ITEM_HEIGHT_NAVBAR              100
 #define ITEM_HEIGHT_ENTRY               120
@@ -140,7 +140,7 @@
         }
         self.backgroundColor = [UIColor colorWithRed:245.0 / 255.0 green:245.0 / 255.0 blue:245.0 / 255.0 alpha:1.0];
         self.showsVerticalScrollIndicator = NO;
-        // self.contentInset = UIEdgeInsetsMake(10, 0, 0, 0);
+        self.contentInset = UIEdgeInsetsMake(10, 10, 10, 10);
 
         [self registerClass:[SUIItemViewCell class] forCellWithReuseIdentifier:@REUSE_ID_NAVBAR];
         [self registerClass:[SUIItemViewCell class] forCellWithReuseIdentifier:@REUSE_ID_ENTRY];
@@ -255,7 +255,32 @@
 {
     NSMutableArray<NSMutableDictionary *> *items = nil;
 
-    CGFloat itemWidth = (columns == 1) ? (self.bounds.size.width - SECTION_INSET_ITEM_LEFT - SECTION_INSET_ITEM_RIGHT) : ((self.bounds.size.width - SECTION_INSET_ITEM_LEFT - SECTION_INSET_ITEM_RIGHT - (columns - 1) * ITEM_SPACING_ITEM) / columns);
+    UIEdgeInsets insets = self.contentInset;
+    
+    NSMutableArray<NSNumber *> *widthOfColumns = [[NSMutableArray<NSNumber *> alloc] initWithCapacity:ITEM_COLUMNS];
+    CGFloat availableColumnSize = self.bounds.size.width - (insets.left + insets.right + SECTION_INSET_ITEM_LEFT + SECTION_INSET_ITEM_RIGHT);
+    for (NSInteger idx = 0; idx < ITEM_COLUMNS; idx++)
+    {
+        if (idx == (ITEM_COLUMNS - 1))
+        {
+            [widthOfColumns addObject:[NSNumber numberWithDouble:availableColumnSize]];
+        }
+        else
+        {
+            CGFloat itemWidth =  round((availableColumnSize - (ITEM_COLUMNS - idx - 1) * ITEM_SPACING_ITEM) / (ITEM_COLUMNS - idx));
+            [widthOfColumns addObject:[NSNumber numberWithDouble:itemWidth]];
+            availableColumnSize -= (itemWidth + ITEM_SPACING_ITEM);
+        }
+    }
+    
+    CGFloat itemWidth = CGFLOAT_MAX;
+    for (NSNumber *number in widthOfColumns)
+    {
+        if (itemWidth > number.doubleValue)
+        {
+            itemWidth = number.doubleValue;
+        }
+    }
     
     for (NSInteger catIdx = 0; catIdx < NUM_OF_ITEMS_IN_CATEGORY_BAR; catIdx++)
     {
@@ -515,17 +540,19 @@
 {
     if (collectionView == self)
     {
+        UIEdgeInsets insets = self.contentInset;
+        
         if (SECTION_INDEX_ENTRY == indexPath.section)
         {
-            return CGSizeMake(self.bounds.size.width, ITEM_HEIGHT_ENTRY);
+            return CGSizeMake(self.bounds.size.width - insets.left - insets.right, ITEM_HEIGHT_ENTRY);
         }
         else if (SECTION_INDEX_TEST1 == indexPath.section)
         {
-            return CGSizeMake(self.bounds.size.width, ITEM_HEIGHT_ENTRY);
+            return CGSizeMake(self.bounds.size.width - insets.left - insets.right, ITEM_HEIGHT_ENTRY);
         }
         else if (SECTION_INDEX_TEST2 == indexPath.section)
         {
-            return CGSizeMake(self.bounds.size.width, ITEM_HEIGHT_ENTRY);
+            return CGSizeMake(self.bounds.size.width - insets.left - insets.right, ITEM_HEIGHT_ENTRY);
         }
         else if (SECTION_INDEX_ITEM1 == indexPath.section)
         {
@@ -556,13 +583,14 @@
 {
     if (collectionView == self)
     {
+        UIEdgeInsets insets = self.contentInset;
         if (SECTION_INDEX_ENTRY == section)
         {
-            return CGSizeMake(self.bounds.size.width, ITEM_HEIGHT_NAVBAR);
+            return CGSizeMake(self.bounds.size.width - insets.left - insets.right, ITEM_HEIGHT_NAVBAR);
         }
         else if (SECTION_INDEX_CATBAR == section)
         {
-            return CGSizeMake(self.bounds.size.width, ITEM_HEIGHT_CATBAR);
+            return CGSizeMake(self.bounds.size.width - insets.left - insets.right, ITEM_HEIGHT_CATBAR);
         }
     }
     

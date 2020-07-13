@@ -31,6 +31,7 @@ protected:
     typedef typename TBaseSection::Insets Insets;
     typedef typename TBaseSection::FlexItem FlexItem;
     typedef FlexRowT<TInt, TCoordinate> FlexRow;
+    typedef typename std::vector<FlexRow *>::const_iterator FlexRowConstIterator;
     typedef FlexVerticalCompareT<FlexRow> UIFlexRowVerticalCompare;
     typedef FlexHorizontalCompareT<FlexRow> UIFlexRowHorizontalCompare;
 
@@ -64,7 +65,7 @@ protected:
 #ifdef INTERNAL_VERTICAL_LAYOUT
         Point originOfRow(TBaseSection::m_header.getFrame().left(), TBaseSection::m_header.getFrame().bottom());
 #else
-        Point originOfRow(BaseSection::m_header.getFrame().right(), BaseSection::m_header.getFrame().top());
+        Point originOfRow(TBaseSection::m_header.getFrame().right(), TBaseSection::m_header.getFrame().top());
 #endif // #ifdef INTERNAL_VERTICAL_LAYOUT
         
         TInt numberOfItems = TBaseSection::getNumberOfItems();
@@ -87,7 +88,7 @@ protected:
 #ifdef INTERNAL_VERTICAL_LAYOUT
         TCoordinate maximalSizeOfRow = TBaseSection::m_frame.width() - sectionInset.left - sectionInset.right;
 #else
-        TCoordinate maximalSizeOfRow = BaseSection::m_frame.height() - sectionInset.top - sectionInset.bottom;
+        TCoordinate maximalSizeOfRow = TBaseSection::m_frame.height() - sectionInset.top - sectionInset.bottom;
 #endif // #ifdef INTERNAL_VERTICAL_LAYOUT
         
         // Layout items
@@ -103,7 +104,7 @@ protected:
         
         for (TInt itemIndex = 0; itemIndex < numberOfItems; itemIndex++)
         {
-            frameOfItem.size = TBaseSection::getSizeForItem(itemIndex);
+            frameOfItem.size = TBaseSection::getSizeForItem(itemIndex, NULL);
             
 #ifdef INTERNAL_VERTICAL_LAYOUT
             sizeOfItemInDirection = frameOfItem.width();
@@ -194,7 +195,7 @@ protected:
         TBaseSection::clearItems();
         
 #ifdef INTERNAL_VERTICAL_LAYOUT
-        Point originOfRow(BaseSection::m_header.getFrame().left(), BaseSection::m_header.getFrame().bottom());
+        Point originOfRow(TBaseSection::m_header.getFrame().left(), TBaseSection::m_header.getFrame().bottom());
 #else
         Point originOfRow(TBaseSection::m_header.getFrame().right(), TBaseSection::m_header.getFrame().top());
 #endif // #ifdef INTERNAL_VERTICAL_LAYOUT
@@ -217,7 +218,7 @@ protected:
         TCoordinate minimumInteritemSpacing = TBaseSection::getMinimumInteritemSpacing();
         
 #ifdef INTERNAL_VERTICAL_LAYOUT
-        TCoordinate maximalSizeOfRow = BaseSection::m_frame.width() - sectionInset.left - sectionInset.right;
+        TCoordinate maximalSizeOfRow = TBaseSection::m_frame.width() - sectionInset.left - sectionInset.right;
 #else
         TCoordinate maximalSizeOfRow = TBaseSection::m_frame.height() - sectionInset.top - sectionInset.bottom;
 #endif // #ifdef INTERNAL_VERTICAL_LAYOUT
@@ -235,7 +236,7 @@ protected:
         
         for (TInt itemIndex = 0; itemIndex < numberOfItems; itemIndex++)
         {
-            frameOfItem.size = TBaseSection::getSizeForItem(itemIndex);
+            frameOfItem.size = TBaseSection::getSizeForItem(itemIndex, NULL);
             
 #ifdef INTERNAL_VERTICAL_LAYOUT
             sizeOfItemInDirection = frameOfItem.width();
@@ -317,14 +318,14 @@ protected:
 #undef INTERNAL_VERTICAL_LAYOUT
     }
     
-    bool filterItemsInRect(std::vector<FlexItem *> &items, const Rect &rectInSection)
+    bool filterItemsInRect(std::vector<const FlexItem *> &items, const Rect &rectInSection) const
     {
         bool matched = false;
         
-        std::pair<typename std::vector<FlexRow *>::iterator, typename std::vector<FlexRow *>::iterator> range = TBaseSection::isVertical() ? getVirticalRowsInRect(rectInSection) : getHorizontalRowsInRect(rectInSection);
+        std::pair<FlexRowConstIterator, FlexRowConstIterator> range = TBaseSection::isVertical() ? getVirticalRowsInRect(rectInSection) : getHorizontalRowsInRect(rectInSection);
         
-        typename std::vector<FlexRow *>::iterator lastRow = range.second - 1;
-        for (typename std::vector<FlexRow *>::iterator it = range.first; it != range.second; ++it)
+        FlexRowConstIterator lastRow = range.second - 1;
+        for (FlexRowConstIterator it = range.first; it != range.second; ++it)
         {
             std::pair<typename std::vector<FlexItem *>::iterator, typename std::vector<FlexItem *>::iterator> itemRange = (*it)->getItemIterator();
             for (typename std::vector<FlexItem *>::iterator itItem = itemRange.first; itItem != itemRange.second; ++itItem)
@@ -340,12 +341,12 @@ protected:
         return matched;
     }
     
-    inline std::pair<typename std::vector<FlexRow *>::iterator, typename std::vector<FlexRow *>::iterator> getVirticalRowsInRect(const Rect& rect)
+    inline std::pair<FlexRowConstIterator, FlexRowConstIterator> getVirticalRowsInRect(const Rect& rect) const
     {
         return std::equal_range(m_rows.begin(), m_rows.end(), std::pair<TCoordinate, TCoordinate>(rect.top(), rect.bottom()), UIFlexRowVerticalCompare());
     }
     
-    inline std::pair<typename std::vector<FlexRow *>::iterator, typename std::vector<FlexRow *>::iterator> getHorizontalRowsInRect(const Rect& rect)
+    inline std::pair<FlexRowConstIterator, FlexRowConstIterator> getHorizontalRowsInRect(const Rect& rect) const
     {
         return std::equal_range(m_rows.begin(), m_rows.end(), std::pair<TCoordinate, TCoordinate>(rect.left(), rect.right()), UIFlexRowHorizontalCompare());
     }
