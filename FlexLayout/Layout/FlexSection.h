@@ -54,11 +54,12 @@ public:
 protected:
     TInt m_section;
     Rect m_frame; // // The origin is in the coordinate system of section, should convert to the coordinate system of UICollectionView
+    Rect m_itemsFrame;
 
 private:
     // FlexSectionT implements all required methods and sub-class doesn't need to access this member variable directly
     // So set it private
-    TLayout *m_layout;
+
 
 protected:
     struct {
@@ -75,7 +76,7 @@ protected:
     FlexItem m_footer;
 
 public:
-    FlexSectionT(TLayout *layout, TInt section, const Rect& frame) : m_section(section), m_layout(layout), m_frame(frame), m_header(0), m_footer(0)
+    FlexSectionT(TInt section, const Rect& frame) : m_section(section), m_frame(frame), m_header(0), m_footer(0)
     {
         m_header.setHeader(true);
         m_footer.setFooter(true);
@@ -83,7 +84,6 @@ public:
     
     virtual ~FlexSectionT()
     {
-        m_layout = NULL;
         clearItems();
     }
     
@@ -123,15 +123,15 @@ public:
     
     inline const Rect getItemsFrame() const
     {
-        return isVertical() ? Rect(m_frame.origin.x, m_frame.origin.y + m_header.getFrame().size.height, m_frame.size.width, m_frame.size.height - m_header.getFrame().size.height - m_footer.getFrame().size.height) : Rect(m_frame.origin.x + m_header.getFrame().origin.x, m_frame.origin.y, m_frame.size.width - m_header.getFrame().size.width - m_footer.getFrame().size.width, m_frame.size.height);
+        return m_itemsFrame;
     }
 
-    void prepareLayout(const Rect &bounds)
+    void prepareLayout(const TLayout *layout, const Rect &bounds)
     {
-        isVertical() ? prepareLayoutVertically(bounds) : prepareLayoutHorizontally(bounds);
+        isVertical(layout) ? prepareLayoutVertically(layout, bounds) : prepareLayoutHorizontally(layout, bounds);
     }
     
-    bool filterInRect(std::vector<const FlexItem *> &items, const Rect &rect) const
+    bool filterInRect(bool vertical, std::vector<const FlexItem *> &items, const Rect &rect) const
     {
         bool matched = false;
         
@@ -152,7 +152,7 @@ public:
         }
         
         // Items
-        if (filterItemsInRect(items, rectInSection))
+        if (filterItemsInRect(vertical, rectInSection, items))
         {
             matched = true;
         }
@@ -211,12 +211,12 @@ public:
 
 protected:
     
-    inline void prepareLayoutVertically(const Rect &bounds)
+    inline void prepareLayoutVertically(const TLayout *layout, const Rect &bounds)
     {
 #define INTERNAL_VERTICAL_LAYOUT
         
         // Header
-        m_header.getFrame().size = getSizeForHeader();
+        m_header.getFrame().size = getSizeForHeader(layout);
         
         // Initialize the section height with header height
 #ifdef INTERNAL_VERTICAL_LAYOUT
@@ -227,20 +227,24 @@ protected:
 
         
 #ifdef INTERNAL_VERTICAL_LAYOUT
-        Point pt = prepareLayoutWithItemsVertically(bounds);
+        Point pt = prepareLayoutWithItemsVertically(layout, bounds);
 #else
-        Point pt = prepareLayoutWithItemsHorizontally(bounds);
+        Point pt = prepareLayoutWithItemsHorizontally(layout, bounds);
 #endif // #ifdef INTERNAL_VERTICAL_LAYOUT
 
         // Footer
         m_footer.getFrame().origin = pt;
-        m_footer.getFrame().size = getSizeForFooter();
+        m_footer.getFrame().size = getSizeForFooter(layout);
 
 #ifdef INTERNAL_VERTICAL_LAYOUT
         m_frame.size.height = m_footer.getFrame().bottom();
+        m_itemsFrame.set(m_frame.origin.x, m_frame.origin.y + m_header.getFrame().size.height, m_frame.size.width, m_frame.size.height - m_header.getFrame().size.height - m_footer.getFrame().size.height);
 #else
         m_frame.size.width = m_footer.getFrame().right();
 #endif // #ifdef INTERNAL_VERTICAL_LAYOUT
+
+        // return isVertical() ?  : Rect(m_frame.origin.x + m_header.getFrame().origin.x, m_frame.origin.y, m_frame.size.width - m_header.getFrame().size.width - m_footer.getFrame().size.width, m_frame.size.height);
+
 
 #undef INTERNAL_VERTICAL_LAYOUT
         
@@ -248,12 +252,12 @@ protected:
     
     /// DON"T EDIT THE CODE DIRECTLY
     /// Update the code in the function of "vertically" first and then sync the commented code of "horizontally" parts
-    inline void prepareLayoutHorizontally(const Rect &bounds)
+    inline void prepareLayoutHorizontally(const TLayout *layout, const Rect &bounds)
     {
 #undef INTERNAL_VERTICAL_LAYOUT
 
         // Header
-        m_header.getFrame().size = getSizeForHeader();
+        m_header.getFrame().size = getSizeForHeader(layout);
         
         // Initialize the section height with header height
 #ifdef INTERNAL_VERTICAL_LAYOUT
@@ -264,14 +268,14 @@ protected:
         
         
 #ifdef INTERNAL_VERTICAL_LAYOUT
-        Point pt = prepareLayoutWithItemsVertically(bounds);
+        Point pt = prepareLayoutWithItemsVertically(layout, bounds);
 #else
-        Point pt = prepareLayoutWithItemsHorizontally(bounds);
+        Point pt = prepareLayoutWithItemsHorizontally(layout, bounds);
 #endif // #ifdef INTERNAL_VERTICAL_LAYOUT
         
         // Footer
         m_footer.getFrame().origin = pt;
-        m_footer.getFrame().size = getSizeForFooter();
+        m_footer.getFrame().size = getSizeForFooter(layout);
         
 #ifdef INTERNAL_VERTICAL_LAYOUT
         m_frame.size.height = m_footer.getFrame().bottom();
@@ -283,10 +287,10 @@ protected:
 #undef INTERNAL_VERTICAL_LAYOUT
     }
     
-    virtual Point prepareLayoutWithItemsVertically(const Rect &bounds) = 0;
-    virtual Point prepareLayoutWithItemsHorizontally(const Rect &bounds) = 0;
+    virtual Point prepareLayoutWithItemsVertically(const TLayout *layout, const Rect &bounds) = 0;
+    virtual Point prepareLayoutWithItemsHorizontally(const TLayout *layout, const Rect &bounds) = 0;
     
-    virtual bool filterItemsInRect(std::vector<const FlexItem *> &items, const Rect &rectInSection) const = 0;
+    virtual bool filterItemsInRect(bool vertical, const Rect &rectInSection, std::vector<const FlexItem *> &items) const = 0;
     
     inline const Rect getFrameInView(const Rect& rect) const
     {
@@ -297,56 +301,56 @@ protected:
     
     
     // Layout Adapter Functions Begin
-    inline bool isVertical() const { return m_layout->isVertical(); }
+    inline bool isVertical(const TLayout *layout) const { return layout->isVertical(); }
     
-    inline TInt getNumberOfItems() const
+    inline TInt getNumberOfItems(const TLayout *layout) const
     {
-        return m_layout->getNumberOfItemsInSection(m_section);
+        return layout->getNumberOfItemsInSection(m_section);
     }
     
-    inline Size getSizeForItem(TInt item, bool *isFullSpan) const
+    inline Size getSizeForItem(const TLayout *layout, TInt item, bool *isFullSpan) const
     {
-        return m_layout->getSizeForItem(m_section, item, isFullSpan);
+        return layout->getSizeForItem(m_section, item, isFullSpan);
     }
     
-    inline Insets getInsets() const
+    inline Insets getInsets(const TLayout *layout) const
     {
-        return m_layout->getInsetForSection(m_section);
+        return layout->getInsetForSection(m_section);
     }
     
-    inline TCoordinate getMinimumLineSpacing() const
+    inline TCoordinate getMinimumLineSpacing(const TLayout *layout) const
     {
-        return m_layout->getMinimumLineSpacingForSection(m_section);
+        return layout->getMinimumLineSpacingForSection(m_section);
     }
     
-    inline TCoordinate getMinimumInteritemSpacing() const
+    inline TCoordinate getMinimumInteritemSpacing(const TLayout *layout) const
     {
-        return m_layout->getMinimumInteritemSpacingForSection(m_section);
+        return layout->getMinimumInteritemSpacingForSection(m_section);
+    }
+
+    inline Size getSizeForHeader(const TLayout *layout) const
+    {
+        return layout->getSizeForHeaderInSection(m_section);
+    }
+
+    inline Size getSizeForFooter(const TLayout *layout) const
+    {
+        return layout->getSizeForFooterInSection(m_section);
     }
     
-    inline Size getSizeForHeader() const
+    inline TInt getNumberOfColumns(const TLayout *layout) const
     {
-        return m_layout->getSizeForHeaderInSection(m_section);
+        return layout->getNumberOfColumnsForSection(m_section);
     }
     
-    inline Size getSizeForFooter() const
+    inline bool isFullSpanAtItem(const TLayout *layout, TInt item) const
     {
-        return m_layout->getSizeForFooterInSection(m_section);
+        return layout->isFullSpanAtItem(m_section, item);
     }
     
-    inline TInt getNumberOfColumns() const
+    inline bool hasFixedSize(const TLayout *layout, TInt section, Size *fixedSize) const
     {
-        return m_layout->getNumberOfColumnsForSection(m_section);
-    }
-    
-    inline bool isFullSpanAtItem(TInt item) const
-    {
-        return m_layout->isFullSpanAtItem(m_section, item);
-    }
-    
-    inline bool hasFixedSize(TInt section, Size *fixedSize) const
-    {
-        return m_layout->hasFixedSize(m_section, fixedSize);
+        return layout->hasFixedSize(m_section, fixedSize);
     }
     // Layout Adapter Functions End
     

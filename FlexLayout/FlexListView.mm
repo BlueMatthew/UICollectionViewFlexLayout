@@ -73,7 +73,7 @@
 
 #define SECTION_INSET_TEST1_PADDING      10
 
-#define CONTENT_INSET                    0
+#define CONTENT_INSET                    10
 
 #define ITEM_COLUMNS                     2
 

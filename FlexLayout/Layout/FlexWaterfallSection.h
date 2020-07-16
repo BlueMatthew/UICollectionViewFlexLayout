@@ -34,7 +34,7 @@ public:
     std::vector<FlexItem *> m_placeHolderItems;
     std::vector<FlexColumn *> m_columns;
     
-    FlexWaterfallSectionT(TLayout *layout, TInt section, const Rect &frame) : TBaseSection(layout, section, frame)
+    FlexWaterfallSectionT(TInt section, const Rect &frame) : TBaseSection(section, frame)
     {
     }
     
@@ -53,7 +53,7 @@ protected:
     }
     
     /// Keep the commented code of "horizontally" parts
-    Point prepareLayoutWithItemsVertically(const Rect &bounds)
+    Point prepareLayoutWithItemsVertically(const TLayout *layout, const Rect &bounds)
     {
 #define INTERNAL_VERTICAL_LAYOUT
 
@@ -61,7 +61,7 @@ protected:
         clearColumns();
         TBaseSection::clearItems();
 
-        Insets sectionInset = TBaseSection::getInsets();
+        Insets sectionInset = TBaseSection::getInsets(layout);
         
 #ifdef INTERNAL_VERTICAL_LAYOUT
         Rect frameOfColumn(sectionInset.left, TBaseSection::m_header.getFrame().bottom() + sectionInset.top, 0, 0);
@@ -69,7 +69,7 @@ protected:
         Rect frameOfColumn(TBaseSection::m_header.getFrame().right() + sectionInset.left, sectionInset.top, 0, 0);
 #endif // #ifdef INTERNAL_VERTICAL_LAYOUT
 
-        TInt numberOfItems = TBaseSection::getNumberOfItems();
+        TInt numberOfItems = TBaseSection::getNumberOfItems(layout);
         if (numberOfItems == 0)
         {
             return frameOfColumn.origin;
@@ -77,11 +77,11 @@ protected:
         
         TBaseSection::m_items.reserve(numberOfItems);
 
-        TCoordinate minimumLineSpacing = TBaseSection::getMinimumLineSpacing();
-        TCoordinate minimumInteritemSpacing = TBaseSection::getMinimumInteritemSpacing();
+        TCoordinate minimumLineSpacing = TBaseSection::getMinimumLineSpacing(layout);
+        TCoordinate minimumInteritemSpacing = TBaseSection::getMinimumInteritemSpacing(layout);
         
         // Get Number of Columns
-        TInt numberOfColumns = TBaseSection::getNumberOfColumns();
+        TInt numberOfColumns = TBaseSection::getNumberOfColumns(layout);
         if (numberOfColumns < 1)
         {
             numberOfColumns = 1;
@@ -140,7 +140,7 @@ protected:
         for (TInt itemIndex = 0; itemIndex < numberOfItems; itemIndex++)
         {
             isFullSpan = false;
-            frameOfItem.size = TBaseSection::getSizeForItem(itemIndex, &isFullSpan);
+            frameOfItem.size = TBaseSection::getSizeForItem(layout, itemIndex, &isFullSpan);
             
             // Find the column with lowest hight
             itOfTargetColumn = isFullSpan ? max_element(m_columns.begin(), m_columns.end(), compare) : min_element(m_columns.begin(), m_columns.end(), compare);
@@ -203,7 +203,7 @@ protected:
     
     /// DON"T EDIT THE CODE DIRECTLY
     /// Update the code in the function of "vertically" first and then sync the commented code of "horizontally" parts
-    Point prepareLayoutWithItemsHorizontally(const Rect &bounds)
+    Point prepareLayoutWithItemsHorizontally(const TLayout *layout, const Rect &bounds)
     {
 #undef INTERNAL_VERTICAL_LAYOUT
 
@@ -211,7 +211,7 @@ protected:
         clearColumns();
         TBaseSection::clearItems();
 
-        Insets sectionInset = TBaseSection::getInsets();
+        Insets sectionInset = TBaseSection::getInsets(layout);
 
 #ifdef INTERNAL_VERTICAL_LAYOUT
         Rect frameOfColumn(sectionInset.left, TBaseSection::m_header.getFrame().bottom() + sectionInset.top, 0, 0);
@@ -219,7 +219,7 @@ protected:
         Rect frameOfColumn(TBaseSection::m_header.getFrame().right() + sectionInset.left, sectionInset.top, 0, 0);
 #endif // #ifdef INTERNAL_VERTICAL_LAYOUT
 
-        TInt numberOfItems = TBaseSection::getNumberOfItems();
+        TInt numberOfItems = TBaseSection::getNumberOfItems(layout);
         if (numberOfItems == 0)
         {
             return frameOfColumn.origin;
@@ -227,11 +227,11 @@ protected:
 
         TBaseSection::m_items.reserve(numberOfItems);
 
-        TCoordinate minimumLineSpacing = TBaseSection::getMinimumLineSpacing();
-        TCoordinate minimumInteritemSpacing = TBaseSection::getMinimumInteritemSpacing();
+        TCoordinate minimumLineSpacing = TBaseSection::getMinimumLineSpacing(layout);
+        TCoordinate minimumInteritemSpacing = TBaseSection::getMinimumInteritemSpacing(layout);
 
         // Get Number of Columns
-        TInt numberOfColumns = TBaseSection::getNumberOfColumns();
+        TInt numberOfColumns = TBaseSection::getNumberOfColumns(layout);
         if (numberOfColumns < 1)
         {
             numberOfColumns = 1;
@@ -290,7 +290,7 @@ protected:
         for (TInt itemIndex = 0; itemIndex < numberOfItems; itemIndex++)
         {
             isFullSpan = false;
-            frameOfItem.size = TBaseSection::getSizeForItem(itemIndex, &isFullSpan);
+            frameOfItem.size = TBaseSection::getSizeForItem(layout, itemIndex, &isFullSpan);
 
             // Find the column with lowest hight
             itOfTargetColumn = isFullSpan ? max_element(m_columns.begin(), m_columns.end(), compare) : min_element(m_columns.begin(), m_columns.end(), compare);
@@ -346,18 +346,19 @@ protected:
 #else
         return Point((*columnItOfMaximalSize)->getFrame().right() + sectionInset.right, bounds.top());
 #endif // #ifdef INTERNAL_VERTICAL_LAYOUT
-       
+
+
 #undef INTERNAL_VERTICAL_LAYOUT
     }
     
-    bool filterItemsInRect(std::vector<const FlexItem *> &items, const Rect &rectInSection) const
+    bool filterItemsInRect(bool vertical, const Rect &rectInSection, std::vector<const FlexItem *> &items) const
     {
         bool matched = false;
         
         // Items
         for (FlexColumnConstIterator it = m_columns.begin(); it != m_columns.end(); ++it)
         {
-            std::pair<typename std::vector<FlexItem *>::iterator, typename std::vector<FlexItem *>::iterator> range = TBaseSection::isVertical() ? (*it)->getVirticalItemsInRect(rectInSection) : (*it)->getHorizontalItemsInRect(rectInSection);
+            std::pair<typename std::vector<FlexItem *>::iterator, typename std::vector<FlexItem *>::iterator> range = vertical ? (*it)->getVirticalItemsInRect(rectInSection) : (*it)->getHorizontalItemsInRect(rectInSection);
             
             for (typename std::vector<FlexItem *>::iterator itItem = range.first; itItem != range.second; ++itItem)
             {

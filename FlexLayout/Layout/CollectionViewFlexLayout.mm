@@ -506,9 +506,9 @@ protected:
         IS_CV_VERTICAL(self) ? bounds.origin.y = (*it)->getFrame().bottom() : (bounds.origin.x = (*it)->getFrame().right());
     }
     
-    UISection *pSection = (mode == UICollectionViewFlexLayoutModeFlow) ? ((UISection *)(new UIFlowSection(m_layoutAdapter, section, bounds))) : ((UISection *)(new UIWaterfallSection(m_layoutAdapter, section, bounds)));
+    UISection *pSection = (mode == UICollectionViewFlexLayoutModeFlow) ? ((UISection *)(new UIFlowSection(section, bounds))) : ((UISection *)(new UIWaterfallSection(section, bounds)));
     
-    pSection->prepareLayout(bounds);
+    pSection->prepareLayout(m_layoutAdapter, bounds);
     
     m_sections.insert(m_sections.begin() + section, pSection);
     
@@ -603,9 +603,9 @@ protected:
         {
             // Calc Section Frame
             UICollectionViewFlexLayoutMode mode = [self getLayoutModeForSection:index];
-            UISection *pSection = (UICollectionViewFlexLayoutModeFlow == mode) ? ((UISection *)(new UIFlowSection(m_layoutAdapter, index, bounds))) : ((UISection *)(new UIWaterfallSection(m_layoutAdapter, index, bounds)));
+            UISection *pSection = (UICollectionViewFlexLayoutModeFlow == mode) ? ((UISection *)(new UIFlowSection(index, bounds))) : ((UISection *)(new UIWaterfallSection(index, bounds)));
             
-            pSection->prepareLayout(bounds);
+            pSection->prepareLayout(m_layoutAdapter, bounds);
             
             IS_CV_VERTICAL(self) ? bounds.origin.y += pSection->getFrame().size.height : bounds.origin.x += pSection->getFrame().size.width;
             
@@ -682,6 +682,7 @@ protected:
         return nil;
     }
     
+    BOOL vertical = IS_CV_VERTICAL(self);
     UICollectionView * const cv = self.collectionView;
     CGSize contentSize = [self collectionViewContentSize];
     CGPoint contentOffset = cv.contentOffset;
@@ -702,7 +703,7 @@ protected:
     
     nsflex::Rect visibleRect(contentOffset.x, contentOffset.y, self.collectionView.bounds.size.width, self.collectionView.bounds.size.height);
     
-    std::pair<std::vector<UISection *>::const_iterator, std::vector<UISection *>::const_iterator> range = IS_CV_VERTICAL(self) ? std::equal_range(m_sections.begin(), m_sections.end(), std::pair<CGFloat, CGFloat>(visibleRect.origin.y, visibleRect.origin.y + visibleRect.size.height), UISectionVerticalCompare()) : std::equal_range(m_sections.begin(), m_sections.end(), std::pair<CGFloat, CGFloat>(visibleRect.origin.x, visibleRect.origin.x + visibleRect.size.width), UISectionHorizontalCompare());
+    std::pair<std::vector<UISection *>::const_iterator, std::vector<UISection *>::const_iterator> range = vertical ? std::equal_range(m_sections.begin(), m_sections.end(), std::pair<CGFloat, CGFloat>(visibleRect.origin.y, visibleRect.origin.y + visibleRect.size.height), UISectionVerticalCompare()) : std::equal_range(m_sections.begin(), m_sections.end(), std::pair<CGFloat, CGFloat>(visibleRect.origin.x, visibleRect.origin.x + visibleRect.size.width), UISectionHorizontalCompare());
     if (range.first == range.second)
     {
         // No Sections
@@ -716,7 +717,7 @@ protected:
     UICollectionViewLayoutAttributes *la = nil;
     for (std::vector<UISection *>::const_iterator it = range.first; it != range.second; ++it)
     {
-        (*it)->filterInRect(items, visibleRect);
+        (*it)->filterInRect(vertical, items, visibleRect);
         if (items.empty())
         {
             continue;
@@ -892,7 +893,7 @@ protected:
     
     for (UICollectionViewLayoutAttributes *la in newLayoutAttributesArray)
     {
-        NSLog(@"DBGORG-%ld: Item [%ld-%ld]: (%f-%f)-(%f-%f)", inrect, la.indexPath.section, la.indexPath.item, la.frame.origin.x, la.frame.origin.y, la.frame.size.width, la.frame.size.height);
+        NSLog(@"DBGORG-%d: Item [%ld-%ld]: (%f-%f)-(%f-%f)", inrect, la.indexPath.section, la.indexPath.item, la.frame.origin.x, la.frame.origin.y, la.frame.size.width, la.frame.size.height);
     }
 #endif
     

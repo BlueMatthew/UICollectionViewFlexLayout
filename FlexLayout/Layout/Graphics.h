@@ -18,6 +18,11 @@ struct PointT {
 
     PointT() : x(0), y(0) {}
     PointT(T x1, T y1) : x(x1), y(y1) {}
+    inline void set(int x, int y)
+    {
+        this->x = x;
+        this->y = y;
+    }
     
     inline bool operator==(const PointT<T> &other)
     {
@@ -34,6 +39,11 @@ struct SizeT {
 
     SizeT() : width(0), height(0) {}
     SizeT(T w, T h) : width(w), height(h) {}
+    inline void set(int w, int h)
+    {
+        width = w;
+        height = h;
+    }
     inline bool empty() const { return width == 0 || height == 0; }
     
     inline bool operator==(const SizeT<T> &other)
@@ -69,7 +79,13 @@ struct RectT {
         if (this == &other) return true;
         return origin.x == other.origin.x && origin.y == other.origin.y && size.width == other.size.width && size.height == other.size.height;
     }
-    
+
+    inline void set(int x, int y, int w, int h)
+    {
+        origin.set(x, y);
+        size.set(w, h);
+    }
+
     inline void offset(T dx, T dy) { origin.x += dx; origin.y += dy; }
 
     inline bool empty() const { return size.width <= 0 || size.height <= 0; }
