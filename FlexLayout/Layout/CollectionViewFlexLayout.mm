@@ -42,6 +42,8 @@ typedef nsflex::FlexWaterfallSectionT<UISection, true> UIWaterfallSection;
 typedef nsflex::FlexVerticalCompareT<UISection> UISectionVerticalCompare;
 typedef nsflex::FlexHorizontalCompareT<UISection> UISectionHorizontalCompare;
 
+// typedef nsflex::FlexCompareT<UISection, true> UISectionVerticalCompare2;
+
 
 // #ifdef DEBUG
 #define PERF_DEBUG

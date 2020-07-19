@@ -87,20 +87,20 @@ struct FlexCompareT
     }
     
 protected:
-    bool less(const T* item, const std::pair<typename T::CoordinateType, typename T::CoordinateType>& topBottom, bool_trait<true>)
+    bool less(const T* item, const std::pair<typename T::CoordinateType, typename T::CoordinateType>& topBottom, bool_trait<true>) const
     {
         return item->getFrame().bottom() < topBottom.first;
     }
-    bool less(const T* item, const std::pair<typename T::CoordinateType, typename T::CoordinateType>& topBottom, bool_trait<false>)
+    bool less(const T* item, const std::pair<typename T::CoordinateType, typename T::CoordinateType>& topBottom, bool_trait<false>) const
     {
         return item->getFrame().right() < topBottom.first;
     }
     
-    bool less(const std::pair<typename T::CoordinateType, typename T::CoordinateType>& topBottom, const T* item, bool_trait<true>)
+    bool less(const std::pair<typename T::CoordinateType, typename T::CoordinateType>& topBottom, const T* item, bool_trait<true>) const
     {
         return topBottom.second < item->getFrame().top();
     }
-    bool less(const std::pair<typename T::CoordinateType, typename T::CoordinateType>& topBottom, const T* item, bool_trait<false>)
+    bool less(const std::pair<typename T::CoordinateType, typename T::CoordinateType>& topBottom, const T* item, bool_trait<false>) const
     {
         return topBottom.second < item->getFrame().left();
     }
