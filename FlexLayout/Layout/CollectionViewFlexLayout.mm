@@ -720,7 +720,7 @@ protected:
     UICollectionViewLayoutAttributes *la = nil;
     for (std::vector<UISection *>::const_iterator it = range.first; it != range.second; ++it)
     {
-        (*it)->filterInRect(vertical, items, visibleRect);
+        (*it)->filterInRect(items, visibleRect);
         if (items.empty())
         {
             continue;
