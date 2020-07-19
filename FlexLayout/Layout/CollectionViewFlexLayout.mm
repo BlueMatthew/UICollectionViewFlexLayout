@@ -17,6 +17,7 @@
 #import "FlexPage.h"
 #import "FlexFlowSection.h"
 #import "FlexWaterfallSection.h"
+#include "ContainerBase.h"
 #include <vector>
 #include <map>
 #include <memory>
@@ -35,9 +36,9 @@ typedef nsflex::FlexVerticalCompareT<FlexItem> FlexItemVerticalCompare;
 typedef nsflex::FlexHorizontalCompareT<FlexItem> FlexItemHorizontalCompare;
 
 
-typedef nsflex::FlexSectionT<nsflex::LayoutAdapter, NSInteger, CGFloat> UISection;
-typedef nsflex::FlexFlowSectionT<UISection> UIFlowSection;
-typedef nsflex::FlexWaterfallSectionT<UISection> UIWaterfallSection;
+typedef nsflex::FlexSectionT<nsflex::LayoutAdapter, NSInteger, CGFloat, true> UISection;
+typedef nsflex::FlexFlowSectionT<UISection, true> UIFlowSection;
+typedef nsflex::FlexWaterfallSectionT<UISection, true> UIWaterfallSection;
 typedef nsflex::FlexVerticalCompareT<UISection> UISectionVerticalCompare;
 typedef nsflex::FlexHorizontalCompareT<UISection> UISectionHorizontalCompare;
 

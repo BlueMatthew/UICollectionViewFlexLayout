@@ -11,6 +11,7 @@
 
 #include <map>
 #include "Graphics.h"
+#include "BoolTraits.h"
 
 namespace nsflex
 {
@@ -71,6 +72,38 @@ public:
     inline Rect &getFrame() { return m_frame; }
     inline const Rect getFrame() const { return m_frame; }
 
+};
+    
+template<typename T, bool VERTICAL>
+struct FlexCompareT
+{
+    bool operator() ( const T* item, const std::pair<typename T::CoordinateType, typename T::CoordinateType>& topBottom) const
+    {
+        return less(item, topBottom, bool_trait<VERTICAL>());
+    }
+    bool operator() ( const std::pair<typename T::CoordinateType, typename T::CoordinateType>& topBottom, const T* item ) const
+    {
+        return less(topBottom, item, bool_trait<VERTICAL>());
+    }
+    
+protected:
+    bool less(const T* item, const std::pair<typename T::CoordinateType, typename T::CoordinateType>& topBottom, bool_trait<true>)
+    {
+        return item->getFrame().bottom() < topBottom.first;
+    }
+    bool less(const T* item, const std::pair<typename T::CoordinateType, typename T::CoordinateType>& topBottom, bool_trait<false>)
+    {
+        return item->getFrame().right() < topBottom.first;
+    }
+    
+    bool less(const std::pair<typename T::CoordinateType, typename T::CoordinateType>& topBottom, const T* item, bool_trait<true>)
+    {
+        return topBottom.second < item->getFrame().top();
+    }
+    bool less(const std::pair<typename T::CoordinateType, typename T::CoordinateType>& topBottom, const T* item, bool_trait<false>)
+    {
+        return topBottom.second < item->getFrame().left();
+    }
 };
 
 template<typename T>

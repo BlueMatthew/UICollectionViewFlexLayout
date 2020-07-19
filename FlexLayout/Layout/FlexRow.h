@@ -10,19 +10,40 @@
 #define FlexRow_h
 
 #include "FlexItem.h"
+#include "ContainerBase.h"
 #include <vector>
 #include <utility>
 
 namespace nsflex
 {
 
-template <typename TInt, typename TCoordinate>
-class FlexRowT
+template <typename TInt, typename TCoordinate, bool VERTICAL>
+class FlexRowT : public ContainerBaseT<TCoordinate, VERTICAL>
 {
 public:
+    using TBase = ContainerBaseT<TCoordinate, VERTICAL>;
     typedef TCoordinate CoordinateType;
     typedef FlexItemT<TInt, TCoordinate> FlexItem;
     typedef RectT<TCoordinate> Rect;
+    
+    using TBase::x;
+    using TBase::y;
+    using TBase::left;
+    using TBase::top;
+    using TBase::right;
+    using TBase::bottom;
+    
+    using TBase::offset;
+    using TBase::offsetX;
+    using TBase::offsetY;
+    using TBase::incWidth;
+    
+    using TBase::leftBottom;
+    using TBase::height;
+    using TBase::width;
+    
+    using TBase::leftRight;
+    using TBase::topBottom;
 
 protected:
     std::vector<FlexItem *> m_items;
@@ -61,8 +82,8 @@ public:
     {
         m_items.push_back(item);
         
-        m_frame.size.width += item->getFrame().size.width;
-        if (m_frame.size.height < item->getFrame().size.height) m_frame.size.height = item->getFrame().size.height;
+        incWidth(m_frame, width(item->getFrame()));
+        if (height(m_frame) < height(item->getFrame())) height(m_frame, height(item->getFrame()));
     }
     
     inline void addItemHorizontally(FlexItem *item)
