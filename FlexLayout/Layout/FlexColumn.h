@@ -23,9 +23,9 @@ template <typename TInt, typename TCoordinate, bool VERTICAL>
 {
 public:
     using TBase = ContainerBaseT<TCoordinate, VERTICAL>;
-    typedef TCoordinate CoordinateType;
-    typedef FlexItemT<TInt, TCoordinate> FlexItem;
-    typedef RectT<TCoordinate> Rect;
+    using CoordinateType = TCoordinate;
+    using FlexItem = FlexItemT<TInt, TCoordinate>;
+    using Rect = RectT<TCoordinate>;
 
     using ItemCompare = FlexCompareT<FlexItem, VERTICAL>;
     

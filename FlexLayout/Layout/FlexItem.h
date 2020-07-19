@@ -20,8 +20,8 @@ template <typename TInt, typename TCoordinate>
 class FlexItemT
 {
 public:
-    typedef TCoordinate CoordinateType;
-    typedef RectT<TCoordinate> Rect;
+    using CoordinateType = TCoordinate;
+    using Rect = RectT<TCoordinate>;
 
 private:
     TInt m_item;

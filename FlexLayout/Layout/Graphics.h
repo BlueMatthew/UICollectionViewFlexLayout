@@ -55,8 +55,8 @@ namespace nsflex
 
     template<typename T>
     struct RectT {
-        typedef PointT<T> Point;
-        typedef SizeT<T> Size;
+        using Point = PointT<T>;
+        using Size = SizeT<T>;
 
         Point origin;
         Size size;
