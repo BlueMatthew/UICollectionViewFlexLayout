@@ -586,7 +586,7 @@ protected:
     
     if (m_layoutInvalidated)
     {
-#ifdef DEBUG
+#ifdef PERF_DEBUG
         double time = 0.0f;
         double prevTime = 0.0;
         
@@ -623,7 +623,7 @@ protected:
         [m_headerLayoutAttributes removeAllObjects];
         [m_footerLayoutAttributes removeAllObjects];
         
-#ifdef DEBUG
+#ifdef PERF_DEBUG
         time = [[NSDate date] timeIntervalSince1970] * 1000;
         
         NSLog(@"PERF prepareLayout takes %0.2f ms", time - prevTime);
@@ -895,10 +895,12 @@ protected:
     static int inrect = 0;
     inrect ++;
     
+    /*
     for (UICollectionViewLayoutAttributes *la in newLayoutAttributesArray)
     {
         NSLog(@"DBGORG-%d: Item [%ld-%ld]: (%f-%f)-(%f-%f)", inrect, la.indexPath.section, la.indexPath.item, la.frame.origin.x, la.frame.origin.y, la.frame.size.width, la.frame.size.height);
     }
+     */
 #endif
     
     return newLayoutAttributesArray;
