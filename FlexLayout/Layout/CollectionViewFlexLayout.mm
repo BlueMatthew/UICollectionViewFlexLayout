@@ -7,6 +7,7 @@
 //
 
 #import <Foundation/Foundation.h>
+#define HAVING_HEADER_AND_FOOTER
 
 #import "CollectionViewFlexLayout.h"
 #import "CollectionViewFlexLayoutInvalidationContext.h"

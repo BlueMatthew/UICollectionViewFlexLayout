@@ -18,12 +18,23 @@ namespace nsflex
 
         PointT() : x(0), y(0) {}
         PointT(T x1, T y1) : x(x1), y(y1) {}
-        inline void set(int x, int y)
+        PointT(const PointT<T>& src) : x(src.x), y(src.y) {}
+        inline void set(T x, T y)
         {
             this->x = x;
             this->y = y;
         }
-        
+
+        PointT& operator=(const PointT& src)
+        {
+            if (this != &src)
+            {
+                x = src.x;
+                y = src.y;
+            }
+            return *this;
+        }
+
         inline bool operator==(const PointT<T> &other)
         {
             if (this == &other) return true;
@@ -39,10 +50,22 @@ namespace nsflex
 
         SizeT() : width(0), height(0) {}
         SizeT(T w, T h) : width(w), height(h) {}
-        inline void set(int w, int h)
+        SizeT(const SizeT& src) : width(src.width), height(src.height) {}
+
+        inline void set(T w, T h)
         {
             width = w;
             height = h;
+        }
+
+        SizeT& operator=(const SizeT& src)
+        {
+            if (this != &src)
+            {
+                width = src.width;
+                height = src.height;
+            }
+            return *this;
         }
         inline bool empty() const { return width == 0 || height == 0; }
         
@@ -73,14 +96,26 @@ namespace nsflex
         
         inline T width() const { return size.width; }
         inline T height() const { return size.height; }
-        
+
+        inline RectT<T>& operator=(const RectT<T> &src)
+        {
+            if (this != &src)
+            {
+                origin.x = src.origin.x;
+                origin.y = src.origin.y;
+                size.width = src.size.width;
+                size.height = src.size.height;
+            }
+            return *this;
+        }
+
         inline bool operator==(const RectT<T> &other)
         {
             if (this == &other) return true;
             return origin.x == other.origin.x && origin.y == other.origin.y && size.width == other.size.width && size.height == other.size.height;
         }
 
-        inline void set(int x, int y, int w, int h)
+        inline void set(T x, T y, T w, T h)
         {
             origin.set(x, y);
             size.set(w, h);

@@ -14,7 +14,6 @@
 #include <utility>
 #include <memory>
 
-
 namespace nsflex
 {
     
@@ -36,8 +35,7 @@ protected:
     using FlexRow = FlexRowT<TInt, TCoordinate, VERTICAL>;
     using FlexRowConstIterator = typename std::vector<FlexRow *>::const_iterator;
 
-    using FlexRowVerticalCompare = FlexVerticalCompareT<FlexRow>;
-    using FlexRowHorizontalCompare = FlexHorizontalCompareT<FlexRow>;
+    using RowCompare = FlexCompareT<FlexRow, VERTICAL>;
 
     using TBase::x;
     using TBase::y;
@@ -57,6 +55,7 @@ protected:
 
     using TBase::leftRight;
     using TBase::topBottom;
+    using TBase::makePoint;
 
 
 public:
@@ -84,17 +83,16 @@ protected:
         clearRows();
         TBaseSection::clearItems();
         
-        Point originOfRow = leftBottom(TBaseSection::m_header.getFrame());
-
+        Point pt = makePoint(0, height(TBaseSection::m_frame));
+        
         TInt numberOfItems = TBaseSection::getNumberOfItems(layout);
         if (numberOfItems == 0)
         {
-            return originOfRow;
+            return pt;
         }
+        TBaseSection::m_items.reserve(numberOfItems);
         
         Insets sectionInset = TBaseSection::getInsets(layout);
-        
-        TBaseSection::m_items.reserve(numberOfItems);
         
         // For FlowLayout, there is no column property but we still try to get the number of columns, and use it to estimate the number of rows
         TInt numberOfColumns = TBaseSection::getNumberOfColumns(layout);
@@ -103,18 +101,17 @@ protected:
         TCoordinate minimumLineSpacing = TBaseSection::getMinimumLineSpacing(layout);
         TCoordinate minimumInteritemSpacing = TBaseSection::getMinimumInteritemSpacing(layout);
         
-        TCoordinate maximalSizeOfRow = width(TBaseSection::m_frame) - leftRight(sectionInset);
+        TCoordinate maximalSizeOfRow = width(bounds) - leftRight(sectionInset);
 
         // Layout items
         FlexItem *sectionItem = NULL;
         FlexRow *row = NULL;
         
+        Point originOfRow(pt);
+        offset(originOfRow, left(sectionInset), top(sectionInset));
         Rect frameOfItem(originOfRow.x, originOfRow.y, 0, 0);
-        TCoordinate availableSizeOfRow = 0.0f;
-        TCoordinate sizeOfItemInDirection = 0.0f;
-        
-        originOfRow.x += sectionInset.left;
-        originOfRow.y += sectionInset.top;
+        TCoordinate availableSizeOfRow = 0;
+        TCoordinate sizeOfItemInDirection = 0;
         
         for (TInt itemIndex = 0; itemIndex < numberOfItems; itemIndex++)
         {
@@ -132,7 +129,7 @@ protected:
                     {
                         // New Line
                         m_rows.push_back(row);
-                        originOfRow.y += minimumLineSpacing + row->getFrame().height();
+                        offsetY(originOfRow, minimumLineSpacing + height(row->getFrame()));
                         row = NULL;
                     }
                 }
@@ -166,8 +163,9 @@ protected:
         }
         
         offsetY(originOfRow, bottom(sectionInset));
+        y(pt, y(originOfRow));
 
-        return originOfRow;
+        return pt;
     }
     
 
@@ -175,7 +173,7 @@ protected:
     {
         bool matched = false;
         
-        std::pair<FlexRowConstIterator, FlexRowConstIterator> range = std::equal_range(m_rows.begin(), m_rows.end(), std::pair<TCoordinate, TCoordinate>(top(rectInSection), bottom(rectInSection)), FlexRowVerticalCompare());
+        std::pair<FlexRowConstIterator, FlexRowConstIterator> range = std::equal_range(m_rows.begin(), m_rows.end(), std::pair<TCoordinate, TCoordinate>(top(rectInSection), bottom(rectInSection)), RowCompare());
         
         FlexRowConstIterator lastRow = range.second - 1;
         for (FlexRowConstIterator it = range.first; it != range.second; ++it)

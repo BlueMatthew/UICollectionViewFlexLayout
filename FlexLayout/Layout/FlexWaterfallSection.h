@@ -5,12 +5,16 @@
 //  Created by Matthew Shi on 2020/6/7.
 //  Copyright © 2020 Matthew Shi. All rights reserved.
 //
+#include "FlexSection.h"
+#include "FlexColumn.h"
+
+#ifndef NDEBUG
+#include <string>
+#include <sstream>
+#endif // NDEBUG
 
 #ifndef WaterfallSection_h
 #define WaterfallSection_h
-
-#import "FlexSection.h"
-#import "FlexColumn.h"
 
 namespace nsflex
 {
@@ -31,6 +35,8 @@ protected:
     using FlexItem = typename TBaseSection::FlexItem;
     using FlexColumn = FlexColumnT<TInt, TCoordinate, VERTICAL>;
     using FlexColumnConstIterator = typename std::vector<FlexColumn *>::const_iterator;
+
+    using ColumnSizeCompare = FlexSizeCompare<FlexColumn, VERTICAL>;
     
     using TBase::x;
     using TBase::y;
@@ -50,6 +56,8 @@ protected:
     
     using TBase::leftRight;
     using TBase::topBottom;
+
+    using TBase::makePoint;
     
 
 public:
@@ -77,13 +85,15 @@ protected:
     /// Keep the commented code of "horizontally" parts
     Point prepareLayoutWithItems(const TLayout *layout, const Rect &bounds)
     {
+        Point pt = makePoint(0, height(TBaseSection::m_frame));
+
         // Items
         clearColumns();
         TBaseSection::clearItems();
 
         Insets sectionInset = TBaseSection::getInsets(layout);
         
-        Rect frameOfColumn(leftBottom(TBaseSection::m_header.getFrame()), Size(0, 0));
+        Rect frameOfColumn(pt, Size(0, 0));
         frameOfColumn.offset(sectionInset.left, sectionInset.top);
 
         TInt numberOfItems = TBaseSection::getNumberOfItems(layout);
@@ -127,6 +137,9 @@ protected:
 
             FlexColumn *column = new FlexColumn(estimatedNumberOfItems, frameOfColumn);
             m_columns.push_back(column);
+
+            Rect rect = m_columns[m_columns.size() - 1]->getFrame();
+
             
             offsetX(frameOfColumn, sizeOfColumn + minimumInteritemSpacing);
         }
@@ -134,7 +147,7 @@ protected:
         // Layout each item
         typename std::vector<FlexColumn *>::iterator itOfTargetColumn = m_columns.begin();
 
-        FlexVerticalSizeCompare<FlexColumn> compare;
+        ColumnSizeCompare compare;
 
         Rect frameOfItem;
         bool isFullSpan = false;
@@ -178,11 +191,28 @@ protected:
         // Find the column with highest height
         typename std::vector<FlexColumn *>::iterator columnItOfMaximalSize = max_element(m_columns.begin(), m_columns.end(), compare);
         
-        Point pt = TBaseSection::m_header.getFrame().origin;
+
         y(pt, bottom((*columnItOfMaximalSize)->getFrame()) + bottom(sectionInset));
 
         return pt;
     }
+
+#ifndef NDEBUG
+    std::string printDebugInfo() const
+    {
+        std::ostringstream str;
+        int idx = 1;
+        for (typename std::vector<FlexColumn *>::const_iterator it = m_columns.begin(); it != m_columns.end(); ++it)
+        {
+            str << "Column:" << idx << "\r\n";
+            str << (*it)->printDebugInfo("    ");
+
+            idx++;
+        }
+
+        return str.str();
+    }
+#endif // #ifndef NDEBUG
 
     bool filterItemsInRect(const Rect &rectInSection, std::vector<const FlexItem *> &items) const
     {

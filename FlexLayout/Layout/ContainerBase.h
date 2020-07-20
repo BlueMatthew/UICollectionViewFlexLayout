@@ -10,6 +10,19 @@
 
 namespace nsflex
 {
+    template<typename TCoordinate, bool VERTICAL>
+    struct VContainerBaseT
+    {
+        virtual ~VContainerBaseT()
+        {
+
+        }
+    };
+
+    template<typename TCoordinate, bool VERTICAL>
+    struct NVContainerBaseT
+    {
+    };
 
     template<typename TCoordinate, bool VERTICAL>
     struct ContainerBaseT
@@ -19,9 +32,16 @@ namespace nsflex
         using Size = SizeT<TCoordinate>;
         using Rect = RectT<TCoordinate>;
         using Insets = InsetsT<TCoordinate>;
-        
-        
+
+        virtual ~ContainerBaseT()
+        {
+        }
+
         // Point
+        inline Point makePoint(TCoordinate x, TCoordinate y) const
+        {
+            return makePoint(x, y, bool_trait<VERTICAL>());
+        }
         inline TCoordinate x(const Point &point) const
         {
             return x(point, bool_trait<VERTICAL>());
@@ -81,6 +101,11 @@ namespace nsflex
         // Size Ends
         
         // Rect
+        inline Rect makeRect(TCoordinate x, TCoordinate y, TCoordinate width, TCoordinate height) const
+        {
+            return makeRect(x, y, width, height, bool_trait<VERTICAL>());
+        }
+
         inline TCoordinate left(const Rect &rect) const
         {
             return left(rect, bool_trait<VERTICAL>());
@@ -199,6 +224,14 @@ namespace nsflex
     protected:
         
         // Point
+        inline Point makePoint(TCoordinate x, TCoordinate y, bool_trait<true>) const
+        {
+            return Point(x, y);
+        }
+        inline Point makePoint(TCoordinate x, TCoordinate y, bool_trait<false>) const
+        {
+            return Point(y, x);
+        }
         inline TCoordinate x(const Point &point, bool_trait<true>) const
         {
             return point.x;
@@ -320,7 +353,6 @@ namespace nsflex
         {
             return Rect(x, y, width, height);
         }
-        
         inline Rect makeRect(TCoordinate x, TCoordinate y, TCoordinate width, TCoordinate height, bool_trait<false>) const
         {
             return Rect(y, x, height, width);
