@@ -885,7 +885,6 @@ namespace nsflex
     bool existed = (UICollectionViewScrollDirectionVertical == m_scrollDirection) ? m_verticalLayout->getItemFrame(indexPath.section, indexPath.item, frame) : m_horizontalLayout->getItemFrame(indexPath.section, indexPath.item, frame);
     if (existed)
     {
-        // frame.offset(-self.collectionView.contentInset.left, -self.collectionView.contentInset.top);
         layoutAttributes.frame = CGRectFromFlexRect(frame);
         return layoutAttributes;
     }
@@ -909,7 +908,6 @@ namespace nsflex
         bool existed = (UICollectionViewScrollDirectionVertical == m_scrollDirection) ? m_verticalLayout->getHeaderFrame(indexPath.section, frame) : m_horizontalLayout->getHeaderFrame(indexPath.section, frame);
         if (existed)
         {
-            // frame.offset(-self.collectionView.contentInset.left, -self.collectionView.contentInset.top);
             layoutAttributes.frame = CGRectFromFlexRect(frame);
             return layoutAttributes;
         }
@@ -926,7 +924,6 @@ namespace nsflex
         bool existed = (UICollectionViewScrollDirectionVertical == m_scrollDirection) ? m_verticalLayout->getFooterFrame(indexPath.section, frame) : m_horizontalLayout->getFooterFrame(indexPath.section, frame);
         if (existed)
         {
-            // frame.offset(-self.collectionView.contentInset.left, -self.collectionView.contentInset.top);
             layoutAttributes.frame = CGRectFromFlexRect(frame);
             return layoutAttributes;
         }
