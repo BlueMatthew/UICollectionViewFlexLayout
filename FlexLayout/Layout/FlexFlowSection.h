@@ -37,7 +37,7 @@ protected:
 
     using RowCompare = FlexCompareT<FlexRow, VERTICAL>;
 
-    using TBase::x;
+    // using TBase::x;
     using TBase::y;
     using TBase::left;
     using TBase::top;
@@ -45,22 +45,23 @@ protected:
     using TBase::bottom;
 
     using TBase::offset;
-    using TBase::offsetX;
+    // using TBase::offsetX;
     using TBase::offsetY;
-    using TBase::incWidth;
+    // using TBase::incWidth;
 
-    using TBase::leftBottom;
+    // using TBase::leftBottom;
     using TBase::height;
     using TBase::width;
 
     using TBase::hinsets;
-    using TBase::vinsets;
+    // using TBase::vinsets;
     using TBase::makePoint;
 
 
-public:
+protected:
     std::vector<FlexRow *> m_rows;
     
+public:
     FlexFlowSectionT(TInt section, const Rect &frame) : TBaseSection(section, frame)
     {
     }

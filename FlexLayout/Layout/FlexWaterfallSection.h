@@ -60,10 +60,11 @@ protected:
     using TBase::makePoint;
     
 
-public:
+protected:
     std::vector<FlexItem *> m_placeHolderItems;
     std::vector<FlexColumn *> m_columns;
-    
+
+public:
     FlexWaterfallSectionT(TInt section, const Rect &frame) : TBaseSection(section, frame)
     {
     }
