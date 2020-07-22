@@ -16,16 +16,16 @@ namespace nsflex
         T x;
         T y;
 
-        PointT() : x(0), y(0) {}
-        PointT(T x1, T y1) : x(x1), y(y1) {}
-        PointT(const PointT<T>& src) : x(src.x), y(src.y) {}
+        inline PointT() : x(0), y(0) {}
+        inline PointT(T x1, T y1) : x(x1), y(y1) {}
+        inline PointT(const PointT<T>& src) : x(src.x), y(src.y) {}
         inline void set(T x, T y)
         {
             this->x = x;
             this->y = y;
         }
 
-        PointT& operator=(const PointT& src)
+        inline PointT& operator=(const PointT& src)
         {
             if (this != &src)
             {
@@ -35,10 +35,14 @@ namespace nsflex
             return *this;
         }
 
-        inline bool operator==(const PointT<T> &other)
+        inline bool operator==(const PointT<T> &other) const
         {
             if (this == &other) return true;
             return x == other.x && y == other.y;
+        }
+        inline bool operator!=(const PointT<T> &other) const
+        {
+            return !(*this == other);
         }
     };
 
@@ -48,9 +52,9 @@ namespace nsflex
         T width;
         T height;
 
-        SizeT() : width(0), height(0) {}
-        SizeT(T w, T h) : width(w), height(h) {}
-        SizeT(const SizeT& src) : width(src.width), height(src.height) {}
+        inline SizeT() : width(0), height(0) {}
+        inline SizeT(T w, T h) : width(w), height(h) {}
+        inline SizeT(const SizeT& src) : width(src.width), height(src.height) {}
 
         inline void set(T w, T h)
         {
@@ -58,7 +62,7 @@ namespace nsflex
             height = h;
         }
 
-        SizeT& operator=(const SizeT& src)
+        inline SizeT& operator=(const SizeT& src)
         {
             if (this != &src)
             {
@@ -69,10 +73,15 @@ namespace nsflex
         }
         inline bool empty() const { return width == 0 || height == 0; }
         
-        inline bool operator==(const SizeT<T> &other)
+        inline bool operator==(const SizeT<T> &other) const
         {
             if (this == &other) return true;
             return width == other.width && height == other.height;
+        }
+        
+        inline bool operator!=(const SizeT<T> &other) const
+        {
+            return !((*this) == other);
         }
     };
 
@@ -84,10 +93,10 @@ namespace nsflex
         Point origin;
         Size size;
 
-        RectT() {}
-        RectT(T x, T y, T width, T height) : origin(x, y), size(width, height) {}
-        RectT(const Point &p, const Size &s) : origin(p), size(s) {}
-        RectT(const RectT<T> &rect) : origin(rect.origin), size(rect.size) {}
+        inline RectT() {}
+        inline RectT(T x, T y, T width, T height) : origin(x, y), size(width, height) {}
+        inline RectT(const Point &p, const Size &s) : origin(p), size(s) {}
+        inline RectT(const RectT<T> &rect) : origin(rect.origin), size(rect.size) {}
 
         inline T left() const { return origin.x; }
         inline T top() const { return origin.y; }
@@ -109,10 +118,15 @@ namespace nsflex
             return *this;
         }
 
-        inline bool operator==(const RectT<T> &other)
+        inline bool operator==(const RectT<T> &other) const
         {
             if (this == &other) return true;
             return origin.x == other.origin.x && origin.y == other.origin.y && size.width == other.size.width && size.height == other.size.height;
+        }
+        
+        inline bool operator!=(const RectT<T> &other) const
+        {
+            return !(*this == other);
         }
 
         inline void set(T x, T y, T w, T h)
@@ -141,7 +155,7 @@ namespace nsflex
             size.height = std::min(b, other.bottom()) - top();
         }
         
-        static RectT<T> intersectRects(const RectT<T> &first, const RectT<T> &second)
+        inline static RectT<T> intersectRects(const RectT<T> &first, const RectT<T> &second)
         {
             RectT<T> rect = first;
             rect.intersectRect(second);
@@ -160,6 +174,9 @@ namespace nsflex
 
         InsetsT() : left(0), top(0), right(0), bottom(0) {}
         InsetsT(T l, T t, T r, T b) : left(l), top(t), right(r), bottom(b) {}
+        
+        T hsize() const { return left + right; }
+        T vsize() const { return top + bottom; }
     };
     
 } // namespace nsflex

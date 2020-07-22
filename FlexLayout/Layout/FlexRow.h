@@ -42,8 +42,8 @@ public:
     using TBase::height;
     using TBase::width;
     
-    using TBase::leftRight;
-    using TBase::topBottom;
+    using TBase::hinsets;
+    using TBase::vinsets;
 
 protected:
     std::vector<FlexItem *> m_items;
@@ -55,7 +55,7 @@ public:
     {
     }
     
-    inline const Rect getFrame() const { return m_frame; }
+    inline Rect getFrame() const { return m_frame; }
     inline Rect& getFrame() { return m_frame; }
     
     bool hasItems() const

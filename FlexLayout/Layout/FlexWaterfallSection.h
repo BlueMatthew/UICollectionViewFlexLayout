@@ -54,8 +54,8 @@ protected:
     using TBase::height;
     using TBase::width;
     
-    using TBase::leftRight;
-    using TBase::topBottom;
+    using TBase::hinsets;
+    // using TBase::vinsets;
 
     using TBase::makePoint;
     
@@ -118,7 +118,7 @@ protected:
         TInt estimatedNumberOfItems = (TInt)ceil(numberOfItems / numberOfColumns);
         TCoordinate sizeOfColumn = 0.0;
         
-        TCoordinate availableSizeOfColumn = width(bounds) - leftRight(sectionInset);
+        TCoordinate availableSizeOfColumn = width(bounds) - hinsets(sectionInset);
 
         for (TInt columnIndex = 0; columnIndex < numberOfColumns; columnIndex++)
         {

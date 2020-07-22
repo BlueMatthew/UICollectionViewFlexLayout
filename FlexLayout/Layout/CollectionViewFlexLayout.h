@@ -60,8 +60,6 @@ typedef NS_ENUM(NSUInteger, UICollectionViewFlexLayoutMode) {
 
 // Add section with sticky header
 - (void)addStickyHeader:(NSInteger)section;
-// Remove the specified section with sticky section
-- (void)removeStickyHeader:(NSInteger)section;
 // Clear all sections with sticky header
 - (void)removeAllStickyHeaders;
 

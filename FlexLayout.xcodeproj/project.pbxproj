@@ -64,6 +64,7 @@
 		3489127124909FE200B1A95B /* main.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = main.m; sourceTree = "<group>"; };
 		34BD104224C2BCEB00EEA415 /* ContainerBase.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ContainerBase.h; sourceTree = "<group>"; };
 		34BD104424C34ED400EEA415 /* BoolTraits.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = BoolTraits.h; sourceTree = "<group>"; };
+		34E878DF24C6D3FD00F716CA /* FlexLayout.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FlexLayout.h; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -144,6 +145,7 @@
 		348912782490A01C00B1A95B /* Layout */ = {
 			isa = PBXGroup;
 			children = (
+				34E878DF24C6D3FD00F716CA /* FlexLayout.h */,
 				34BD104424C34ED400EEA415 /* BoolTraits.h */,
 				34BD104224C2BCEB00EEA415 /* ContainerBase.h */,
 				34058D3724B762C400CE2CEA /* Graphics.h */,

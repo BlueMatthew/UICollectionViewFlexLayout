@@ -53,8 +53,8 @@ protected:
     using TBase::height;
     using TBase::width;
 
-    using TBase::leftRight;
-    using TBase::topBottom;
+    using TBase::hinsets;
+    using TBase::vinsets;
     using TBase::makePoint;
 
 
@@ -101,7 +101,7 @@ protected:
         TCoordinate minimumLineSpacing = TBaseSection::getMinimumLineSpacing(layout);
         TCoordinate minimumInteritemSpacing = TBaseSection::getMinimumInteritemSpacing(layout);
         
-        TCoordinate maximalSizeOfRow = width(bounds) - leftRight(sectionInset);
+        TCoordinate maximalSizeOfRow = width(bounds) - hinsets(sectionInset);
 
         // Layout items
         FlexItem *sectionItem = NULL;

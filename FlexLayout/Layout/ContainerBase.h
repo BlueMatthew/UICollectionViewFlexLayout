@@ -209,14 +209,14 @@ namespace nsflex
             return bottom(insets, bool_trait<VERTICAL>());
         }
         
-        inline TCoordinate leftRight(const Insets &insets) const
+        inline TCoordinate hinsets(const Insets &insets) const
         {
-            return leftRight(insets, bool_trait<VERTICAL>());
+            return hinsets(insets, bool_trait<VERTICAL>());
         }
         
-        inline TCoordinate topBottom(const Insets &insets) const
+        inline TCoordinate vinsets(const Insets &insets) const
         {
-            return topBottom(insets, bool_trait<VERTICAL>());
+            return vinsets(insets, bool_trait<VERTICAL>());
         }
         // Insets Ends
 
@@ -558,22 +558,22 @@ namespace nsflex
             return insets.right;
         }
         
-        inline TCoordinate leftRight(const Insets &insets, bool_trait<true>) const
+        inline TCoordinate hinsets(const Insets &insets, bool_trait<true>) const
         {
-            return insets.left + insets.right;
+            return insets.hsize();
         }
-        inline TCoordinate leftRight(const Insets &insets, bool_trait<false>) const
+        inline TCoordinate hinsets(const Insets &insets, bool_trait<false>) const
         {
-            return insets.top + insets.bottom;
+            return insets.vsize();
         }
         
-        inline TCoordinate topBottom(const Insets &insets, bool_trait<true>) const
+        inline TCoordinate vinsets(const Insets &insets, bool_trait<true>) const
         {
-            return insets.top + insets.bottom;
+            return insets.vsize();
         }
-        inline TCoordinate topBottom(const Insets &insets, bool_trait<false>) const
+        inline TCoordinate vinsets(const Insets &insets, bool_trait<false>) const
         {
-            return insets.left + insets.right;
+            return insets.hszie();
         }
         // Insets Ends
 

@@ -31,24 +31,24 @@ public:
 
     using ItemCompare = FlexCompareT<FlexItem, VERTICAL>;
     
-    using TBase::x;
-    using TBase::y;
-    using TBase::left;
+    // using TBase::x;
+    // using TBase::y;
+    // using TBase::left;
     using TBase::top;
-    using TBase::right;
+    // using TBase::right;
     using TBase::bottom;
     
-    using TBase::offset;
-    using TBase::offsetX;
-    using TBase::offsetY;
-    using TBase::incWidth;
+    // using TBase::offset;
+    // using TBase::offsetX;
+    // using TBase::offsetY;
+    // using TBase::incWidth;
     
-    using TBase::leftBottom;
+    // using TBase::leftBottom;
     using TBase::height;
-    using TBase::width;
+    // using TBase::width;
     
-    using TBase::leftRight;
-    using TBase::topBottom;
+    // using TBase::hsize;
+    // using TBase::vsize;
     
 protected:
     std::vector<FlexItem *> m_items;
@@ -56,7 +56,7 @@ protected:
     Rect m_frame; // The origin is in the coordinate system of section, should convert to the coordinate system of UICollectionView
     
 public:
-    inline const Rect getFrame() const { return m_frame; }
+    inline Rect getFrame() const { return m_frame; }
     inline Rect& getFrame() { return m_frame; }
     
     FlexColumnT()

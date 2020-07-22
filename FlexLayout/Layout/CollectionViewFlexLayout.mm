@@ -19,6 +19,7 @@
 #import "FlexFlowSection.h"
 #import "FlexWaterfallSection.h"
 #include "ContainerBase.h"
+#include "FlexLayout.h"
 #include <vector>
 #include <map>
 #include <memory>
@@ -26,29 +27,27 @@
 
 namespace nsflex
 {
-    class LayoutAdapter;
-    typedef SizeT<CGFloat> Size;
-    typedef RectT<CGFloat> Rect;
-    typedef InsetsT<CGFloat> Insets;
+    class LayoutCallbackAdapter;
+    
+    // Redefinition with the Point/Size in MacTypes.h
+    using Point = PointT<CGFloat>;
+    using Size = SizeT<CGFloat>;
+    using Rect = RectT<CGFloat>;
+    using Insets = InsetsT<CGFloat>;
 }
 
-typedef nsflex::FlexItemT<NSInteger, CGFloat> FlexItem;
-typedef nsflex::FlexVerticalCompareT<FlexItem> FlexItemVerticalCompare;
-typedef nsflex::FlexHorizontalCompareT<FlexItem> FlexItemHorizontalCompare;
+using SectionItem = SectionItemT<NSInteger>;
+using StickyItemState = StickyItemStateT<CGFloat>;
+using StickyItem = StickyItemT<NSInteger, CGFloat>;
+using LayoutItem = LayoutItemT<NSInteger, CGFloat>;
+using StickyItemList = std::vector<StickyItem>;
+template <bool VERTICAL>
+using FlexLayout = FlexLayoutT<nsflex::LayoutCallbackAdapter, NSInteger, CGFloat, VERTICAL>;
+using StickyItemAndSectionItemCompare = StickyItemAndSectionItemCompareT<NSInteger, CGFloat>;
 
-
-typedef nsflex::FlexSectionT<nsflex::LayoutAdapter, NSInteger, CGFloat, true> UISection;
-typedef nsflex::FlexFlowSectionT<UISection, true> UIFlowSection;
-typedef nsflex::FlexWaterfallSectionT<UISection, true> UIWaterfallSection;
-typedef nsflex::FlexVerticalCompareT<UISection> UISectionVerticalCompare;
-typedef nsflex::FlexHorizontalCompareT<UISection> UISectionHorizontalCompare;
-
-// typedef nsflex::FlexCompareT<UISection, true> UISectionVerticalCompare2;
-
-
-// #ifdef DEBUG
+#ifndef NDEBUG
 #define PERF_DEBUG
-// #endif
+#endif
 
 @interface UICollectionViewFlexLayout ()
 
@@ -78,28 +77,53 @@ inline CGRect CGRectFromFlexRect(const nsflex::Rect& rect)
     return result;
 }
 
-inline nsflex::Size FlexSizeFromCGSize(const CGSize& size)
+inline nsflex::Point FlexPointFromCGPoint(const CGPoint& point)
 {
-    nsflex::Size result;
-    result.width = size.width;
-    result.height = size.height;
-    
-    return result;
+    return nsflex::Point(point.x, point.y);
 }
 
+inline CGPoint CGPointFromFlexPoint(const nsflex::Point& point)
+{
+    CGPoint pt;
+    pt.x = point.x;
+    pt.y = point.y;
+    return pt;
+}
+
+inline CGSize CGSizeFromFlexSize(const nsflex::Size& size)
+{
+    CGSize cgSize;
+    cgSize.width = size.width;
+    cgSize.height = size.height;
+    return cgSize;
+}
+
+inline nsflex::Size FlexSizeFromCGSize(const CGSize& size)
+{
+    return nsflex::Size(size.width, size.height);
+}
+
+inline nsflex::Insets FlexInsetsFromUIEdgeInsets(const UIEdgeInsets& insets)
+{
+    return nsflex::Insets(insets.left, insets.top, insets.right, insets.bottom);
+}
 
 namespace nsflex
 {
-    class LayoutAdapter
+    class LayoutCallbackAdapter
     {
     protected:
         UICollectionViewFlexLayout *m_layout;
     public:
         
-        LayoutAdapter(UICollectionViewFlexLayout *layout) : m_layout(layout) {}
-        ~LayoutAdapter() { m_layout = NULL; }
+        LayoutCallbackAdapter(UICollectionViewFlexLayout *layout) : m_layout(layout) {}
+        ~LayoutCallbackAdapter() { m_layout = NULL; }
         
-        bool isVertical() const { return IS_CV_VERTICAL(m_layout); }
+        inline int getLayoutModeForSection(NSInteger section) const
+        {
+            return [m_layout getLayoutModeForSection:section];
+        }
+        
         inline NSInteger getNumberOfSections() const
         {
             return [m_layout getNumberOfSections];
@@ -167,27 +191,6 @@ namespace nsflex
     };
 }
 
-/*
-class UICollectionViewFlexLayoutSectionContextAdapter
-{
-public:
-    UICollectionViewFlexLayoutSectionContextAdapter(UICollectionViewFlexLayout *layout, NSInteger section) : m_layout(layout), m_section(section) { }
-    inline bool isVertical() const { return m_layout.scrollDirection == UICollectionViewScrollDirectionVertical; }
-    inline NSInteger numberOfItems() const { retrurn [m_layout getNumberOfItemsInSection:section]; }
-    inline NSInteger numberOfColumns() const { retrurn [m_layout getNumberOfColumnsForSection:section]; }
-    inline UIEdgeInsets insets() const { retrurn [m_layout getNumberOfColumnsForSection:section]; }
-    inline CGSize sizeForHeader() const { retrurn [m_layout getNumberOfColumnsForSection:section]; }
-    inline CGSize sizeForFooter() const { retrurn [m_layout getNumberOfColumnsForSection:section]; }
-    inline CGSize sizeForItem(NSInteger item) const { retrurn [m_layout getNumberOfColumnsForSection:section]; }
-    inline CGFloat minimumLineSpacing() const { retrurn [m_layout getNumberOfColumnsForSection:section]; }
-    inline CGFloat minimumInteritemSpacing() const { retrurn [m_layout getNumberOfColumnsForSection:section]; }
-    
-protected:
-    UICollectionViewFlexLayout *m_layout;
-    NSInteger m_section;
-}
-*/
-
 @interface UICollectionViewFlexLayout ()
 {
     struct {
@@ -223,12 +226,12 @@ protected:
         };
     } m_layoutDelegateFlags;
     
-    nsflex::LayoutAdapter *m_layoutAdapter;
+    FlexLayout<true>    *m_verticalLayout;
+    FlexLayout<false>   *m_horizontalLayout;
     
-    std::vector<UISection *> m_sections;
-    NSMutableArray *m_updateIndexPaths;
+    // NSMutableArray *m_updateIndexPaths;
     
-    std::map<NSInteger, BOOL> m_stickyHeaders; // Section Index -> Sticy Status(YES/NO)
+    StickyItemList m_stickyHeaders; // Section Index -> Sticy Status(YES/NO)
     
     CGSize m_contentSize;
     BOOL m_layoutInvalidated;
@@ -270,7 +273,8 @@ protected:
         m_pagingSection = NSNotFound;
         m_pagingOffset = CGPointZero;
         
-        m_layoutAdapter = new nsflex::LayoutAdapter(self);
+        m_verticalLayout = NULL;
+        m_horizontalLayout = NULL;
         
         m_contentSize = CGSizeZero;
         m_layoutInvalidated = YES;
@@ -278,6 +282,8 @@ protected:
         m_itemLayoutAttributes = [NSMutableDictionary dictionaryWithCapacity:8];
         m_headerLayoutAttributes = [NSMutableDictionary dictionaryWithCapacity:4];
         m_footerLayoutAttributes = [NSMutableDictionary dictionaryWithCapacity:2];
+        
+        [self initializeLayout:m_scrollDirection];
     }
     return self;
 }
@@ -294,8 +300,9 @@ protected:
                 NSDictionary<NSNumber *, NSNumber *> *stickyHeaders = (NSDictionary<NSNumber *, NSNumber *> *)obj;
                 for (NSNumber *section in stickyHeaders)
                 {
-                    m_stickyHeaders[[section integerValue]] = [[stickyHeaders objectForKey:section] boolValue];
+                    m_stickyHeaders.push_back(std::make_pair(SectionItem([section integerValue], 0), StickyItemState([[stickyHeaders objectForKey:section] boolValue] ? true : false)));
                 }
+                std::sort(m_stickyHeaders.begin(), m_stickyHeaders.end());
             }
         }
         m_pagingOffset = [aDecoder containsValueForKey:@"pagingOffset"] ? [aDecoder decodeCGPointForKey:@"pagingOffset"] : CGPointZero;
@@ -310,7 +317,8 @@ protected:
         m_minimumInteritemSpacing = [aDecoder containsValueForKey:@"minimumInteritemSpacing"] ? [aDecoder decodeDoubleForKey:@"minimumInteritemSpacing"] : 0.0f;
         m_minimumLineSpacing = [aDecoder containsValueForKey:@"minimumLineSpacing"] ? [aDecoder decodeDoubleForKey:@"minimumLineSpacing"] : 0.0f;
         
-        m_layoutAdapter = new nsflex::LayoutAdapter(self);
+        m_verticalLayout = NULL;
+        m_horizontalLayout = NULL;
         
         m_contentSize = CGSizeZero;
         m_layoutInvalidated = YES;
@@ -318,6 +326,8 @@ protected:
         m_itemLayoutAttributes = [NSMutableDictionary dictionaryWithCapacity:8];
         m_headerLayoutAttributes = [NSMutableDictionary dictionaryWithCapacity:4];
         m_footerLayoutAttributes = [NSMutableDictionary dictionaryWithCapacity:2];
+        
+        [self initializeLayout:m_scrollDirection];
     }
     return self;
 }
@@ -338,12 +348,12 @@ protected:
     [aCoder encodeInteger:m_pagingSection forKey:@"pagingSection"];
     [aCoder encodeCGPoint:m_pagingOffset forKey:@"pagingOffset"];
     
-    if (!m_sections.empty())
+    if (!m_stickyHeaders.empty())
     {
-        NSMutableDictionary<NSNumber *, NSNumber *> *stickyHeaders = [[NSMutableDictionary<NSNumber *, NSNumber *> alloc] initWithCapacity:m_sections.size()];
-        for (std::map<NSInteger, BOOL>::const_iterator it = m_stickyHeaders.begin(); it != m_stickyHeaders.end(); ++it)
+        NSMutableDictionary<NSNumber *, NSNumber *> *stickyHeaders = [[NSMutableDictionary<NSNumber *, NSNumber *> alloc] initWithCapacity:m_stickyHeaders.size()];
+        for (StickyItemList::const_iterator it = m_stickyHeaders.begin(); it != m_stickyHeaders.end(); ++it)
         {
-            [stickyHeaders setObject:[NSNumber numberWithBool:it->second] forKey:[NSNumber numberWithInteger:it->first]];
+            [stickyHeaders setObject:[NSNumber numberWithBool:it->second.isInSticky()] forKey:[NSNumber numberWithInteger:it->first.getSection()]];
         }
         
         [aCoder encodeObject:stickyHeaders forKey:@"stickyHeaders"];
@@ -352,11 +362,6 @@ protected:
 
 - (void)dealloc
 {
-    for (std::vector<UISection *>::iterator it = m_sections.begin(); it != m_sections.end(); delete *it, ++it);
-    m_sections.clear();
-    
-    delete m_layoutAdapter;
-    m_layoutAdapter = NULL;
 }
 
 + (Class)layoutAttributesClass
@@ -406,6 +411,7 @@ protected:
     if (scrollDirection != m_scrollDirection)
     {
         m_scrollDirection = scrollDirection;
+        [self initializeLayout:m_scrollDirection];
         [self invalidateLayout];
     }
 }
@@ -442,20 +448,11 @@ protected:
 
 - (void)addStickyHeader:(NSInteger)section
 {
-    if (m_stickyHeaders.find(section) == m_stickyHeaders.end())
+    SectionItem sectionItem(section, 0);
+    StickyItemList::iterator it = std::lower_bound(m_stickyHeaders.begin(), m_stickyHeaders.end(), sectionItem, StickyItemAndSectionItemCompare());
+    if (it == m_stickyHeaders.end() || it->first != sectionItem)
     {
-        m_stickyHeaders[section] = NO;
-    }
-    
-    [self invalidateOffset];
-}
-
-- (void)removeStickyHeader:(NSInteger)section
-{
-    std::map<NSInteger, BOOL>::const_iterator it = m_stickyHeaders.find(section);
-    if (it != m_stickyHeaders.end())
-    {
-        m_stickyHeaders.erase(it);
+        m_stickyHeaders.insert(it, std::make_pair(sectionItem, StickyItemState()));
         [self invalidateOffset];
     }
 }
@@ -463,7 +460,6 @@ protected:
 - (void)removeAllStickyHeaders
 {
     m_stickyHeaders.clear();
-    
     [self invalidateOffset];
 }
 
@@ -472,7 +468,6 @@ protected:
     if (m_stackedStickyHeaders != stackedStickyHeaders)
     {
         m_stackedStickyHeaders = stackedStickyHeaders;
-        
         [self invalidateOffset];
     }
 }
@@ -492,90 +487,32 @@ protected:
     [self invalidateLayoutWithContext:context];
 }
 
-// Parameter "relayout" indicates wheather we should relayout the following sections immidiately
-// If we have multiple updates, it is better to layout after the last update.
-- (void)insertSection:(NSInteger)section andRelayout:(BOOL)relayout
+- (void)initializeLayout:(UICollectionViewScrollDirection)scrollDirection
 {
-    UICollectionViewFlexLayoutMode mode = [self getLayoutModeForSection:section];
-    UICollectionView *cv = self.collectionView;
-    UIEdgeInsets insets = cv.contentInset;
-    
-    nsflex::Rect bounds(cv.contentInset.left, insets.top, cv.bounds.size.width - insets.left - insets.right, cv.bounds.size.height - insets.top - insets.bottom);
-    
-    // Get the leftBottom(topRight for horizontal direction) of the previous section
-    if ((section - 1) >= 0)
+    if (UICollectionViewScrollDirectionVertical == scrollDirection)
     {
-        std::vector<UISection *>::iterator it = m_sections.begin() + (section - 1);  // Previous Section
-        // origin = (*it)->getFrame().origin;
-        IS_CV_VERTICAL(self) ? bounds.origin.y = (*it)->getFrame().bottom() : (bounds.origin.x = (*it)->getFrame().right());
-    }
-    
-    UISection *pSection = (mode == UICollectionViewFlexLayoutModeFlow) ? ((UISection *)(new UIFlowSection(section, bounds))) : ((UISection *)(new UIWaterfallSection(section, bounds)));
-    
-    pSection->prepareLayout(m_layoutAdapter, bounds);
-    
-    m_sections.insert(m_sections.begin() + section, pSection);
-    
-    if (relayout) [self recalcSectionFrameFrom:section + 1];
-}
-
-// Parameter "relayout" indicates wheather we should relayout the following sections immidiately
-// If we have multiple updates, it is better to layout after the last update.
-- (void)removeSection:(NSInteger)section andRelayout:(BOOL)relayout
-{
-    if (section < 0 || section >= m_sections.size())
-    {
-        return;
-    }
-    std::vector<UISection *>::iterator it = m_sections.begin() + section;
-    delete *it;
-    m_sections.erase(it);
-    
-    if (relayout) [self recalcSectionFrameFrom:section];
-}
-
-// Parameter "relayout" indicates wheather we should relayout the following sections immidiately
-// If we have multiple updates, it is better to layout after the last update.
-- (void)removeSections:(NSIndexSet *)sections andRelayout:(BOOL)relayout
-{
-    __block NSInteger minSection = NSNotFound;
-    // Remove section from tail to head
-    [sections enumerateIndexesWithOptions:NSEnumerationReverse usingBlock:^(NSUInteger idx, BOOL * _Nonnull stop) {
-        minSection = idx;
-        if (idx >= self->m_sections.size())
+        if (NULL == m_verticalLayout)
         {
-            return; // continue;
+            m_verticalLayout = new FlexLayout<true>();
         }
-        std::vector<UISection *>::iterator it = self->m_sections.begin() + idx;
-        delete *it;
-        self->m_sections.erase(it);
-    }];
-    
-    if (relayout) [self recalcSectionFrameFrom:minSection];
-}
-
-- (void)recalcSectionFrameFrom:(NSInteger)section
-{
-    if (section >= m_sections.size())
-    {
-        return;
+        if (NULL != m_horizontalLayout)
+        {
+            delete m_horizontalLayout;
+            m_horizontalLayout = NULL;
+        }
     }
-    
-    CGFloat position = 0.0;
-    std::vector<UISection *>::iterator it = m_sections.begin() + section;
-    if (section > 0)
+    else
     {
-        std::vector<UISection *>::iterator prevIt = it - 1;
-        position = IS_CV_VERTICAL(self) ? ((*prevIt)->getFrame().origin.y + (*prevIt)->getFrame().size.height) : ((*prevIt)->getFrame().origin.x + (*prevIt)->getFrame().size.width);
+        if (NULL == m_horizontalLayout)
+        {
+            m_horizontalLayout = new FlexLayout<false>();
+        }
+        if (NULL != m_verticalLayout)
+        {
+            delete m_verticalLayout;
+            m_verticalLayout = NULL;
+        }
     }
-    
-    for (; it != m_sections.end(); ++it)
-    {
-        IS_CV_VERTICAL(self) ? (*it)->getFrame().origin.y = position : (*it)->getFrame().origin.x = position;
-        position += IS_CV_VERTICAL(self) ? ((*it)->getFrame().size.height) : ((*it)->getFrame().size.width);
-    }
-    
-    [self calcContentSize];
 }
 
 #pragma mark - Overrides
@@ -594,42 +531,22 @@ protected:
         
 #endif
 
-        for (std::vector<UISection *>::iterator it = m_sections.begin(); it != m_sections.end(); delete *it, ++it);
-        m_sections.clear();
-        
-        NSInteger numberOfSections = [self getNumberOfSections];
-        
         UICollectionView *cv = self.collectionView;
+        nsflex::LayoutCallbackAdapter layoutAdapter(self);
         
-        UIEdgeInsets insets = cv.contentInset;
-        nsflex::Rect bounds(insets.left, insets.top, cv.bounds.size.width - insets.left - insets.right, cv.bounds.size.height - insets.top - insets.bottom);
-        for (NSInteger index = 0; index < numberOfSections; index++)
+        if (UICollectionViewScrollDirectionVertical == m_scrollDirection)
         {
-            // Calc Section Frame
-            UICollectionViewFlexLayoutMode mode = [self getLayoutModeForSection:index];
-            UISection *pSection = (UICollectionViewFlexLayoutModeFlow == mode) ? ((UISection *)(new UIFlowSection(index, bounds))) : ((UISection *)(new UIWaterfallSection(index, bounds)));
-            
-            pSection->prepareLayout(m_layoutAdapter, bounds);
-            
-            IS_CV_VERTICAL(self) ? bounds.origin.y += pSection->getFrame().size.height : bounds.origin.x += pSection->getFrame().size.width;
-            
-            m_sections.push_back(pSection);
+            m_verticalLayout->prepareLayout(layoutAdapter, FlexSizeFromCGSize(cv.bounds.size), FlexInsetsFromUIEdgeInsets(cv.contentInset));
         }
-        
-        [self calcContentSize];
-        m_layoutInvalidated = NO;
-        
-        [m_itemLayoutAttributes removeAllObjects];
-        [m_headerLayoutAttributes removeAllObjects];
-        [m_footerLayoutAttributes removeAllObjects];
+        else
+        {
+            m_horizontalLayout->prepareLayout(layoutAdapter, FlexSizeFromCGSize(cv.bounds.size), FlexInsetsFromUIEdgeInsets(cv.contentInset));
+        }
         
 #ifdef PERF_DEBUG
         time = [[NSDate date] timeIntervalSince1970] * 1000;
-        
         NSLog(@"PERF prepareLayout takes %0.2f ms", time - prevTime);
-        
 #endif
-        
     }
 }
 
@@ -646,9 +563,8 @@ protected:
 
 - (void)invalidateLayout
 {
-    [super invalidateLayout];
-    
     m_layoutInvalidated = YES;
+    [super invalidateLayout];
 }
 
 - (void)invalidateLayoutWithContext:(UICollectionViewLayoutInvalidationContext *)context
@@ -661,7 +577,11 @@ protected:
         if (!flexInvalidationContext.invalidatedOffset)
         {
             // It is not caused by internal offset change, should call prepareLayout
-            m_layoutInvalidated = YES;
+            if (!(flexInvalidationContext.invalidateDataSourceCounts && !flexInvalidationContext.invalidateEverything))
+            {
+                m_layoutInvalidated = YES;
+            }
+            
         }
     }
     else
@@ -673,12 +593,11 @@ protected:
 
 - (NSArray<UICollectionViewLayoutAttributes *> *)layoutAttributesForElementsInRect:(CGRect)rect
 {
-#ifdef DEBUG
+#ifdef PERF_DEBUG
     double time = 0.0f;
     double prevTime = 0.0;
     
     prevTime = [[NSDate date] timeIntervalSince1970] * 1000;
-    
 #endif
 
     if (nil == self.collectionView)
@@ -686,224 +605,116 @@ protected:
         return nil;
     }
     
-    BOOL vertical = IS_CV_VERTICAL(self);
+    std::vector<LayoutItem> layoutItems;
+    StickyItemList changingStickyList;
     UICollectionView * const cv = self.collectionView;
-    CGSize contentSize = [self collectionViewContentSize];
-    CGPoint contentOffset = cv.contentOffset;
-    if (!CGSizeEqualToSize(contentSize, cv.contentSize))
+    BOOL vertical = (UICollectionViewScrollDirectionVertical == self.scrollDirection);
+    
+    nsflex::Size layoutContentSize = vertical ? m_verticalLayout->getContentSize() : m_horizontalLayout->getContentSize();
+
+    nsflex::Size contentSize = FlexSizeFromCGSize(self.collectionView.contentSize);
+    nsflex::Point contentOffset = FlexPointFromCGPoint(cv.contentOffset);
+    nsflex::Size boundsSize = FlexSizeFromCGSize(cv.bounds.size);
+    // Sometimes contentSize on UICollectionView doesn't euqal contentSize on Layout
+    // We have to correct visible Rect
+    
+    nsflex::Rect visibleRect(rect.origin.x, rect.origin.y, rect.size.width, rect.size.height);
+    if (layoutContentSize != contentSize)
     {
         // If layout is updated but collectionview is not, we should adjust contentOffset
-        CGFloat maxOffset = contentSize.width - cv.bounds.size.width;
+        CGFloat maxOffset = layoutContentSize.width - boundsSize.width;
         if (contentOffset.x > maxOffset)
         {
             contentOffset.x = maxOffset;
         }
-        maxOffset = contentSize.height - cv.bounds.size.height;
+        maxOffset = layoutContentSize.height - boundsSize.height;
         if (contentOffset.y > maxOffset)
         {
             contentOffset.y = maxOffset;
         }
-    }
-    
-    nsflex::Rect visibleRect(contentOffset.x, contentOffset.y, self.collectionView.bounds.size.width, self.collectionView.bounds.size.height);
-    
-    std::pair<std::vector<UISection *>::const_iterator, std::vector<UISection *>::const_iterator> range = vertical ? std::equal_range(m_sections.begin(), m_sections.end(), std::pair<CGFloat, CGFloat>(visibleRect.origin.y, visibleRect.origin.y + visibleRect.size.height), UISectionVerticalCompare()) : std::equal_range(m_sections.begin(), m_sections.end(), std::pair<CGFloat, CGFloat>(visibleRect.origin.x, visibleRect.origin.x + visibleRect.size.width), UISectionHorizontalCompare());
-    if (range.first == range.second)
-    {
-        // No Sections
-        // Bug: if there is only sticky header?...
-        return nil;
-    }
-    
-    
-    NSMutableArray<UICollectionViewLayoutAttributes *> *layoutAttributesArray = [NSMutableArray array];
-    std::vector<const FlexItem *> items;
-    UICollectionViewLayoutAttributes *la = nil;
-    for (std::vector<UISection *>::const_iterator it = range.first; it != range.second; ++it)
-    {
-        (*it)->filterInRect(items, visibleRect);
-        if (items.empty())
-        {
-            continue;
-        }
-
-        for (std::vector<const FlexItem *>::const_iterator itItem = items.begin(); itItem != items.end(); ++itItem)
-        {
-            if ((*itItem)->isPlaceHolder()) continue;
-            
-            if ((*itItem)->isHeader())
-            {
-                la = [self layoutAttributesForSupplementaryViewOfKind:UICollectionElementKindSectionHeader atIndexPath:[NSIndexPath indexPathForItem:(*itItem)->getItem() inSection:(*it)->getSection()]];
-            }
-            else if ((*itItem)->isFooter())
-            {
-                la = [self layoutAttributesForSupplementaryViewOfKind:UICollectionElementKindSectionFooter atIndexPath:[NSIndexPath indexPathForItem:(*itItem)->getItem() inSection:(*it)->getSection()]];
-            }
-            else if ((*itItem)->isDecoration())
-            {
-                
-            }
-            else // Item
-            {
-                la = [self layoutAttributesForItemAtIndexPath:[NSIndexPath indexPathForItem:(*itItem)->getItem() inSection:(*it)->getSection()]];
-            }
-#ifdef DEBUG
-            if (nil == la)
-            {
-                NSAssert(nil == la, @"la is nil.");
-            }
-#endif
-            
-            // NSLog(@"IndexPath:[%ld-%ld]: %@", la.indexPath.section, la.indexPath.item, NSStringFromCGRect(la.frame));
-            
-            [layoutAttributesArray addObject:la];
-        }
         
-        items.clear();
-    }
-
-    NSMutableArray<UICollectionViewLayoutAttributes *> *newLayoutAttributesArray = nil; // Sticky Headers, Paging Views ...
-    
-    if (!m_stickyHeaders.empty())
-    {
-        NSInteger maxSection = range.second - 1 - m_sections.begin();
-        NSInteger minSection = range.first - m_sections.begin();
-        std::map<NSInteger, UICollectionViewLayoutAttributes *> headerLayoutAttributesMap;
-        
-        for (UICollectionViewLayoutAttributes *layoutAttributes in layoutAttributesArray)
-        {
-            if (m_stickyHeaders.find(layoutAttributes.indexPath.section) != m_stickyHeaders.end())
-            {
-                if ([layoutAttributes.representedElementKind isEqualToString:UICollectionElementKindSectionHeader])
-                {
-                    headerLayoutAttributesMap[layoutAttributes.indexPath.section] = layoutAttributes;
-                }
-            }
-        }
-        
-        UIEdgeInsets contentInset = self.collectionView.contentInset;
-        CGFloat totalHeaderSize = 0.0f; // When m_stackedStickyHeaders == YES
-        
-        for (std::map<NSInteger, BOOL>::iterator it = m_stickyHeaders.begin(); it != m_stickyHeaders.end(); ++it)
-        {
-            if (it->first > maxSection || (!m_stackedStickyHeaders && it->first < minSection))
-            {
-                if (it->second)
-                {
-                    it->second = NO;
-                    [self exitStickyModeAt:it->first];
-                }
-                continue;
-            }
-            
-            UICollectionViewLayoutAttributes *layoutAttributes = nil;
-            
-            std::map<NSInteger, UICollectionViewLayoutAttributes *>::const_iterator itHeaderLayoutAttributes = headerLayoutAttributesMap.find(it->first);
-            if (itHeaderLayoutAttributes == headerLayoutAttributesMap.end())
-            {
-                NSIndexPath *indexPath = [NSIndexPath indexPathForItem:0 inSection:it->first];
-                layoutAttributes = [self layoutAttributesForSupplementaryViewOfKind:UICollectionElementKindSectionHeader atIndexPath:indexPath];
-                if (CGSizeEqualToSize(layoutAttributes.size, CGSizeZero))
-                {
-                    continue;
-                }
-                
-                if (nil == newLayoutAttributesArray)
-                {
-                    newLayoutAttributesArray = [[NSMutableArray<UICollectionViewLayoutAttributes *> alloc] initWithCapacity:4];
-                }
-                [newLayoutAttributesArray addObject:layoutAttributes];
-            }
-            else
-            {
-                layoutAttributes = itHeaderLayoutAttributes->second;
-            }
-            
-            CGFloat headerSize = CGRectGetHeight(layoutAttributes.frame);
-            CGPoint origin = layoutAttributes.frame.origin;
-            CGPoint oldOrigin = origin;
-            
-            if (m_stackedStickyHeaders)
-            {
-                origin.y = MAX(contentOffset.y + totalHeaderSize - contentInset.top, origin.y);
-                
-                layoutAttributes.frame = (CGRect){ .origin = CGPointMake(origin.x, origin.y), .size = layoutAttributes.frame.size };
-            }
-            else
-            {
-                CGRect frameItems = CGRectFromFlexRect(m_sections[it->first]->getItemsFrame());
-                origin.y = MIN(
-                               MAX(contentOffset.y + contentInset.top, (frameItems.origin.y - headerSize)),
-                               (CGRectGetMaxY(frameItems) - headerSize)
-                               );
-                
-                layoutAttributes.frame = (CGRect){ .origin = CGPointMake(origin.x, origin.y), .size = layoutAttributes.frame.size };
-            }
-            
-            // If original mode is sticky, we check contentOffset and if contentOffset.y is less than origin.y, it is exiting sticky mode
-            // Otherwise, we check the top of sticky header
-            BOOL stickyMode = it->second ? ((contentOffset.y + contentInset.top < oldOrigin.y) ? NO : YES) : ((layoutAttributes.frame.origin.y > oldOrigin.y) ? YES : NO);
-            
-            
-            if (stickyMode != it->second)
-            {
-                // Notify caller if changed
-                it->second = stickyMode;
-                stickyMode ? [self enterStickyModeAt:it->first withOriginalPoint:oldOrigin] : [self exitStickyModeAt:it->first];
-            }
-            
-            if (stickyMode)
-            {
-                layoutAttributes.zIndex = 1024 + it->first;  //
-                totalHeaderSize += headerSize;
-            }
-            
-        }
-    }
-
-    // PagingOffset
-    if (m_pagingSection != NSNotFound && !CGPointEqualToPoint(m_pagingOffset, CGPointZero))
-    {
-        for (UICollectionViewLayoutAttributes *layoutAttributes in layoutAttributesArray)
-        {
-            if (layoutAttributes.indexPath.section >= m_pagingSection)
-            {
-                layoutAttributes.frame = CGRectOffset(layoutAttributes.frame, m_pagingOffset.x, m_pagingOffset.y);
-            }
-        }
-        for (UICollectionViewLayoutAttributes *layoutAttributes in newLayoutAttributesArray)
-        {
-            if (layoutAttributes.indexPath.section >= m_pagingSection)
-            {
-                layoutAttributes.frame = CGRectOffset(layoutAttributes.frame, m_pagingOffset.x, m_pagingOffset.y);
-            }
-        }
+        visibleRect.set(contentOffset.x, contentOffset.y, contentOffset.x + boundsSize.width, contentOffset.y + boundsSize.height);
     }
     
-    if (nil == newLayoutAttributesArray || 0 == newLayoutAttributesArray.count)
+    if (vertical)
     {
-        newLayoutAttributesArray = layoutAttributesArray;
+        m_verticalLayout->getItemsInRect(layoutItems, changingStickyList, m_stickyHeaders, m_stackedStickyHeaders, visibleRect, boundsSize, contentSize, FlexInsetsFromUIEdgeInsets(cv.contentInset), contentOffset);
     }
     else
     {
-        [newLayoutAttributesArray addObjectsFromArray:layoutAttributesArray];
+        m_horizontalLayout->getItemsInRect(layoutItems, changingStickyList, m_stickyHeaders, m_stackedStickyHeaders, visibleRect, boundsSize, contentSize, FlexInsetsFromUIEdgeInsets(cv.contentInset), contentOffset);
+    }
+    
+    if (layoutItems.empty())
+    {
+        // No Items
+        return nil;
+    }
+    
+    NSMutableArray<UICollectionViewLayoutAttributes *> *layoutAttributesArray = [NSMutableArray arrayWithCapacity:layoutItems.size()];
+    UICollectionViewLayoutAttributes *la = nil;
+    BOOL hasOffset = ((m_pagingSection != NSNotFound) && !CGPointEqualToPoint(m_pagingOffset, CGPointZero));
+    BOOL isCopy = NO;
+    for (std::vector<LayoutItem>::const_iterator it = layoutItems.begin(); it != layoutItems.end(); ++it)
+    {
+        isCopy = NO;
+        if (it->isHeader())
+        {
+            la = [self layoutAttributesForSupplementaryViewOfKind:UICollectionElementKindSectionHeader atIndexPath:[NSIndexPath indexPathForItem:0 inSection:it->getSection()]];
+        }
+        else if (it->isFooter())
+        {
+            la = [self layoutAttributesForSupplementaryViewOfKind:UICollectionElementKindSectionFooter atIndexPath:[NSIndexPath indexPathForItem:0 inSection:it->getSection()]];
+        }
+        else if (it->isDecoration())
+        {
+            
+        }
+        else // Item
+        {
+            la = [self layoutAttributesForItemAtIndexPath:[NSIndexPath indexPathForItem:it->getItem() inSection:it->getSection()]];
+        }
+        
+        // Reset all attributes
+        la.zIndex = 0;
+        la.frame = CGRectFromFlexRect(it->getFrame());
+        if (it->isInSticky())
+        {
+            // If the sticky header's origin is changed, we have to put it higher in z-coodinate
+            if (it->isOriginChanged())
+            {
+                la.zIndex = 1024 + it->getSection();
+            }
+        }
+        
+        // PagingOffset
+        if (hasOffset && it->getSection() >= m_pagingSection)
+        {
+            la.frame = CGRectOffset(la.frame, m_pagingOffset.x, m_pagingOffset.y);
+        }
+        
+        [layoutAttributesArray addObject:la];
+    }
+    
+    // If sticky header state is changing, notify caller
+    for (StickyItemList::const_iterator it = changingStickyList.begin(); it != changingStickyList.end(); ++it)
+    {
+        it->second.isInSticky() ? [self enterStickyModeAt:(it->first.getSection()) withOriginalPoint:CGPointFromFlexPoint(it->second.getFrame().origin)] : [self exitStickyModeAt:it->first.getSection()];
     }
 
-#ifdef DEBUG
+#ifdef PERF_DEBUG
     time = [[NSDate date] timeIntervalSince1970] * 1000;
     NSLog(@"PERF elementsInRect takes %0.2f ms", time - prevTime);
     static int inrect = 0;
     inrect ++;
     
-    /*
-    for (UICollectionViewLayoutAttributes *la in newLayoutAttributesArray)
+    for (UICollectionViewLayoutAttributes *la in layoutAttributesArray)
     {
-        NSLog(@"DBGORG-%d: Item [%ld-%ld]: (%f-%f)-(%f-%f)", inrect, la.indexPath.section, la.indexPath.item, la.frame.origin.x, la.frame.origin.y, la.frame.size.width, la.frame.size.height);
+        NSLog(@"InRect-%d LA=%@", inrect, [la debugDescription]);
     }
-     */
 #endif
     
-    return newLayoutAttributesArray;
+    return layoutAttributesArray;
 }
 
 - (void)prepareForCollectionViewUpdates:(NSArray<UICollectionViewUpdateItem *> *)updateItems
@@ -911,6 +722,11 @@ protected:
     [super prepareForCollectionViewUpdates:updateItems];
     
     NSInteger minInvalidSection = NSIntegerMax;
+    
+    UICollectionView *cv = self.collectionView;
+    nsflex::Size size = FlexSizeFromCGSize(cv.bounds.size);
+    nsflex::Insets padding = FlexInsetsFromUIEdgeInsets(cv.contentInset);
+    nsflex::LayoutCallbackAdapter layoutAdapter(self);
     
     // Insert
     for (UICollectionViewUpdateItem *updateItem in updateItems)
@@ -921,7 +737,14 @@ protected:
             
             if (NSNotFound == updateItem.indexPathAfterUpdate.item) // The whole section
             {
-                [self insertSection:updateItem.indexPathAfterUpdate.section andRelayout:NO];
+                if (UICollectionViewScrollDirectionVertical == m_scrollDirection)
+                {
+                    m_verticalLayout->insertSection(layoutAdapter, size, padding, updateItem.indexPathAfterUpdate.section, false);
+                }
+                else
+                {
+                    m_horizontalLayout->insertSection(layoutAdapter, size, padding, updateItem.indexPathAfterUpdate.section, false);
+                }
                 if (updateItem.indexPathAfterUpdate.section + 1 < minInvalidSection)
                 {
                     minInvalidSection = updateItem.indexPathAfterUpdate.section + 1;
@@ -943,8 +766,18 @@ protected:
             
             if (NSNotFound == updateItem.indexPathBeforeUpdate.item) // The whole section
             {
-                [self removeSection:updateItem.indexPathBeforeUpdate.section andRelayout:NO];
-                [self insertSection:updateItem.indexPathBeforeUpdate.section andRelayout:NO];
+                if (UICollectionViewScrollDirectionVertical == m_scrollDirection)
+                {
+                    m_verticalLayout->removeSection(layoutAdapter, size, padding, updateItem.indexPathBeforeUpdate.section, false);
+                    m_verticalLayout->insertSection(layoutAdapter, size, padding, updateItem.indexPathBeforeUpdate.section, false);
+                }
+                else
+                {
+                    m_horizontalLayout->removeSection(layoutAdapter, size, padding, updateItem.indexPathBeforeUpdate.section, false);
+                    m_horizontalLayout->insertSection(layoutAdapter, size, padding, updateItem.indexPathBeforeUpdate.section, false);
+                }
+                // [self removeSection:updateItem.indexPathBeforeUpdate.section andRelayout:NO];
+                // [self insertSection:updateItem.indexPathBeforeUpdate.section andRelayout:NO];
                 if (updateItem.indexPathBeforeUpdate.section + 1 < minInvalidSection)
                 {
                     minInvalidSection = updateItem.indexPathBeforeUpdate.section + 1;
@@ -966,7 +799,15 @@ protected:
             
             if (NSNotFound == updateItem.indexPathBeforeUpdate.item) // The whole section
             {
-                [self removeSection:updateItem.indexPathBeforeUpdate.section andRelayout:NO];
+                if (UICollectionViewScrollDirectionVertical == m_scrollDirection)
+                {
+                    m_verticalLayout->removeSection(layoutAdapter, size, padding, updateItem.indexPathBeforeUpdate.section, false);
+                }
+                else
+                {
+                    m_horizontalLayout->removeSection(layoutAdapter, size, padding, updateItem.indexPathBeforeUpdate.section, false);
+                }
+                // [self removeSection:updateItem.indexPathBeforeUpdate.section andRelayout:NO];
                 if (updateItem.indexPathBeforeUpdate.section < minInvalidSection)
                 {
                     minInvalidSection = updateItem.indexPathBeforeUpdate.section;
@@ -981,7 +822,14 @@ protected:
     
     if (minInvalidSection != NSIntegerMax)
     {
-        [self recalcSectionFrameFrom:minInvalidSection];
+        if (UICollectionViewScrollDirectionVertical == m_scrollDirection)
+        {
+            m_verticalLayout->refreshSectionFrom(layoutAdapter, size, padding, minInvalidSection);
+        }
+        else
+        {
+            m_horizontalLayout->refreshSectionFrom(layoutAdapter, size, padding, minInvalidSection);
+        }
     }
 }
 
@@ -1032,10 +880,17 @@ protected:
         layoutAttributes = [[UICollectionViewFlexLayout layoutAttributesClass] layoutAttributesForCellWithIndexPath:indexPath];
         [m_itemLayoutAttributes setObject:layoutAttributes forKey:indexPath];
     }
-    UISection *section = m_sections[indexPath.section];
     
-    layoutAttributes.frame = CGRectOffset(CGRectFromFlexRect(section->getItemFrameInView(indexPath.item)), -self.collectionView.contentInset.left, -self.collectionView.contentInset.top);
-    return layoutAttributes;
+    nsflex::Rect frame;
+    bool existed = (UICollectionViewScrollDirectionVertical == m_scrollDirection) ? m_verticalLayout->getItemFrame(indexPath.section, indexPath.item, frame) : m_horizontalLayout->getItemFrame(indexPath.section, indexPath.item, frame);
+    if (existed)
+    {
+        // frame.offset(-self.collectionView.contentInset.left, -self.collectionView.contentInset.top);
+        layoutAttributes.frame = CGRectFromFlexRect(frame);
+        return layoutAttributes;
+    }
+    
+    return nil;
 }
 
 - (UICollectionViewLayoutAttributes *)layoutAttributesForSupplementaryViewOfKind:(NSString *)elementKind atIndexPath:(NSIndexPath *)indexPath
@@ -1049,10 +904,14 @@ protected:
             layoutAttributes = [[UICollectionViewFlexLayout layoutAttributesClass] layoutAttributesForSupplementaryViewOfKind:elementKind withIndexPath:indexPath];
             [m_headerLayoutAttributes setObject:layoutAttributes forKey:indexPath];
         }
-        if (indexPath.section < m_sections.size())
+        
+        nsflex::Rect frame;
+        bool existed = (UICollectionViewScrollDirectionVertical == m_scrollDirection) ? m_verticalLayout->getHeaderFrame(indexPath.section, frame) : m_horizontalLayout->getHeaderFrame(indexPath.section, frame);
+        if (existed)
         {
-            UISection *section = m_sections[indexPath.section];
-            layoutAttributes.frame = CGRectOffset(CGRectFromFlexRect(section->getHeaderFrameInView()), -self.collectionView.contentInset.left, -self.collectionView.contentInset.top);
+            // frame.offset(-self.collectionView.contentInset.left, -self.collectionView.contentInset.top);
+            layoutAttributes.frame = CGRectFromFlexRect(frame);
+            return layoutAttributes;
         }
     }
     else if ([UICollectionElementKindSectionFooter isEqualToString:elementKind])
@@ -1063,10 +922,13 @@ protected:
             layoutAttributes = [[UICollectionViewFlexLayout layoutAttributesClass] layoutAttributesForSupplementaryViewOfKind:elementKind withIndexPath:indexPath];
             [m_footerLayoutAttributes setObject:layoutAttributes forKey:indexPath];
         }
-        if (indexPath.section < m_sections.size())
+        nsflex::Rect frame;
+        bool existed = (UICollectionViewScrollDirectionVertical == m_scrollDirection) ? m_verticalLayout->getFooterFrame(indexPath.section, frame) : m_horizontalLayout->getFooterFrame(indexPath.section, frame);
+        if (existed)
         {
-            UISection *section = m_sections[indexPath.section];
-            layoutAttributes.frame = CGRectOffset(CGRectFromFlexRect(section->getFooterFrameInView()), -self.collectionView.contentInset.left, -self.collectionView.contentInset.top);
+            // frame.offset(-self.collectionView.contentInset.left, -self.collectionView.contentInset.top);
+            layoutAttributes.frame = CGRectFromFlexRect(frame);
+            return layoutAttributes;
         }
     }
     
@@ -1103,27 +965,10 @@ protected:
 
 - (CGSize)collectionViewContentSize
 {
-    return m_contentSize;
+    return CGSizeFromFlexSize((UICollectionViewScrollDirectionVertical == m_scrollDirection) ? m_verticalLayout->getContentSize() : m_horizontalLayout->getContentSize());
 }
 
 #pragma mark - Utility Functions
-
-- (void)calcContentSize
-{
-    m_contentSize = self.collectionView.bounds.size;
-    UIEdgeInsets insets = self.collectionView.contentInset;
-    
-    if (IS_CV_VERTICAL(self))
-    {
-        m_contentSize.width -= (insets.left + insets.right);
-        m_contentSize.height = m_sections.empty() ? 0 : (m_sections.back()->getFrame().bottom() - m_sections.front()->getFrame().top());
-    }
-    else
-    {
-        m_contentSize.width = m_sections.empty() ? 0 : (m_sections.back()->getFrame().right() - m_sections.front()->getFrame().left());
-        m_contentSize.height -= (insets.top + insets.bottom);
-    }
-}
 
 - (void)prepareDelegate
 {

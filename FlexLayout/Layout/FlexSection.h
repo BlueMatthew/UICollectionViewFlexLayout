@@ -53,24 +53,24 @@ namespace nsflex
         using Rect = RectT<TCoordinate>;
         using Insets = InsetsT<TCoordinate>;
 
-        using TBase::x;
+        // using TBase::x;
         using TBase::y;
-        using TBase::left;
-        using TBase::top;
-        using TBase::right;
+        // using TBase::left;
+        // using TBase::top;
+        // using TBase::right;
         using TBase::bottom;
 
-        using TBase::offset;
-        using TBase::offsetX;
-        using TBase::offsetY;
-        using TBase::incWidth;
+        // using TBase::offset;
+        // using TBase::offsetX;
+        // using TBase::offsetY;
+        // using TBase::incWidth;
 
         using TBase::leftBottom;
         using TBase::height;
         using TBase::width;
 
-        using TBase::leftRight;
-        using TBase::topBottom;
+        // using TBase::hinsets;
+        // using TBase::vinsets;
 
     protected:
         TInt m_section;
@@ -84,20 +84,12 @@ namespace nsflex
 
     protected:
         struct {
-            unsigned int sectionInvalidated : 1;    // The whole section is invalidated
-#ifdef HAVING_HEADER_AND_FOOTER
-            unsigned int headerInvalidated : 1;
-#endif // #ifdef HAVING_HEADER_AND_FOOTER
-            unsigned int itemsInvalidated : 1; // Some of items are invalidated
-#ifdef HAVING_HEADER_AND_FOOTER
-            unsigned int footerInvalidated : 1;
-#endif // #ifdef HAVING_HEADER_AND_FOOTER
-#ifdef HAVING_HEADER_AND_FOOTER
-            unsigned int reserved : 4;
-#else
-            unsigned int reserved : 6;
-#endif // #ifdef HAVING_HEADER_AND_FOOTER
-            unsigned int minimalInvalidatedItem : 24;   // If minimal invalidated item is greater than 2^28, just set sectionInvalidated to 1
+            TInt sectionInvalidated : 1;    // The whole section is invalidated
+            TInt headerInvalidated : 1;
+            TInt itemsInvalidated : 1; // Some of items are invalidated
+            TInt footerInvalidated : 1;
+            TInt reserved : 4;
+            TInt minimalInvalidatedItem : sizeof(TInt) * 8 - 8;   // If minimal invalidated item is greater than 2^24, just set sectionInvalidated to 1
         } m_invalidationContext;
 
 #ifdef HAVING_HEADER_AND_FOOTER
@@ -110,9 +102,6 @@ namespace nsflex
 
     public:
         FlexSectionT(TInt section, const Rect& frame) : ContainerBaseT<TCoordinate, VERTICAL>(), m_section(section), m_frame(frame)
-#ifdef HAVING_HEADER_AND_FOOTER
-        , m_header(0), m_footer(0)
-#endif // #ifdef HAVING_HEADER_AND_FOOTER
         {
 #ifdef HAVING_HEADER_AND_FOOTER
             m_header.setHeader(true);
@@ -137,11 +126,12 @@ namespace nsflex
         }
 
         inline TInt getSection() const { return m_section; }
-        inline const Rect getFrame() const { return m_frame; }
+        inline void setSection(TInt section) { m_section = section; }
+        inline Rect getFrame() const { return m_frame; }
         inline Rect &getFrame() { return m_frame; }
         inline TInt getItemCount() const { return m_items.size(); }
 
-        inline const Rect getItemFrameInView(TInt item) const
+        inline Rect getItemFrameInView(TInt item) const
         {
 #ifdef DEBUG
             assert(item < m_items.size());
@@ -150,20 +140,25 @@ namespace nsflex
         }
 
 #ifdef HAVING_HEADER_AND_FOOTER
-        inline const Rect getHeaderFrameInView() const
+        inline Rect getHeaderFrameInView() const
         {
             return getFrameInView(m_header.getFrame());
         }
 
-        inline const Rect getFooterFrameInView() const
+        inline Rect getFooterFrameInView() const
         {
             return getFrameInView(m_footer.getFrame());
         }
 #endif // #ifdef HAVING_HEADER_AND_FOOTER
 
-        inline const Rect getItemsFrame() const
+        inline Rect getItemsFrame() const
         {
             return m_itemsFrame;
+        }
+        
+        inline Rect getItemsFrameInView() const
+        {
+            return getFrameInView(m_itemsFrame);
         }
 
         inline const Rect getItemsFrameInViewAfterItem(int itemIndex) const
@@ -295,7 +290,7 @@ namespace nsflex
         virtual Point prepareLayoutWithItems(const TLayout *layout, const Rect &bounds) = 0;
         virtual bool filterItemsInRect(const Rect &rectInSection, std::vector<const FlexItem *> &items) const = 0;
 
-        inline const Rect getFrameInView(const Rect& rect) const
+        inline Rect getFrameInView(const Rect& rect) const
         {
             Rect rectInView(rect);
             rectInView.offset(m_frame.origin.x, m_frame.origin.y);

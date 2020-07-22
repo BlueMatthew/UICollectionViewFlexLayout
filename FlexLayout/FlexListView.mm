@@ -51,7 +51,7 @@
 #define NUM_OF_ITEMS_IN_SECTION_ENTRY   1
 #define NUM_OF_ITEMS_IN_SECTION_TEST1   1
 #define NUM_OF_ITEMS_IN_SECTION_TEST2   1
-#define NUM_OF_ITEMS_IN_SECTION_ITEM1   8000
+#define NUM_OF_ITEMS_IN_SECTION_ITEM1   20
 #define NUM_OF_ITEMS_IN_SECTION_ITEM2   2
 
 #define ITEM_HEIGHT_NAVBAR              100
@@ -81,6 +81,8 @@
 {
     NSInteger                       m_page;
     SUICategoryBar                  *m_categoryBarView;
+    
+    UITapGestureRecognizer          *m_tapGesture;
     
     BOOL                            m_isCategoryBarSticky;
     CGFloat                         m_minPagingTop;
@@ -161,6 +163,9 @@
         [self initializeDataSource];
         
         [self performSelector:@selector(reloadData) withObject:nil afterDelay:0];
+        
+        m_tapGesture = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(tapView:)];
+        m_tapGesture.numberOfTouchesRequired=1;
     }
     
     return self;
@@ -695,6 +700,7 @@
         SUIItemViewCell *cell = (SUIItemViewCell *)[collectionView dequeueReusableCellWithReuseIdentifier:@REUSE_ID_ENTRY forIndexPath:indexPath];
         NSMutableDictionary *entry = [m_test2 objectAtIndex:indexPath.item];
         [cell updateDataSource:entry];
+        [cell addGestureRecognizer:m_tapGesture];
         return cell;
     }
     else if (indexPath.section == SECTION_INDEX_TEST1)
@@ -859,6 +865,20 @@
             m_pageContexts.clear();
         }
     }
+}
+
+
+
+#pragma mark UserActions
+
+-(void)tapView:(UITapGestureRecognizer *)gesture
+{
+    [self performBatchUpdates:^{
+        [self deleteSections:[NSIndexSet indexSetWithIndex:SECTION_INDEX_ITEM1]];
+        [self insertSections:[NSIndexSet indexSetWithIndex:SECTION_INDEX_ITEM1]];
+    } completion:^(BOOL finished) {
+        //
+    }];
 }
 
 @end

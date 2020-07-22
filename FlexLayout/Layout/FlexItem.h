@@ -15,11 +15,16 @@
 
 namespace nsflex
 {
-
+    static const unsigned char ITEM_TYPE_DECORATION = ~0;
+    static const unsigned char ITEM_TYPE_HEADER = (unsigned char)-1;
+    static const unsigned char ITEM_TYPE_ITEM = 0;
+    static const unsigned char ITEM_TYPE_FOOTER = 1;
+    
     template <typename TInt, typename TCoordinate>
     class FlexItemT
     {
     public:
+        using IntType = TInt;
         using CoordinateType = TCoordinate;
         using Rect = RectT<TCoordinate>;
 
@@ -29,9 +34,7 @@ namespace nsflex
         union {
             struct
             {
-                unsigned int m_header : 1;
-                unsigned int m_footer : 1;
-                unsigned int m_decoration : 1;
+                unsigned int m_type : 8;
                 unsigned int m_placeHolder : 1;
                 unsigned int m_fullSpan : 1;
             };
@@ -50,17 +53,39 @@ namespace nsflex
         FlexItemT(TInt item, const Rect &frame) : m_item(item), m_frame(frame), m_flags(0)
         {
         }
+        
+        FlexItemT(const FlexItemT &src) : m_item(src.m_item), m_frame(src.m_frame), m_flags(src.m_flags)
+        {
+        }
+        
+        inline FlexItemT& operator=(const FlexItemT &rhs)
+        {
+            if (this != &rhs)
+            {
+                m_item = rhs.m_item;
+                m_frame = rhs.m_frame;
+                m_flags = rhs.m_flags;
+            }
+            return *this;
+        }
+        
+        inline bool operator<(const FlexItemT &rhs) const
+        {
+            return ((char)m_type) < (rhs.getType()) || ((m_type) == (rhs.getType()) && (m_item == rhs.getItem()));
+        }
+        
+        inline char getType() const { return (char)m_type; }
+        
+        inline bool isHeader() const { return m_type == ITEM_TYPE_HEADER; }
+        inline void setHeader(bool header) { m_type = header ? ITEM_TYPE_HEADER : ITEM_TYPE_ITEM; }
 
-        bool isHeader() const { return m_header; }
-        void setHeader(bool header) { m_header = header ? 1 : 0; }
+        inline bool isFooter() const { return m_type == ITEM_TYPE_FOOTER; }
+        inline void setFooter(bool footer) { m_type = footer ? ITEM_TYPE_FOOTER : ITEM_TYPE_ITEM; }
 
-        bool isFooter() const { return m_footer; }
-        void setFooter(bool footer) { m_footer = footer ? 1 : 0; }
+        inline bool isDecoration() const { return m_type == ITEM_TYPE_FOOTER; }
+        inline void setDecoration(bool decoration) { m_type = decoration ? ITEM_TYPE_DECORATION : ITEM_TYPE_ITEM; }
 
-        bool isDecoration() const { return m_decoration; }
-        void setDecoration(bool decoration) { m_decoration = decoration ? 1 : 0; }
-
-        bool isItem() const { return !(m_header || m_footer || m_decoration); }
+        inline bool isItem() const { return m_type == ITEM_TYPE_ITEM; }
 
         inline bool isFullSpan() const { return m_fullSpan; }
         inline void setFullSpan(bool fullSpan) { m_fullSpan = fullSpan ? 1 : 0; }
@@ -70,7 +95,7 @@ namespace nsflex
 
         inline TInt getItem() const { return m_item; }
         inline Rect &getFrame() { return m_frame; }
-        inline const Rect getFrame() const { return m_frame; }
+        inline Rect getFrame() const { return m_frame; }
 
     };
 
