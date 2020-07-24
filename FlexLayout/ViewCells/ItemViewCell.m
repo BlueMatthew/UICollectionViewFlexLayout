@@ -56,14 +56,14 @@
     m_view.text = @"";
 }
 
-- (void)updateDataSource:(NSMutableDictionary *)item
+- (void)updateDataSource:(ItemData *)item
 {
-    NSNumber *bgColor = (NSNumber *)[item objectForKey:@"bgColor"];
-    if (nil != bgColor)
+    NSNumber *color = item.backgroundColor;
+    if (nil != color)
     {
-        self.backgroundColor = UIColorFromRGB([bgColor unsignedLongValue]);
+        self.backgroundColor = UIColorFromRGB([color unsignedLongValue]);
     }
-    m_view.text = (NSString *)[item objectForKey:@"text"];
+    m_view.text = item.text;
 }
 
 

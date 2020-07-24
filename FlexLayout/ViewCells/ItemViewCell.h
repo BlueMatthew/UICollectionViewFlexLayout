@@ -10,10 +10,11 @@
 #define ItemViewCell_h
 
 #import <UIKit/UIKit.h>
+#import "FlexListViewDataSource.h"
 
 @interface SUIItemViewCell : UICollectionViewCell
 
-- (void)updateDataSource:(nullable NSMutableDictionary *)item;
+- (void)updateDataSource:(nullable ItemData *)item;
 
 - (void)setText:(nullable NSString *)text;
 

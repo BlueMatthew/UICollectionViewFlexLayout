@@ -8,6 +8,7 @@
 
 #import "InfoViewCell.h"
 #import "UIUtility.h"
+#import "FlexListViewDataSource.h"
 
 @interface SUIInfoViewCell()
 {
@@ -52,14 +53,14 @@
     m_view.text = @"";
 }
 
-- (void)updateDataSource:(NSMutableDictionary *)item
+- (void)updateDataSource:(ItemData *)item
 {
-    NSNumber *bgColor = (NSNumber *)[item objectForKey:@"bgColor"];
+    NSNumber *bgColor = item.backgroundColor;
     if (nil != bgColor)
     {
         self.backgroundColor = UIColorFromRGB([bgColor unsignedLongValue]);
     }
-    m_view.text = (NSString *)[item objectForKey:@"text"];
+    m_view.text = item.text;
 }
 
 

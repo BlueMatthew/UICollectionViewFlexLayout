@@ -205,24 +205,24 @@
     self.frame = CGRectApplyAffineTransform(layoutAttributes.frame, layoutAttributes.transform);
 }
 
-- (void)updateDataSource:(NSMutableDictionary *)item
+- (void)updateDataSource:(ItemData *)item
 {
-    NSNumber *bgColor = (NSNumber *)[item objectForKey:@"bgColor"];
+    NSNumber *bgColor = item.backgroundColor;
     if (nil != bgColor)
     {
         self.backgroundColor = UIColorFromRGB([bgColor unsignedLongValue]);
     }
 
-    self.text = [item objectForKey:@"text"];
+    self.text = item.text;
 
-    NSString *url = (NSString *)[item objectForKey:@"image"];
+    NSString *url = item.url;
     // self.imageUrl = url;
     
-    NSNumber *imageColor = (NSNumber *)[item objectForKey:@"imageColor"];
-    BOOL displayed = [((NSNumber *)[item objectForKey:@"displayed"]) boolValue];
+    NSNumber *imageColor = item.imageColor;
+    BOOL displayed = item.displayed;
     if (!displayed)
     {
-        [item setObject:[NSNumber numberWithBool:YES] forKey:@"displayed"];
+        item.displayed = YES;
     }
     [self setImageUrl:url andColor:UIColorFromRGB([imageColor unsignedLongValue]) withDelay:(!displayed)];
 }

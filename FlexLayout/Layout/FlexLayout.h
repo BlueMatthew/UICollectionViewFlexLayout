@@ -60,7 +60,7 @@ class StickyItemStateT
 {
 public:
     using Rect = nsflex::RectT<TCoordinate>;
-    
+
 protected:
     bool m_inSticky;
     bool m_originChanged;
@@ -296,35 +296,34 @@ public:
     
     // Parameter "relayout" indicates wheather we should relayout the following sections immidiately
     // If we have multiple updates, it is better to layout after the last update.
-    void insertSection(const TLayoutCallbackAdapter& layoutCallbackAdapter, const Size &size, const Insets &padding, TInt section, bool refreshImmiediately)
+    void insertSection(const TLayoutCallbackAdapter& layoutCallbackAdapter, const Size &boundSize, const Insets &padding, TInt section, bool refreshImmiediately)
     {
         int mode = layoutCallbackAdapter.getLayoutModeForSection(section);
         
-        Rect bounds(padding.left, padding.top, size.width - padding.hsize(), size.height - padding.vsize());
-        
+        Rect frame;
+        width(frame, width(boundSize));
         // Get the leftBottom(topRight for horizontal direction) of the previous section
         if ((section - 1) >= 0)
         {
             SectionConstIterator it = m_sections.begin() + (section - 1);  // Previous Section
-            // origin = (*it)->getFrame().origin;
-            top(bounds, bottom((*it)->getFrame()));
+            top(frame, bottom((*it)->getFrame()));
         }
         
-        Section *pSection = (mode == UICollectionViewFlexLayoutModeFlow) ? ((Section *)(new FlowSection(section, bounds))) : ((Section *)(new WaterfallSection(section, bounds)));
+        Section *pSection = (mode == UICollectionViewFlexLayoutModeFlow) ? ((Section *)(new FlowSection(section, frame))) : ((Section *)(new WaterfallSection(section, frame)));
         
-        pSection->prepareLayout(&layoutCallbackAdapter, bounds);
+        pSection->prepareLayout(&layoutCallbackAdapter, boundSize);
         
         m_sections.insert(m_sections.begin() + section, pSection);
         
         if (refreshImmiediately)
         {
-            refreshSectionFrom(layoutCallbackAdapter, size, padding, section);
+            refreshSectionFrom(layoutCallbackAdapter, boundSize, padding, section);
         }
     }
     
     // Parameter "relayout" indicates wheather we should relayout the following sections immidiately
     // If we have multiple updates, it is better to layout after the last update.
-    void removeSection(const TLayoutCallbackAdapter& layoutCallbackAdapter, const Size &size, const Insets &padding, TInt section, bool refreshImmiediately)
+    void removeSection(const TLayoutCallbackAdapter& layoutCallbackAdapter, const Size &boundSize, const Insets &padding, TInt section, bool refreshImmiediately)
     {
         if (section < 0 || section >= m_sections.size())
         {
@@ -336,13 +335,13 @@ public:
         
         if (refreshImmiediately)
         {
-            refreshSectionFrom(layoutCallbackAdapter, size, padding, section);
+            refreshSectionFrom(layoutCallbackAdapter, boundSize, padding, section);
         }
     }
     
     // Parameter "relayout" indicates wheather we should relayout the following sections immidiately
     // If we have multiple updates, it is better to layout after the last update.
-    void removeSections(const TLayoutCallbackAdapter& layoutCallbackAdapter, const Size &size, const Insets &padding, const std::vector<TInt> &sections, bool refreshImmiediately)
+    void removeSections(const TLayoutCallbackAdapter& layoutCallbackAdapter, const Size &boundSize, const Insets &padding, const std::vector<TInt> &sections, bool refreshImmiediately)
     {
         TInt minSection = -1;
         // Remove section from tail to head
@@ -360,11 +359,11 @@ public:
         
         if (refreshImmiediately && minSection != -1)
         {
-            refreshSectionFrom(layoutCallbackAdapter, size, padding, minSection);
+            refreshSectionFrom(layoutCallbackAdapter, boundSize, padding, minSection);
         }
     }
     
-    void refreshSectionFrom(const TLayoutCallbackAdapter& layoutCallbackAdapter, const Size &size, const Insets &padding, TInt section)
+    void refreshSectionFrom(const TLayoutCallbackAdapter& layoutCallbackAdapter, const Size &boundSize, const Insets &padding, TInt section)
     {
         if (section >= m_sections.size())
         {
@@ -383,15 +382,16 @@ public:
         for (; it != m_sections.end(); ++it, ++newSection)
         {
             (*it)->setSection(newSection);
+            (*it)->prepareHeaderAndFooterLayout(&layoutCallbackAdapter, boundSize);
             top((*it)->getFrame(), btm);
             
             btm += height((*it)->getFrame());
         }
         
-        m_contentSize = makeSize(width(size) - hinsets(padding), btm - top(padding));
+        m_contentSize = makeSize(width(boundSize), btm);
     }
 
-    void prepareLayout(const TLayoutCallbackAdapter& layoutCallbackAdapter, const Size &size, const Insets &padding);
+    void prepareLayout(const TLayoutCallbackAdapter& layoutCallbackAdapter, const Size &boundSize, const Insets &padding);
     
     inline Size getContentSize() const
     {
@@ -400,7 +400,6 @@ public:
 
     void updateItems(TInt action, TInt itemStart, TInt itemCount)
     {
-
     }
 
     
@@ -497,22 +496,22 @@ protected:
 };
 
 template<class TLayoutCallbackAdapter, class TInt, class TCoordinate, bool VERTICAL>
-void FlexLayoutT<TLayoutCallbackAdapter, TInt, TCoordinate, VERTICAL>::prepareLayout(const TLayoutCallbackAdapter& layoutCallbackAdapter, const Size &size, const Insets &padding)
+void FlexLayoutT<TLayoutCallbackAdapter, TInt, TCoordinate, VERTICAL>::prepareLayout(const TLayoutCallbackAdapter& layoutCallbackAdapter, const Size &boundSize, const Insets &padding)
 {
     clearSections();
     
     TInt sectionCount = layoutCallbackAdapter.getNumberOfSections();
     if (sectionCount <= 0)
     {
-        m_contentSize.set(size.width - padding.hsize(), 0);
+        m_contentSize = boundSize;;
         // layoutCallbackAdapter.updateContentSize(layoutAndSectionsInfo.size.width, layoutAndSectionsInfo.padding.top + layoutAndSectionsInfo.padding.bottom);
         return;
     }
     
     // nsflex::Rect bounds(insets.left, insets.top, cv.bounds.size.width - insets.left - insets.right, cv.bounds.size.height - insets.top - insets.bottom);
-    Rect bounds(0, 0, size.width - padding.hsize(), size.height - padding.vsize());
+    // Rect bounds(0, 0, size.width - padding.hsize(), size.height - padding.vsize());
     
-    Rect rectOfSection = makeRect(left(bounds), top(bounds), width(bounds), 0);
+    Rect rectOfSection = makeRect(0, 0, width(boundSize), 0);
     for (TInt sectionIndex = 0; sectionIndex < sectionCount; sectionIndex++) {
         int layoutMode = layoutCallbackAdapter.getLayoutModeForSection(sectionIndex);
         Section *section = layoutMode == 1 ?
@@ -520,7 +519,7 @@ void FlexLayoutT<TLayoutCallbackAdapter, TInt, TCoordinate, VERTICAL>::prepareLa
         static_cast<Section *>(new FlowSection(sectionIndex, rectOfSection));
         
         // section->setPositionBase(positionBase);
-        section->prepareLayout(&layoutCallbackAdapter, bounds);
+        section->prepareLayout(&layoutCallbackAdapter, boundSize);
         
         m_sections.push_back(section);
         
@@ -529,15 +528,13 @@ void FlexLayoutT<TLayoutCallbackAdapter, TInt, TCoordinate, VERTICAL>::prepareLa
         offsetY(rectOfSection, height(section->getFrame()));
     }
     
-    m_contentSize = makeSize(width(size) - padding.hsize(), bottom(rectOfSection));
+    m_contentSize = makeSize(width(boundSize), bottom(rectOfSection));
 }
 
 // LayoutItem::data == 1, indicates that the item is sticky
 template<class TLayoutCallbackAdapter, class TInt, class TCoordinate, bool VERTICAL>
 void FlexLayoutT<TLayoutCallbackAdapter, TInt, TCoordinate, VERTICAL>::getItemsInRect(std::vector<LayoutItem> &items, StickyItemList &changingStickyItems, StickyItemList &stickyItems, bool stackedStickyItems, const Rect &rect, const Size &size,  const Size &contentSize, const Insets &padding, const Point &contentOffset) const
 {
-    // Rect rect(contentOffset, size);
-    
     SectionConstIteratorPair range = std::equal_range(m_sections.begin(), m_sections.end(), std::pair<TCoordinate, TCoordinate>(top(rect), bottom(rect)), SectionCompare());
     
     
@@ -565,7 +562,7 @@ void FlexLayoutT<TLayoutCallbackAdapter, TInt, TCoordinate, VERTICAL>::getItemsI
             }
             
             LayoutItem item((*it)->getSection(), *(*itItem));
-            item.getFrame().offset((*it)->getFrame().left(), (*it)->getFrame().top());
+            item.getFrame() = (*it)->getItemFrameInView(*itItem);
             
             items.push_back(item);
         }

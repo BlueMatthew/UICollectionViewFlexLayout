@@ -56,7 +56,7 @@ namespace nsflex
         // using TBase::x;
         using TBase::y;
         // using TBase::left;
-        // using TBase::top;
+        using TBase::top;
         // using TBase::right;
         using TBase::bottom;
 
@@ -74,8 +74,8 @@ namespace nsflex
 
     protected:
         TInt m_section;
-        Rect m_frame; // // The origin is in the coordinate system of section, should convert to the coordinate system of UICollectionView
-        Rect m_itemsFrame;
+        Rect m_frame;   // The origin is in the coordinate system of section, should convert to the coordinate system of UICollectionView
+        Rect m_itemsFrame;  // = (0, header.bottom) - (0, items.height)
 
     private:
         // FlexSectionT implements all required methods and sub-class doesn't need to access this member variable directly
@@ -95,7 +95,7 @@ namespace nsflex
 #ifdef HAVING_HEADER_AND_FOOTER
         FlexItem m_header;
 #endif // #ifdef HAVING_HEADER_AND_FOOTER
-        std::vector<FlexItem *> m_items;
+        std::vector<FlexItem *> m_items;    // The origin is from (sectionInsets.left, sectionInsets.top) and should to offset(section.left, section.top + header.height) to convert to view coordinate system
 #ifdef HAVING_HEADER_AND_FOOTER
         FlexItem m_footer;
 #endif // #ifdef HAVING_HEADER_AND_FOOTER
@@ -107,6 +107,8 @@ namespace nsflex
             m_header.setHeader(true);
             m_footer.setFooter(true);
 #endif // #ifdef HAVING_HEADER_AND_FOOTER
+            
+            width(m_itemsFrame, width(m_frame));
         }
 
         virtual ~FlexSectionT()
@@ -136,7 +138,16 @@ namespace nsflex
 #ifdef DEBUG
             assert(item < m_items.size());
 #endif // DEBUG
-            return getFrameInView(m_items[item]->getFrame());
+            Rect rect(m_items[item]->getFrame());
+            rect.offset(m_itemsFrame.left(), m_itemsFrame.top());
+            return getFrameInView(rect);
+        }
+        
+        inline Rect getItemFrameInView(const FlexItem *item) const
+        {
+            Rect rect(item->getFrame());
+            rect.offset(m_itemsFrame.left(), m_itemsFrame.top());
+            return getFrameInView(rect);
         }
 
 #ifdef HAVING_HEADER_AND_FOOTER
@@ -153,7 +164,7 @@ namespace nsflex
 
         inline Rect getItemsFrame() const
         {
-            return m_itemsFrame;
+            return getFrameInView(m_itemsFrame);
         }
         
         inline Rect getItemsFrameInView() const
@@ -166,38 +177,77 @@ namespace nsflex
             FlexItem *item = m_items[itemIndex];
             FlexItem *itemLast = m_items.back();
 
-            Rect rect(item->getFrame().left(), item->getFrame().bottom(), (*itemLast).getFrame().width(), (*itemLast).getFrame().bottom() - item->getFrame().bottom());
-            rect.offset(m_frame.left(), m_frame.top());
+            Rect rect(item->getFrame().left() + m_itemsFrame.left(), item->getFrame().bottom() + m_itemsFrame.top(), (*itemLast).getFrame().width(), (*itemLast).getFrame().bottom() - item->getFrame().bottom());
+            return getFrameInView(rect);
             return rect;
         }
-
-        void prepareLayout(const TLayout *layout, const Rect &bounds)
+        
+#ifdef HAVING_HEADER_AND_FOOTER
+        void prepareHeaderAndFooterLayout(const TLayout *layout, const Size &size)
+        {
+            prepareLayoutImpl(layout, size, true);
+        }
+        
+#endif // #ifdef HAVING_HEADER_AND_FOOTER
+        
+        void prepareLayout(const TLayout *layout, const Size &size)
         {
 #ifdef HAVING_HEADER_AND_FOOTER
+            prepareLayoutImpl(layout, size, false);
+#else
+            prepareLayoutImpl(layout, size);
+#endif // #ifdef HAVING_HEADER_AND_FOOTER
+        }
+
+    protected:
+        inline void prepareLayoutImpl(const TLayout *layout, const Size &size
+#ifdef HAVING_HEADER_AND_FOOTER
+                               , bool onlyHeaderAndFooter
+#endif // #ifdef HAVING_HEADER_AND_FOOTER
+                               )
+        {
+            // Clear the frame height and calculate it by layout
+            height(m_frame, 0);
+#ifdef HAVING_HEADER_AND_FOOTER
+            
+#endif // #ifdef HAVING_HEADER_AND_FOOTER
+            
+#ifdef HAVING_HEADER_AND_FOOTER
+            if (!onlyHeaderAndFooter)
+            {
+                height(m_itemsFrame, height(m_frame));
+            }
+            
             // Header
             m_header.getFrame().size = getSizeForHeader(layout);
 
             // Initialize the section height with header height
             height(m_frame, height(m_header.getFrame()));
-            m_itemsFrame.origin = leftBottom(m_frame);
-            width(m_itemsFrame, width(m_frame));
+            top(m_itemsFrame, bottom(m_header.getFrame()));
 #endif // #ifdef HAVING_HEADER_AND_FOOTER
 
-            Point pt = prepareLayoutWithItems(layout, bounds);
-            height(m_itemsFrame, y(pt) - height(m_frame));
-            height(m_frame, y(pt));
+#ifdef HAVING_HEADER_AND_FOOTER
+            if (!onlyHeaderAndFooter)
+            {
+#endif // #ifdef HAVING_HEADER_AND_FOOTER
+                prepareItemsLayout(layout, size);
+#ifdef HAVING_HEADER_AND_FOOTER
+            }
+#endif // #ifdef HAVING_HEADER_AND_FOOTER
 
+            // height(m_itemsFrame, y(pt) - height(m_frame));
+            height(m_frame, bottom(m_itemsFrame));
 
 #ifdef HAVING_HEADER_AND_FOOTER
             // Footer
-            m_footer.getFrame().origin = pt;
+            m_footer.getFrame().origin = leftBottom(m_itemsFrame);
             m_footer.getFrame().size = getSizeForFooter(layout);
 
             height(m_frame, bottom(m_footer.getFrame()));
-            height(m_itemsFrame, height(m_frame) - (height(m_header.getFrame()) + height(m_footer.getFrame())));
 #endif // #ifdef HAVING_HEADER_AND_FOOTER
         }
 
+    public:
         bool filterInRect(std::vector<const FlexItem *> &items, const Rect &rect) const
         {
             bool matched = false;
@@ -287,13 +337,13 @@ namespace nsflex
 
     protected:
 
-        virtual Point prepareLayoutWithItems(const TLayout *layout, const Rect &bounds) = 0;
+        virtual void prepareItemsLayout(const TLayout *layout, const Size &size) = 0;
         virtual bool filterItemsInRect(const Rect &rectInSection, std::vector<const FlexItem *> &items) const = 0;
 
         inline Rect getFrameInView(const Rect& rect) const
         {
             Rect rectInView(rect);
-            rectInView.offset(m_frame.origin.x, m_frame.origin.y);
+            rectInView.offset(m_frame.left(), m_frame.top());
             return rectInView;
         }
 

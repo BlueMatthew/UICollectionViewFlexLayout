@@ -11,9 +11,11 @@
 
 #import <UIKit/UIKit.h>
 
+@class ItemData;
+
 @interface SUIInfoViewCell : UICollectionViewCell
 
-- (void)updateDataSource:(nullable NSMutableDictionary *)item;
+- (void)updateDataSource:(nullable ItemData *)item;
 
 @end
 

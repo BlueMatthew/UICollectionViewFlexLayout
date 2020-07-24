@@ -11,19 +11,8 @@
 
 #import "CollectionViewFlexLayout.h"
 #import "CollectionViewFlexLayoutInvalidationContext.h"
-#import "LayoutUtils.h"
-#import "FlexItem.h"
-#import "FlexRow.h"
-#import "FlexColumn.h"
 #import "FlexPage.h"
-#import "FlexFlowSection.h"
-#import "FlexWaterfallSection.h"
-#include "ContainerBase.h"
 #include "FlexLayout.h"
-#include <vector>
-#include <map>
-#include <memory>
-#include <algorithm>
 
 namespace nsflex
 {
@@ -66,17 +55,6 @@ using StickyItemAndSectionItemCompare = StickyItemAndSectionItemCompareT<NSInteg
 
 @end
 
-inline CGRect CGRectFromFlexRect(const nsflex::Rect& rect)
-{
-    CGRect result;
-    result.origin.x = rect.left();
-    result.origin.y = rect.top();
-    result.size.width = rect.width();
-    result.size.height = rect.height();
-    
-    return result;
-}
-
 inline nsflex::Point FlexPointFromCGPoint(const CGPoint& point)
 {
     return nsflex::Point(point.x, point.y);
@@ -101,6 +79,22 @@ inline CGSize CGSizeFromFlexSize(const nsflex::Size& size)
 inline nsflex::Size FlexSizeFromCGSize(const CGSize& size)
 {
     return nsflex::Size(size.width, size.height);
+}
+
+inline nsflex::Rect FlexRectFromCGRect(const CGRect& rect)
+{
+    return nsflex::Rect(rect.origin.x, rect.origin.y, rect.size.width, rect.size.height);
+}
+
+inline CGRect CGRectFromFlexRect(const nsflex::Rect& rect)
+{
+    CGRect result;
+    result.origin.x = rect.left();
+    result.origin.y = rect.top();
+    result.size.width = rect.width();
+    result.size.height = rect.height();
+    
+    return result;
 }
 
 inline nsflex::Insets FlexInsetsFromUIEdgeInsets(const UIEdgeInsets& insets)
@@ -533,15 +527,23 @@ namespace nsflex
 
         UICollectionView *cv = self.collectionView;
         nsflex::LayoutCallbackAdapter layoutAdapter(self);
+        nsflex::Insets padding = FlexInsetsFromUIEdgeInsets(cv.contentInset);
+        nsflex::Size boundSize = FlexSizeFromCGSize(cv.bounds.size);
+        boundSize.width -= padding.hsize();
+        boundSize.height -= padding.vsize();
         
         if (UICollectionViewScrollDirectionVertical == m_scrollDirection)
         {
-            m_verticalLayout->prepareLayout(layoutAdapter, FlexSizeFromCGSize(cv.bounds.size), FlexInsetsFromUIEdgeInsets(cv.contentInset));
+            m_verticalLayout->prepareLayout(layoutAdapter, boundSize, padding);
         }
         else
         {
-            m_horizontalLayout->prepareLayout(layoutAdapter, FlexSizeFromCGSize(cv.bounds.size), FlexInsetsFromUIEdgeInsets(cv.contentInset));
+            m_horizontalLayout->prepareLayout(layoutAdapter, boundSize, padding);
         }
+        
+        [m_itemLayoutAttributes removeAllObjects];
+        [m_headerLayoutAttributes removeAllObjects];
+        [m_footerLayoutAttributes removeAllObjects];
         
 #ifdef PERF_DEBUG
         time = [[NSDate date] timeIntervalSince1970] * 1000;
@@ -580,6 +582,13 @@ namespace nsflex
             if (!(flexInvalidationContext.invalidateDataSourceCounts && !flexInvalidationContext.invalidateEverything))
             {
                 m_layoutInvalidated = YES;
+            }
+            else
+            {
+                //
+                [m_itemLayoutAttributes removeAllObjects];
+                [m_headerLayoutAttributes removeAllObjects];
+                [m_footerLayoutAttributes removeAllObjects];
             }
             
         }
@@ -633,7 +642,7 @@ namespace nsflex
             contentOffset.y = maxOffset;
         }
         
-        visibleRect.set(contentOffset.x, contentOffset.y, contentOffset.x + boundsSize.width, contentOffset.y + boundsSize.height);
+        // visibleRect.set(contentOffset.x, contentOffset.y, contentOffset.x + boundsSize.width, contentOffset.y + boundsSize.height);
     }
     
     if (vertical)
@@ -684,6 +693,10 @@ namespace nsflex
             if (it->isOriginChanged())
             {
                 la.zIndex = 1024 + it->getSection();
+                if (it->getSection() == 3)
+                {
+                NSLog(@"StickyItem: %ld, %@", it->getSection(), NSStringFromCGRect(la.frame));
+                }
             }
         }
         
@@ -724,13 +737,18 @@ namespace nsflex
     NSInteger minInvalidSection = NSIntegerMax;
     
     UICollectionView *cv = self.collectionView;
-    nsflex::Size size = FlexSizeFromCGSize(cv.bounds.size);
+    nsflex::Size boundSize = FlexSizeFromCGSize(cv.bounds.size);
     nsflex::Insets padding = FlexInsetsFromUIEdgeInsets(cv.contentInset);
+    boundSize.width -= padding.hsize();
+    boundSize.height -= padding.vsize();
+    
     nsflex::LayoutCallbackAdapter layoutAdapter(self);
     
-    // Insert
+    NSInteger removed = 0;
+    
     for (UICollectionViewUpdateItem *updateItem in updateItems)
     {
+        // Insert
         if (UICollectionUpdateActionInsert == updateItem.updateAction)
         {
             if (nil == updateItem.indexPathAfterUpdate) continue;
@@ -739,11 +757,11 @@ namespace nsflex
             {
                 if (UICollectionViewScrollDirectionVertical == m_scrollDirection)
                 {
-                    m_verticalLayout->insertSection(layoutAdapter, size, padding, updateItem.indexPathAfterUpdate.section, false);
+                    m_verticalLayout->insertSection(layoutAdapter, boundSize, padding, updateItem.indexPathAfterUpdate.section, false);
                 }
                 else
                 {
-                    m_horizontalLayout->insertSection(layoutAdapter, size, padding, updateItem.indexPathAfterUpdate.section, false);
+                    m_horizontalLayout->insertSection(layoutAdapter, boundSize, padding, updateItem.indexPathAfterUpdate.section, false);
                 }
                 if (updateItem.indexPathAfterUpdate.section + 1 < minInvalidSection)
                 {
@@ -755,11 +773,8 @@ namespace nsflex
                 NSAssert(NO, @"Not implemented.");
             }
         }
-    }
     
-    // Reload
-    for (UICollectionViewUpdateItem *updateItem in updateItems)
-    {
+        // Reload
         if (UICollectionUpdateActionReload == updateItem.updateAction)
         {
             if (nil == updateItem.indexPathBeforeUpdate) continue;
@@ -768,13 +783,13 @@ namespace nsflex
             {
                 if (UICollectionViewScrollDirectionVertical == m_scrollDirection)
                 {
-                    m_verticalLayout->removeSection(layoutAdapter, size, padding, updateItem.indexPathBeforeUpdate.section, false);
-                    m_verticalLayout->insertSection(layoutAdapter, size, padding, updateItem.indexPathBeforeUpdate.section, false);
+                    m_verticalLayout->removeSection(layoutAdapter, boundSize, padding, updateItem.indexPathBeforeUpdate.section, false);
+                    m_verticalLayout->insertSection(layoutAdapter, boundSize, padding, updateItem.indexPathBeforeUpdate.section, false);
                 }
                 else
                 {
-                    m_horizontalLayout->removeSection(layoutAdapter, size, padding, updateItem.indexPathBeforeUpdate.section, false);
-                    m_horizontalLayout->insertSection(layoutAdapter, size, padding, updateItem.indexPathBeforeUpdate.section, false);
+                    m_horizontalLayout->removeSection(layoutAdapter, boundSize, padding, updateItem.indexPathBeforeUpdate.section, false);
+                    m_horizontalLayout->insertSection(layoutAdapter, boundSize, padding, updateItem.indexPathBeforeUpdate.section, false);
                 }
                 // [self removeSection:updateItem.indexPathBeforeUpdate.section andRelayout:NO];
                 // [self insertSection:updateItem.indexPathBeforeUpdate.section andRelayout:NO];
@@ -788,25 +803,24 @@ namespace nsflex
                 NSAssert(NO, @"Not implemented.");
             }
         }
-    }
     
-    // Delete
-    for (UICollectionViewUpdateItem *updateItem in updateItems)
-    {
+        // Delete
         if (UICollectionUpdateActionDelete == updateItem.updateAction)
         {
             if (nil == updateItem.indexPathBeforeUpdate) continue;
             
             if (NSNotFound == updateItem.indexPathBeforeUpdate.item) // The whole section
             {
+                NSInteger sectionToDelete = updateItem.indexPathBeforeUpdate.section - removed;
                 if (UICollectionViewScrollDirectionVertical == m_scrollDirection)
                 {
-                    m_verticalLayout->removeSection(layoutAdapter, size, padding, updateItem.indexPathBeforeUpdate.section, false);
+                    m_verticalLayout->removeSection(layoutAdapter, boundSize, padding, sectionToDelete, false);
                 }
                 else
                 {
-                    m_horizontalLayout->removeSection(layoutAdapter, size, padding, updateItem.indexPathBeforeUpdate.section, false);
+                    m_horizontalLayout->removeSection(layoutAdapter, boundSize, padding, sectionToDelete, false);
                 }
+                removed++;
                 // [self removeSection:updateItem.indexPathBeforeUpdate.section andRelayout:NO];
                 if (updateItem.indexPathBeforeUpdate.section < minInvalidSection)
                 {
@@ -824,13 +838,15 @@ namespace nsflex
     {
         if (UICollectionViewScrollDirectionVertical == m_scrollDirection)
         {
-            m_verticalLayout->refreshSectionFrom(layoutAdapter, size, padding, minInvalidSection);
+            m_verticalLayout->refreshSectionFrom(layoutAdapter, boundSize, padding, minInvalidSection);
         }
         else
         {
-            m_horizontalLayout->refreshSectionFrom(layoutAdapter, size, padding, minInvalidSection);
+            m_horizontalLayout->refreshSectionFrom(layoutAdapter, boundSize, padding, minInvalidSection);
         }
     }
+    
+    
 }
 
 /*
@@ -943,6 +959,33 @@ namespace nsflex
      */
     
     // return section->buildLayoutAttributesForDecorationView([UICollectionViewFlexLayout layoutAttributesClass], elementKind, indexPath);
+}
+
+- (CGPoint)targetContentOffsetForProposedContentOffset:(CGPoint)proposedContentOffset
+{
+    CGPoint targetContentOffset = [super targetContentOffsetForProposedContentOffset:proposedContentOffset];
+    
+
+    UICollectionView *cv = self.collectionView;
+    CGSize boundsSize = cv.bounds.size;
+    CGSize layoutContentSize = [self collectionViewContentSize];
+    
+    if (!CGSizeEqualToSize(layoutContentSize, cv.contentSize))
+    {
+        // If layout is updated but collectionview is not, we should adjust contentOffset
+        CGFloat maxOffset = layoutContentSize.width - boundsSize.width;
+        if (targetContentOffset.x > maxOffset)
+        {
+            targetContentOffset.x = maxOffset;
+        }
+        maxOffset = layoutContentSize.height - boundsSize.height;
+        if (targetContentOffset.y > maxOffset)
+        {
+            targetContentOffset.y = maxOffset;
+        }
+    }
+    
+    return targetContentOffset;
 }
 
 - (void)prepareForTransitionFromLayout:(UICollectionViewLayout *)oldLayout;

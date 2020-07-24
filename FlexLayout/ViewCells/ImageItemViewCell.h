@@ -10,12 +10,13 @@
 #define ImageItemViewCell_h
 
 #import <UIKit/UIKit.h>
+#import "FlexListViewDataSource.h"
 
 @interface SUIImageItemViewCell : UICollectionViewCell
 
 @property (nonatomic, assign) BOOL fullLineMode;
 
-- (void)updateDataSource:(nullable NSMutableDictionary *)item;
+- (void)updateDataSource:(nullable ItemData *)item;
 
 @end
 
