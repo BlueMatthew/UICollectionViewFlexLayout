@@ -582,16 +582,33 @@
 
 -(void)tapView:(UITapGestureRecognizer *)gesture
 {
-    // NSMutableDictionary<NSString *, NSMutableArray< NSNumber * > *>    *m_sections;     // Category Page -> Sections
-    NSInteger section = [m_dataSource removeSection:SECTION_INDEX_ITEM1 forPage:m_page];
-    if (NSNotFound == section)
+    NSMutableIndexSet *indexSet = [NSMutableIndexSet indexSet];
+    
+    NSInteger section1 = [m_dataSource removeSection:SECTION_INDEX_ITEM2 forPage:m_page];
+    if (NSNotFound != section1)
+    {
+        [indexSet addIndex:section1];
+    }
+    
+    NSInteger section2 = [m_dataSource removeSection:SECTION_INDEX_ITEM1 forPage:m_page];
+    if (NSNotFound != section2)
+    {
+        [indexSet addIndex:section2];
+    }
+    if (indexSet.count == 0)
     {
         return;
     }
     [UIView performWithoutAnimation:^{
+        NSLog(@"UPD: %@", @"performBatchUpdates call");
         [self performBatchUpdates:^{
-            [self deleteSections:[NSIndexSet indexSetWithIndex:section]];
+            NSLog(@"UPD: %@", @"performBatchUpdates block");
+            // [self deleteSections:[NSIndexSet indexSetWithIndex:section]];
+            [self deleteSections:indexSet];
+            // [self deleteSections:indexSet];
+            
             // [self insertSections:[NSIndexSet indexSetWithIndex:SECTION_INDEX_ITEM1]];
+            NSLog(@"UPD: %@", @"performBatchUpdates block end");
         } completion:^(BOOL finished) {
             //
         }];

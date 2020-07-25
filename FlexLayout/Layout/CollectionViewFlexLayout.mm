@@ -14,6 +14,13 @@
 #import "FlexPage.h"
 #include "FlexLayout.h"
 
+
+typedef NS_ENUM(NSUInteger, UICollectionViewFlexInvalidationFlags) {
+    UICollectionViewFlexInvalidationFlagNone = 0,
+    UICollectionViewFlexInvalidationFlagEverything = 1,
+    UICollectionViewFlexInvalidationFlagDataSourceChanged = 2,
+};
+
 namespace nsflex
 {
     class LayoutCallbackAdapter;
@@ -223,12 +230,9 @@ namespace nsflex
     FlexLayout<true>    *m_verticalLayout;
     FlexLayout<false>   *m_horizontalLayout;
     
-    // NSMutableArray *m_updateIndexPaths;
-    
     StickyItemList m_stickyHeaders; // Section Index -> Sticy Status(YES/NO)
-    
-    CGSize m_contentSize;
-    BOOL m_layoutInvalidated;
+
+    NSInteger m_layoutInvalidated;
     
     NSMutableDictionary<NSIndexPath *, UICollectionViewLayoutAttributes *> *m_itemLayoutAttributes;
     NSMutableDictionary<NSIndexPath *, UICollectionViewLayoutAttributes *> *m_headerLayoutAttributes;
@@ -269,9 +273,8 @@ namespace nsflex
         
         m_verticalLayout = NULL;
         m_horizontalLayout = NULL;
-        
-        m_contentSize = CGSizeZero;
-        m_layoutInvalidated = YES;
+
+        m_layoutInvalidated = UICollectionViewFlexInvalidationFlagNone;
         
         m_itemLayoutAttributes = [NSMutableDictionary dictionaryWithCapacity:8];
         m_headerLayoutAttributes = [NSMutableDictionary dictionaryWithCapacity:4];
@@ -313,9 +316,8 @@ namespace nsflex
         
         m_verticalLayout = NULL;
         m_horizontalLayout = NULL;
-        
-        m_contentSize = CGSizeZero;
-        m_layoutInvalidated = YES;
+
+        m_layoutInvalidated = UICollectionViewFlexInvalidationFlagNone;
         
         m_itemLayoutAttributes = [NSMutableDictionary dictionaryWithCapacity:8];
         m_headerLayoutAttributes = [NSMutableDictionary dictionaryWithCapacity:4];
@@ -356,6 +358,16 @@ namespace nsflex
 
 - (void)dealloc
 {
+    if (NULL != m_verticalLayout)
+    {
+        delete m_verticalLayout;
+        m_verticalLayout = NULL;
+    }
+    if (NULL != m_horizontalLayout)
+    {
+        delete m_horizontalLayout;
+        m_horizontalLayout = NULL;
+    }
 }
 
 + (Class)layoutAttributesClass
@@ -514,16 +526,31 @@ namespace nsflex
 - (void)prepareLayout
 {
     [super prepareLayout];
-    
-    if (m_layoutInvalidated)
+    if (m_layoutInvalidated == UICollectionViewFlexInvalidationFlagNone)
     {
+        return;
+    }
+    
 #ifdef PERF_DEBUG
-        double time = 0.0f;
-        double prevTime = 0.0;
-        
-        prevTime = [[NSDate date] timeIntervalSince1970] * 1000;
-        
+    double time = 0.0f;
+    double prevTime = 0.0;
+    
+    prevTime = [[NSDate date] timeIntervalSince1970] * 1000;
+    
 #endif
+
+    if (m_layoutInvalidated & UICollectionViewFlexInvalidationFlagDataSourceChanged)
+    {
+        NSLog(@"UPD: %@", @"prepareLayout for performBatchUpdate");
+    }
+    else
+    {
+        NSLog(@"UPD: %@", @"prepareLayout for reloadData");
+        
+    }
+    
+    // if ((m_layoutInvalidated & UICollectionViewFlexInvalidationFlagsEverything) == UICollectionViewFlexInvalidationFlagsEverything)
+    {
 
         UICollectionView *cv = self.collectionView;
         nsflex::LayoutCallbackAdapter layoutAdapter(self);
@@ -544,59 +571,67 @@ namespace nsflex
         [m_itemLayoutAttributes removeAllObjects];
         [m_headerLayoutAttributes removeAllObjects];
         [m_footerLayoutAttributes removeAllObjects];
-        
-#ifdef PERF_DEBUG
-        time = [[NSDate date] timeIntervalSince1970] * 1000;
-        NSLog(@"PERF prepareLayout takes %0.2f ms", time - prevTime);
-#endif
     }
+    
+    m_layoutInvalidated = UICollectionViewFlexInvalidationFlagNone;
+
+#ifdef PERF_DEBUG
+    time = [[NSDate date] timeIntervalSince1970] * 1000;
+    NSLog(@"PERF prepareLayout takes %0.2f ms", time - prevTime);
+#endif
 }
 
 - (BOOL)shouldInvalidateLayoutForBoundsChange:(CGRect)newBounds
 {
     if (!m_stickyHeaders.empty())
     {
-        // Don't return YES because it will call invalidateLayout
-        [self invalidateOffset];
+        CGSize oldSize = self.collectionView.bounds.size;
+        if (CGSizeEqualToSize(oldSize, newBounds.size))
+        {
+            // If size it not changed, offset must be changed
+            // Trigger a offset invalidation and it will be blocked by invalidateLayoutWithContext
+            // And then layoutAttributesForElementsInRect will be called
+            [self invalidateOffset];
+        }
     }
-    
+
+    // Return NO for offset change by default
     return [super shouldInvalidateLayoutForBoundsChange:newBounds];
 }
 
+/*
 - (void)invalidateLayout
 {
-    m_layoutInvalidated = YES;
+    // m_layoutInvalidated |= UICollectionViewFlexInvalidationFlagsEverything;
+    NSLog(@"UPD: %@", @"invalidateLayout");
     [super invalidateLayout];
 }
+*/
 
 - (void)invalidateLayoutWithContext:(UICollectionViewLayoutInvalidationContext *)context
 {
     [super invalidateLayoutWithContext:context];
-    
-    if ([context isKindOfClass:[UICollectionViewFlexLayout invalidationContextClass]])
+    if (nil == context || ![context isKindOfClass:[UICollectionViewFlexLayout invalidationContextClass]])
     {
-        UICollectionViewFlexLayoutInvalidationContext *flexInvalidationContext = (UICollectionViewFlexLayoutInvalidationContext *)context;
-        if (!flexInvalidationContext.invalidatedOffset)
-        {
-            // It is not caused by internal offset change, should call prepareLayout
-            if (!(flexInvalidationContext.invalidateDataSourceCounts && !flexInvalidationContext.invalidateEverything))
-            {
-                m_layoutInvalidated = YES;
-            }
-            else
-            {
-                //
-                [m_itemLayoutAttributes removeAllObjects];
-                [m_headerLayoutAttributes removeAllObjects];
-                [m_footerLayoutAttributes removeAllObjects];
-            }
-            
-        }
+        // If it is something we don't know, just make layout happen
+        m_layoutInvalidated |= UICollectionViewFlexInvalidationFlagEverything;
+        return;
     }
-    else
+    
+    UICollectionViewFlexLayoutInvalidationContext *flexInvalidationContext = (UICollectionViewFlexLayoutInvalidationContext *)context;
+    // if invalidatedOffset is YES, doesn't need to do layout
+    if (!flexInvalidationContext.invalidatedOffset)
     {
-        // It is not caused by offset change, should call prepareLayout
-        m_layoutInvalidated = YES;
+        // It is not caused by internal offset change, should call prepareLayout
+        if ((flexInvalidationContext.invalidateDataSourceCounts && flexInvalidationContext.invalidateEverything == NO))
+        {
+            NSLog(@"UPD: %@", @"invalidate with performBatchUpdate");
+            m_layoutInvalidated |= UICollectionViewFlexInvalidationFlagDataSourceChanged;
+        }
+        else
+        {
+            m_layoutInvalidated |= UICollectionViewFlexInvalidationFlagEverything;
+        }
     }
 }
 
@@ -609,6 +644,8 @@ namespace nsflex
     prevTime = [[NSDate date] timeIntervalSince1970] * 1000;
 #endif
 
+    NSLog(@"UPD: %@", @"ElementsInRect");
+    
     if (nil == self.collectionView)
     {
         return nil;
@@ -663,10 +700,8 @@ namespace nsflex
     NSMutableArray<UICollectionViewLayoutAttributes *> *layoutAttributesArray = [NSMutableArray arrayWithCapacity:layoutItems.size()];
     UICollectionViewLayoutAttributes *la = nil;
     BOOL hasOffset = ((m_pagingSection != NSNotFound) && !CGPointEqualToPoint(m_pagingOffset, CGPointZero));
-    BOOL isCopy = NO;
     for (std::vector<LayoutItem>::const_iterator it = layoutItems.begin(); it != layoutItems.end(); ++it)
     {
-        isCopy = NO;
         if (it->isHeader())
         {
             la = [self layoutAttributesForSupplementaryViewOfKind:UICollectionElementKindSectionHeader atIndexPath:[NSIndexPath indexPathForItem:0 inSection:it->getSection()]];
@@ -723,170 +758,12 @@ namespace nsflex
     
     for (UICollectionViewLayoutAttributes *la in layoutAttributesArray)
     {
-        NSLog(@"InRect-%d LA=%@", inrect, [la debugDescription]);
+        NSLog(@"InRect-%d LA=[%ld-%ld], frame=[%d-%d]-[%d-%d] zIndex=%ld", inrect, la.indexPath.section, la.indexPath.item, (int)CGRectGetMinX(la.frame), (int)CGRectGetMinY(la.frame), (int)CGRectGetWidth(la.frame), (int)CGRectGetHeight(la.frame), la.zIndex);
     }
 #endif
     
     return layoutAttributesArray;
 }
-
-- (void)prepareForCollectionViewUpdates:(NSArray<UICollectionViewUpdateItem *> *)updateItems
-{
-    [super prepareForCollectionViewUpdates:updateItems];
-    
-    NSInteger minInvalidSection = NSIntegerMax;
-    
-    UICollectionView *cv = self.collectionView;
-    nsflex::Size boundSize = FlexSizeFromCGSize(cv.bounds.size);
-    nsflex::Insets padding = FlexInsetsFromUIEdgeInsets(cv.contentInset);
-    boundSize.width -= padding.hsize();
-    boundSize.height -= padding.vsize();
-    
-    nsflex::LayoutCallbackAdapter layoutAdapter(self);
-    
-    NSInteger removed = 0;
-    
-    for (UICollectionViewUpdateItem *updateItem in updateItems)
-    {
-        // Insert
-        if (UICollectionUpdateActionInsert == updateItem.updateAction)
-        {
-            if (nil == updateItem.indexPathAfterUpdate) continue;
-            
-            if (NSNotFound == updateItem.indexPathAfterUpdate.item) // The whole section
-            {
-                if (UICollectionViewScrollDirectionVertical == m_scrollDirection)
-                {
-                    m_verticalLayout->insertSection(layoutAdapter, boundSize, padding, updateItem.indexPathAfterUpdate.section, false);
-                }
-                else
-                {
-                    m_horizontalLayout->insertSection(layoutAdapter, boundSize, padding, updateItem.indexPathAfterUpdate.section, false);
-                }
-                if (updateItem.indexPathAfterUpdate.section + 1 < minInvalidSection)
-                {
-                    minInvalidSection = updateItem.indexPathAfterUpdate.section + 1;
-                }
-            }
-            else
-            {
-                NSAssert(NO, @"Not implemented.");
-            }
-        }
-    
-        // Reload
-        if (UICollectionUpdateActionReload == updateItem.updateAction)
-        {
-            if (nil == updateItem.indexPathBeforeUpdate) continue;
-            
-            if (NSNotFound == updateItem.indexPathBeforeUpdate.item) // The whole section
-            {
-                if (UICollectionViewScrollDirectionVertical == m_scrollDirection)
-                {
-                    m_verticalLayout->removeSection(layoutAdapter, boundSize, padding, updateItem.indexPathBeforeUpdate.section, false);
-                    m_verticalLayout->insertSection(layoutAdapter, boundSize, padding, updateItem.indexPathBeforeUpdate.section, false);
-                }
-                else
-                {
-                    m_horizontalLayout->removeSection(layoutAdapter, boundSize, padding, updateItem.indexPathBeforeUpdate.section, false);
-                    m_horizontalLayout->insertSection(layoutAdapter, boundSize, padding, updateItem.indexPathBeforeUpdate.section, false);
-                }
-                // [self removeSection:updateItem.indexPathBeforeUpdate.section andRelayout:NO];
-                // [self insertSection:updateItem.indexPathBeforeUpdate.section andRelayout:NO];
-                if (updateItem.indexPathBeforeUpdate.section + 1 < minInvalidSection)
-                {
-                    minInvalidSection = updateItem.indexPathBeforeUpdate.section + 1;
-                }
-            }
-            else
-            {
-                NSAssert(NO, @"Not implemented.");
-            }
-        }
-    
-        // Delete
-        if (UICollectionUpdateActionDelete == updateItem.updateAction)
-        {
-            if (nil == updateItem.indexPathBeforeUpdate) continue;
-            
-            if (NSNotFound == updateItem.indexPathBeforeUpdate.item) // The whole section
-            {
-                NSInteger sectionToDelete = updateItem.indexPathBeforeUpdate.section - removed;
-                if (UICollectionViewScrollDirectionVertical == m_scrollDirection)
-                {
-                    m_verticalLayout->removeSection(layoutAdapter, boundSize, padding, sectionToDelete, false);
-                }
-                else
-                {
-                    m_horizontalLayout->removeSection(layoutAdapter, boundSize, padding, sectionToDelete, false);
-                }
-                removed++;
-                // [self removeSection:updateItem.indexPathBeforeUpdate.section andRelayout:NO];
-                if (updateItem.indexPathBeforeUpdate.section < minInvalidSection)
-                {
-                    minInvalidSection = updateItem.indexPathBeforeUpdate.section;
-                }
-            }
-            else
-            {
-                NSAssert(NO, @"Not implemented.");
-            }
-        }
-    }
-    
-    if (minInvalidSection != NSIntegerMax)
-    {
-        if (UICollectionViewScrollDirectionVertical == m_scrollDirection)
-        {
-            m_verticalLayout->refreshSectionFrom(layoutAdapter, boundSize, padding, minInvalidSection);
-        }
-        else
-        {
-            m_horizontalLayout->refreshSectionFrom(layoutAdapter, boundSize, padding, minInvalidSection);
-        }
-    }
-    
-    
-}
-
-/*
-- (UICollectionViewLayoutAttributes*)initialLayoutAttributesForAppearingItemAtIndexPath:(NSIndexPath *)itemIndexPath
-{
-    if ((nil != m_updateIndexPaths) && [m_updateIndexPaths containsObject:itemIndexPath])
-    {
-        UICollectionViewLayoutAttributes *layoutAttributes = [self layoutAttributesForItemAtIndexPath:itemIndexPath];
-        
-        layoutAttributes.transform = CGAffineTransformRotate(CGAffineTransformMakeScale(0.2, 0.2), M_PI);
-        layoutAttributes.center = CGPointMake(CGRectGetMidX(self.collectionView.bounds), CGRectGetMaxY(self.collectionView.bounds));
-        layoutAttributes.alpha = 1;
-        
-        [m_updateIndexPaths removeObject:itemIndexPath];
-        return layoutAttributes;
-    }
-    
-    return nil;
-}
-
-- (UICollectionViewLayoutAttributes *)finalLayoutAttributesForDisappearingItemAtIndexPath:(NSIndexPath *)itemIndexPath
-{
-    if ((nil != m_updateIndexPaths) && [m_updateIndexPaths containsObject:itemIndexPath])
-    {
-        UICollectionViewLayoutAttributes *layoutAttributes = [self layoutAttributesForItemAtIndexPath:itemIndexPath];
-        
-        layoutAttributes.transform = CGAffineTransformRotate(CGAffineTransformMakeScale(2, 2), 0);
-        layoutAttributes.alpha = 0;
-        [m_updateIndexPaths removeObject:itemIndexPath];
-        return layoutAttributes;
-    }
-    
-    return nil;
-}
-
-- (void)finalizeCollectionViewUpdates
-{
-    m_updateIndexPaths = nil;
-}
-*/
 
 - (UICollectionViewLayoutAttributes *)layoutAttributesForItemAtIndexPath:(NSIndexPath *)indexPath
 {
@@ -960,7 +837,7 @@ namespace nsflex
     
     // return section->buildLayoutAttributesForDecorationView([UICollectionViewFlexLayout layoutAttributesClass], elementKind, indexPath);
 }
-
+/*
 - (CGPoint)targetContentOffsetForProposedContentOffset:(CGPoint)proposedContentOffset
 {
     CGPoint targetContentOffset = [super targetContentOffsetForProposedContentOffset:proposedContentOffset];
@@ -987,15 +864,18 @@ namespace nsflex
     
     return targetContentOffset;
 }
+ */
 
 - (void)prepareForTransitionFromLayout:(UICollectionViewLayout *)oldLayout;
 {
     memset(&m_layoutDelegateFlags, 0, sizeof(m_layoutDelegateFlags));
+    [super prepareForTransitionFromLayout:oldLayout];
 }
 
 - (void)prepareForTransitionToLayout:(UICollectionViewLayout *)newLayout
 {
     memset(&m_layoutDelegateFlags, 0, sizeof(m_layoutDelegateFlags));
+    [super prepareForTransitionToLayout:newLayout];
 }
 
 - (void)finalizeLayoutTransition
@@ -1124,64 +1004,17 @@ namespace nsflex
     [self prepareDelegate];
     if (m_layoutDelegateFlags.enterStickyMode)
     {
-        
-    }
-    if ([self.collectionView.delegate conformsToProtocol:@protocol(UICollectionViewDelegateFlexLayout)] && [self.collectionView.delegate respondsToSelector:@selector(collectionView:layout:headerEnterStickyModeAtSection:withOriginalPoint:)])
-    {
         [((id<UICollectionViewDelegateFlexLayout>)self.collectionView.delegate) collectionView:self.collectionView layout:self headerEnterStickyModeAtSection:section withOriginalPoint:point];
     }
 }
 
 - (void)exitStickyModeAt:(NSInteger)section
 {
-    // [self prepareDelegate];
-    if ([self.collectionView.delegate conformsToProtocol:@protocol(UICollectionViewDelegateFlexLayout)] && [self.collectionView.delegate respondsToSelector:@selector(collectionView:layout:headerExitStickyModeAtSection:)])
+    [self prepareDelegate];
+    if (m_layoutDelegateFlags.exitStickyMode)
     {
         [((id<UICollectionViewDelegateFlexLayout>)self.collectionView.delegate) collectionView:self.collectionView layout:self headerExitStickyModeAtSection:section];
     }
 }
-
-#ifdef DEBUG
-- (NSString *)stringFromInvalidationContext:(UICollectionViewLayoutInvalidationContext *)context
-{
-    // CGPoint contentOffsetAdjustment = context.contentOffsetAdjustment;
-    NSMutableString *description = [NSMutableString string];
-    if (context.invalidateEverything)
-    {
-        [description appendString:@"invalidateEverything=YES;"];
-    }
-    if (context.invalidateDataSourceCounts)
-    {
-        [description appendString:@"invalidateDSCounts=YES;"];
-    }
-    if (!CGPointEqualToPoint(context.contentOffsetAdjustment, CGPointZero))
-    {
-        [description appendFormat:@"contentOffsetAdjustment=%@;", NSStringFromCGPoint(context.contentOffsetAdjustment)];
-    }
-    if (!CGSizeEqualToSize(context.contentSizeAdjustment, CGSizeZero))
-    {
-        [description appendFormat:@"contentSizeAdjustment=%@;", NSStringFromCGSize(context.contentSizeAdjustment)];
-    }
-    if (context.invalidatedItemIndexPaths.count > 0)
-    {
-        [description appendFormat:@"invalidatedItemIndexPaths=%ld;", context.invalidatedItemIndexPaths.count];
-    }
-    if (context.invalidatedSupplementaryIndexPaths.count > 0)
-    {
-        [description appendFormat:@"invalidatedSupplementaryIndexPaths=%ld;", context.invalidatedSupplementaryIndexPaths.count];
-    }
-    
-    if (description.length == 0)
-    {
-        // CGPoint contentOffset = self.collectionView.contentOffset;
-        // CGRect bounds = self.collectionView.bounds;
-        // NSLog(@"No InvalidationContext%@", @"");
-    }
-    
-    return description;
-}
-#endif // DEBUG
-
-
 
 @end

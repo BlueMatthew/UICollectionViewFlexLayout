@@ -498,33 +498,29 @@ protected:
 template<class TLayoutCallbackAdapter, class TInt, class TCoordinate, bool VERTICAL>
 void FlexLayoutT<TLayoutCallbackAdapter, TInt, TCoordinate, VERTICAL>::prepareLayout(const TLayoutCallbackAdapter& layoutCallbackAdapter, const Size &boundSize, const Insets &padding)
 {
+    // Clear all sections, maybe optimize later
     clearSections();
     
     TInt sectionCount = layoutCallbackAdapter.getNumberOfSections();
     if (sectionCount <= 0)
     {
+        // Set contentSize to bound size
         m_contentSize = boundSize;;
-        // layoutCallbackAdapter.updateContentSize(layoutAndSectionsInfo.size.width, layoutAndSectionsInfo.padding.top + layoutAndSectionsInfo.padding.bottom);
         return;
     }
     
-    // nsflex::Rect bounds(insets.left, insets.top, cv.bounds.size.width - insets.left - insets.right, cv.bounds.size.height - insets.top - insets.bottom);
-    // Rect bounds(0, 0, size.width - padding.hsize(), size.height - padding.vsize());
-    
+    // Initialize width and set height to 0, layout will calculate new height
     Rect rectOfSection = makeRect(0, 0, width(boundSize), 0);
     for (TInt sectionIndex = 0; sectionIndex < sectionCount; sectionIndex++) {
         int layoutMode = layoutCallbackAdapter.getLayoutModeForSection(sectionIndex);
         Section *section = layoutMode == 1 ?
         static_cast<Section *>(new WaterfallSection(sectionIndex, rectOfSection)) :
         static_cast<Section *>(new FlowSection(sectionIndex, rectOfSection));
-        
-        // section->setPositionBase(positionBase);
+
         section->prepareLayout(&layoutCallbackAdapter, boundSize);
         
         m_sections.push_back(section);
-        
-        // positionBase += section->getItemCount();
-        
+
         offsetY(rectOfSection, height(section->getFrame()));
     }
     
