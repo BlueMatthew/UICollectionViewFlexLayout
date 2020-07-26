@@ -758,7 +758,7 @@ namespace nsflex
     
     for (UICollectionViewLayoutAttributes *la in layoutAttributesArray)
     {
-        NSLog(@"InRect-%d LA=[%ld-%ld], frame=[%d-%d]-[%d-%d] zIndex=%ld", inrect, la.indexPath.section, la.indexPath.item, (int)CGRectGetMinX(la.frame), (int)CGRectGetMinY(la.frame), (int)CGRectGetWidth(la.frame), (int)CGRectGetHeight(la.frame), la.zIndex);
+        // NSLog(@"InRect-%d LA=[%ld-%ld], frame=[%d-%f]-[%d-%f] zIndex=%ld", inrect, la.indexPath.section, la.indexPath.item, (int)CGRectGetMinX(la.frame), CGRectGetMinY(la.frame), (int)CGRectGetWidth(la.frame), CGRectGetHeight(la.frame), la.zIndex);
     }
 #endif
     

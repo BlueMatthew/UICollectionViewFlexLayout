@@ -139,7 +139,7 @@
         m_categoryBarView = [[SUICategoryBar alloc] initWithFrame:frame];
         
         m_categoryBarView.viewDelegate = self;
-        m_categoryBarView.itemSize = CGSizeMake(self.bounds.size.width / 4, self.bounds.size.height);
+        m_categoryBarView.itemSize = CGSizeMake(m_categoryBarView.bounds.size.width / 4, m_categoryBarView.bounds.size.height);
         [m_categoryBarView setItems:barItems];
     }
     
@@ -173,6 +173,7 @@
     collectionView = [[UICollectionView alloc] initWithFrame:frame collectionViewLayout:layout];
     
     collectionView.backgroundColor = [self.backgroundColor copy];
+    collectionView.backgroundColor = [UIColor yellowColor];
     if (@available(iOS 11.0, *))
     {
         collectionView.contentInsetAdjustmentBehavior = UIScrollViewContentInsetAdjustmentNever;

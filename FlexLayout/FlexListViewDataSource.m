@@ -36,7 +36,7 @@
 #define ITEM_HEIGHT_NAVBAR              100
 #define ITEM_HEIGHT_ENTRY               120
 #define ITEM_HEIGHT_TEST1               100
-#define ITEM_HEIGHT_TEST2               80
+#define ITEM_HEIGHT_TEST2               100
 #define ITEM_HEIGHT_INFO                80
 #define ITEM_HEIGHT_LOADMORE            110
 #define ITEM_HEIGHT_CATBAR              40
@@ -244,14 +244,18 @@
     unsigned int itemHeights1[] = {40, 65, 55, 70, 60, 85, 75, 100};
     unsigned int itemHeights2[] = {ITEM_HEIGHT_ITEM2};
     
+    CGFloat scale = UIScreen.mainScreen.scale;
+    
+    // round(scale * itemHeight) / scale;
+    
     if (m_sectionId == SECTION_INDEX_ENTRY)
     {
         // Nav + Entry
         m_header = [[ItemData alloc] init];
         m_header.text = @ITEM_TEXT_NAVBAR;
         m_header.backgroundColor = 0xFF7F50; // coral
-        m_header.width = [self calcWidth:bounds contentInsets:contentInsets];
-        m_header.height = ITEM_HEIGHT_NAVBAR;
+        m_header.width = round(scale * [self calcWidth:bounds contentInsets:contentInsets]) / scale;
+        m_header.height = round(scale * ITEM_HEIGHT_NAVBAR) / scale;
         
         unsigned int entryColors[] = {0x7CFC00, 0x32CD32, 0x006400, 0x9ACD32, 0x00FA9A, 0x98FB98, 0x808000, 0x6B8E23};
         int bgColorIndex = (int)m_sectionId * 4;
@@ -262,8 +266,8 @@
             
             item.backgroundColor = entryColors[bgColorIndex % (sizeof(entryColors) / sizeof(unsigned int))];
             item.text = [NSString stringWithFormat:@"Entry %ld", idx];
-            item.width = [self calcWidth:bounds contentInsets:contentInsets];
-            item.height = ITEM_HEIGHT_ENTRY;
+            item.width = round(scale * [self calcWidth:bounds contentInsets:contentInsets]) / scale;
+            item.height = round(scale * ITEM_HEIGHT_ENTRY) / scale;
             
             [m_items addObject:item];
         }
@@ -280,8 +284,8 @@
             
             item.backgroundColor = entryColors[bgColorIndex % (sizeof(entryColors) / sizeof(unsigned int))];
             item.text = [NSString stringWithFormat:@"Test1 %ld", idx];
-            item.width = [self calcWidth:bounds contentInsets:contentInsets];
-            item.height = ITEM_HEIGHT_TEST1;
+            item.width = round(scale * [self calcWidth:bounds contentInsets:contentInsets]) / scale;
+            item.height = round(scale * ITEM_HEIGHT_TEST1) / scale;
             
             [m_items addObject:item];
         }
@@ -299,8 +303,8 @@
             
             item.backgroundColor = entryColors[bgColorIndex % (sizeof(entryColors) / sizeof(unsigned int))];
             item.text = [NSString stringWithFormat:@"Test2 %ld", idx];
-            item.width = [self calcWidth:bounds contentInsets:contentInsets];
-            item.height = ITEM_HEIGHT_TEST2;
+            item.width = round(scale * [self calcWidth:bounds contentInsets:contentInsets]) / scale;
+            item.height = round(scale * ITEM_HEIGHT_TEST2) / scale;
             
             [m_items addObject:item];
         }
@@ -311,9 +315,9 @@
         // m_header.text = @ITEM_TEXT_NAVBAR;
         m_header.backgroundColor = 0xFEA460; // sandybrown
         [m_header setBarItems:@ITEM_TEXT_CATBAR_ITEM numberOfBarItems:NUM_OF_ITEMS_IN_CATEGORY_BAR];
-        
-        m_header.width = [self calcWidth:bounds contentInsets:contentInsets];
-        m_header.height = ITEM_HEIGHT_CATBAR;
+
+        m_header.width = round(scale * [self calcWidth:bounds contentInsets:contentInsets]) / scale;
+        m_header.height = round(scale * ITEM_HEIGHT_CATBAR) / scale;
         
     }
     else if (m_sectionId == SECTION_INDEX_ITEM1 || m_sectionId == SECTION_INDEX_ITEM2)
@@ -361,6 +365,7 @@
 
 - (void)initializeItems:(NSMutableArray<ItemData *> *)items numberOfItemsInSection:(NSInteger)numberOfItems textFormat:(NSString *)textFormat columns:(NSInteger)columns itemColors:(NSArray *)itemColors imageColors:(NSArray *)imageColors itemHeights:(NSArray *)itemHeights forPage:(NSInteger)page  withBounds:(CGRect)bounds contentInsets:(UIEdgeInsets)contentInsets
 {
+    CGFloat scale = UIScreen.mainScreen.scale;
     NSMutableArray<NSNumber *> *widthOfColumns = [[NSMutableArray<NSNumber *> alloc] initWithCapacity:ITEM_COLUMNS];
     CGFloat availableColumnSize = bounds.size.width - (contentInsets.left + contentInsets.right + SECTION_INSET_ITEM_LEFT + SECTION_INSET_ITEM_RIGHT);
     for (NSInteger idx = 0; idx < columns; idx++)
@@ -403,7 +408,7 @@
         
         item.displayed = NO;
         
-        item.width = itemWidth;
+        item.width = round(scale * itemWidth) / scale;
         CGFloat itemHeight = 0;
         if (columns == 1)
         {
@@ -413,7 +418,10 @@
         {
             itemHeight = floor(itemWidth) + [[itemHeights objectAtIndex:(idx % itemHeights.count)] integerValue];
         }
-        item.height = itemHeight;
+        
+        // return CGSizeMake(round(scale * size.width) / scale, round(scale * size.height) / scale);
+        
+        item.height = round(scale * itemHeight) / scale;
         item.itemType = @"item";
         item.text = [NSString stringWithFormat:textFormat, page, idx];
         
