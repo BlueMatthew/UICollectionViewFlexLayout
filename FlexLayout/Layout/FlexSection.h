@@ -146,7 +146,10 @@ namespace nsflex
         inline Rect getItemFrameInView(const FlexItem *item) const
         {
             Rect rect(item->getFrame());
-            rect.offset(m_itemsFrame.left(), m_itemsFrame.top());
+            if (item->isItem())
+            {
+                rect.offset(m_itemsFrame.left(), m_itemsFrame.top());
+            }
             return getFrameInView(rect);
         }
 
