@@ -71,9 +71,14 @@ namespace nsflex
         
         inline bool operator<(const FlexItemT &rhs) const
         {
-            return ((char)m_type) < (rhs.getType()) || ((m_type) == (rhs.getType()) && (m_item == rhs.getItem()));
+            return ((char)m_type) < (rhs.getType()) || ((m_type) == (rhs.getType()) && (m_item < rhs.getItem()));
         }
         
+        inline bool operator>(const FlexItemT &rhs) const
+        {
+            return ((char)m_type) > (rhs.getType()) || ((m_type) == (rhs.getType()) && (m_item > rhs.getItem()));
+        }
+
         inline char getType() const { return (char)m_type; }
         
         inline bool isHeader() const { return m_type == ITEM_TYPE_HEADER; }
@@ -97,6 +102,26 @@ namespace nsflex
         inline Rect &getFrame() { return m_frame; }
         inline Rect getFrame() const { return m_frame; }
 
+    };
+    
+    template <typename TInt, typename TCoordinate>
+    struct FlexItemLessCompareT
+    {
+        using FlexItem = FlexItemT<TInt, TCoordinate>;
+        inline bool operator() ( const FlexItem* lhs, const FlexItem *rhs) const
+        {
+            return *lhs < *rhs;
+        }
+    };
+    
+    template <typename TInt, typename TCoordinate>
+    struct FlexItemGreaterCompareT
+    {
+        using FlexItem = FlexItemT<TInt, TCoordinate>;
+        inline bool operator() ( const FlexItem* lhs, const FlexItem *rhs) const
+        {
+            return *lhs > *rhs;
+        }
     };
 
     template<typename T, bool VERTICAL>
@@ -128,32 +153,6 @@ namespace nsflex
         inline bool less(const std::pair<typename T::CoordinateType, typename T::CoordinateType>& topBottom, const T* item, bool_trait<false>) const
         {
             return topBottom.second < item->getFrame().left();
-        }
-    };
-
-    template<typename T>
-    struct FlexVerticalCompareT
-    {
-        inline bool operator() ( const T* item, const std::pair<typename T::CoordinateType, typename T::CoordinateType>& topBottom) const
-        {
-            return item->getFrame().bottom() < topBottom.first;
-        }
-        inline bool operator() ( const std::pair<typename T::CoordinateType, typename T::CoordinateType>& topBottom, const T* item ) const
-        {
-            return topBottom.second < item->getFrame().top();
-        }
-    };
-
-    template<typename T>
-    struct FlexHorizontalCompareT
-    {
-        inline bool operator() ( const T* item, const std::pair<typename T::CoordinateType, typename T::CoordinateType>& leftRight) const
-        {
-            return item->getFrame().right() < leftRight.first;
-        }
-        inline bool operator() ( const std::pair<typename T::CoordinateType, typename T::CoordinateType>& leftRight, const T* item ) const
-        {
-            return leftRight.second < item->getFrame().left();
         }
     };
 

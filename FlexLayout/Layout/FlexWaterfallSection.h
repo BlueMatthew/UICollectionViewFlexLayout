@@ -33,6 +33,7 @@ protected:
     using Rect = typename TBaseSection::Rect;
     using Insets = typename TBaseSection::Insets;
     using FlexItem = typename TBaseSection::FlexItem;
+    using FlexItemLessCompare = FlexItemLessCompareT<TInt, TCoordinate>;
     using FlexColumn = FlexColumnT<TInt, TCoordinate, VERTICAL>;
     using FlexItemIterator = typename std::vector<FlexItem *>::iterator;
     using FlexColumnIterator = typename std::vector<FlexColumn *>::iterator;
@@ -213,12 +214,23 @@ protected:
 
     bool filterItemsInRect(const Rect &rectInSection, std::vector<const FlexItem *> &items) const
     {
-        bool matched = false;
+        typename std::vector<const FlexItem *>::size_type orgSize = items.size();
+        bool firstColumn = true;
+        FlexItemLessCompare comp;
         
         // Items
         for (FlexColumnConstIterator it = m_columns.begin(); it != m_columns.end(); ++it)
         {
             std::pair<typename std::vector<FlexItem *>::iterator, typename std::vector<FlexItem *>::iterator> range = (*it)->getItemsInRect(rectInSection);
+            
+            if (range.first == range.second)
+            {
+                continue;
+            }
+            
+            items.reserve(items.size() + (range.second - range.first) * m_columns.size());
+            
+            typename std::vector<const FlexItem *>::iterator itToInsert = items.begin() + orgSize;
             
             for (typename std::vector<FlexItem *>::iterator itItem = range.first; itItem != range.second; ++itItem)
             {
@@ -226,13 +238,30 @@ protected:
                 {
                     continue;
                 }
-
-                items.push_back(*itItem);
-                matched = true;
+                
+                if (firstColumn)
+                {
+                    items.push_back(*itItem);
+                }
+                else
+                {
+                    // Keep sorted when we insert
+                    if (itToInsert != items.end())
+                    {
+                        itToInsert = std::lower_bound(itToInsert, items.end(), (*itItem), comp);
+                    }
+                    items.insert(itToInsert, *itItem);
+                    ++itToInsert;
+                }
+            }
+            if (firstColumn)
+            {
+                firstColumn = false;
+                
             }
         }
         
-        return matched;
+        return orgSize != items.size();;
     }
     
 };

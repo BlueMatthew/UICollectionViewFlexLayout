@@ -6,6 +6,7 @@
 #define FLEXLAYOUTMANAGER_FLEXLAYOUT_H
 
 #include <algorithm>
+#include <cmath>
 // #include "FlexLayoutObjects.h"
 
 #include "FlexSection.h"
@@ -533,7 +534,6 @@ void FlexLayoutT<TLayoutCallbackAdapter, TInt, TCoordinate, VERTICAL>::getItemsI
 {
     SectionConstIteratorPair range = std::equal_range(m_sections.begin(), m_sections.end(), std::pair<TCoordinate, TCoordinate>(top(rect), bottom(rect)), SectionCompare());
     
-    
     if (range.first == range.second)
     {
         // No Sections
@@ -552,11 +552,6 @@ void FlexLayoutT<TLayoutCallbackAdapter, TInt, TCoordinate, VERTICAL>::getItemsI
         
         for (ItemConstIterator itItem = flexItems.begin(); itItem != flexItems.end(); ++itItem)
         {
-            if ((*itItem)->isPlaceHolder())
-            {
-                continue;
-            }
-            
             LayoutItem item((*it)->getSection(), *(*itItem));
             item.getFrame() = (*it)->getItemFrameInView(*itItem);
             
@@ -603,7 +598,7 @@ void FlexLayoutT<TLayoutCallbackAdapter, TInt, TCoordinate, VERTICAL>::getItemsI
             
             if (stackedStickyItems)
             {
-                top(rect, std::max(y(contentOffset) + totalStickyItemSize - top(padding), y(origin)));
+                top(rect, round(std::max(y(contentOffset) + totalStickyItemSize - top(padding), y(origin))));
             }
             else
             {

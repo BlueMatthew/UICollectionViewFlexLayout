@@ -163,7 +163,8 @@ protected:
     
     bool filterItemsInRect(const Rect &rectInSection, std::vector<const FlexItem *> &items) const
     {
-        bool matched = false;
+        // As iterator will be changed once array is re-allocated on inserting, we use size to check if there is change
+        typename std::vector<const FlexItem *>::size_type orgSize = items.size();
         
         std::pair<FlexRowConstIterator, FlexRowConstIterator> range = std::equal_range(m_rows.begin(), m_rows.end(), std::pair<TCoordinate, TCoordinate>(top(rectInSection), bottom(rectInSection)), RowCompare());
         
@@ -176,12 +177,11 @@ protected:
                 if ((it != range.first && it != lastRow) || (*itItem)->getFrame().intersects(rectInSection))
                 {
                     items.push_back(*itItem);
-                    matched = true;
                 }
             }
         }
         
-        return matched;
+        return orgSize != items.size();
     }
 
     
