@@ -81,7 +81,6 @@ namespace nsflex
         // FlexSectionT implements all required methods and sub-class doesn't need to access this member variable directly
         // So set it private
 
-
     protected:
         struct {
             TInt sectionInvalidated : 1;    // The whole section is invalidated
@@ -192,6 +191,12 @@ namespace nsflex
         }
         
 #endif // #ifdef HAVING_HEADER_AND_FOOTER
+        
+        
+        virtual void invalidateLayout()
+        {
+            m_invalidationContext.sectionInvalidated = 1;
+        }
         
         void prepareLayout(const TLayout *layout, const Size &size)
         {

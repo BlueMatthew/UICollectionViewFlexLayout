@@ -8,12 +8,14 @@
 
 #import <Foundation/Foundation.h>
 #define HAVING_HEADER_AND_FOOTER
+#ifndef NDEBUG
+#define PERF_DEBUG
+#endif
 
 #import "CollectionViewFlexLayout.h"
 #import "CollectionViewFlexLayoutInvalidationContext.h"
-#import "FlexPage.h"
 #include "FlexLayout.h"
-
+#import "CollectionViewFlexAdapter.h"
 
 typedef NS_ENUM(NSUInteger, UICollectionViewFlexInvalidationFlags) {
     UICollectionViewFlexInvalidationFlagNone = 0,
@@ -23,8 +25,6 @@ typedef NS_ENUM(NSUInteger, UICollectionViewFlexInvalidationFlags) {
 
 namespace nsflex
 {
-    class LayoutCallbackAdapter;
-    
     // Redefinition with the Point/Size in MacTypes.h
     using Point = PointT<CGFloat>;
     using Size = SizeT<CGFloat>;
@@ -38,29 +38,8 @@ using StickyItem = StickyItemT<NSInteger, CGFloat>;
 using LayoutItem = LayoutItemT<NSInteger, CGFloat>;
 using StickyItemList = std::vector<StickyItem>;
 template <bool VERTICAL>
-using FlexLayout = FlexLayoutT<nsflex::LayoutCallbackAdapter, NSInteger, CGFloat, VERTICAL>;
+using FlexLayout = FlexLayoutT<CollectionViewFlexLayoutAdapter, NSInteger, CGFloat, VERTICAL>;
 using StickyItemAndSectionItemCompare = StickyItemAndSectionItemCompareT<NSInteger, CGFloat>;
-
-#ifndef NDEBUG
-#define PERF_DEBUG
-#endif
-
-@interface UICollectionViewFlexLayout ()
-
-- (NSInteger)getNumberOfSections;
-- (NSInteger)getNumberOfItemsInSection:(NSInteger)section;
-- (CGSize)getSizeForItemAtIndexPath:(NSIndexPath *)indexPath;
-- (UIEdgeInsets)getInsetForSectionAtIndex:(NSInteger)section;
-- (CGFloat)getMinimumLineSpacingForSectionAtIndex:(NSInteger)section;
-- (CGFloat)getMinimumInteritemSpacingForSectionAtIndex:(NSInteger)section;
-- (CGSize)getSizeForHeaderInSection:(NSInteger)section;
-- (CGSize)getSizeForFooterInSection:(NSInteger)section;
-- (NSInteger)getNumberOfColumnsForSection:(NSInteger)section;
-- (UICollectionViewFlexLayoutMode)getLayoutModeForSection:(NSInteger)section;
-- (BOOL)isFullSpanAtItem:(NSInteger)item forSection:(NSInteger)section;
-- (BOOL)hasFixedSize:(CGSize *)fixedSize forSection:(NSInteger)section;
-
-@end
 
 inline nsflex::Point FlexPointFromCGPoint(const CGPoint& point)
 {
@@ -107,89 +86,6 @@ inline CGRect CGRectFromFlexRect(const nsflex::Rect& rect)
 inline nsflex::Insets FlexInsetsFromUIEdgeInsets(const UIEdgeInsets& insets)
 {
     return nsflex::Insets(insets.left, insets.top, insets.right, insets.bottom);
-}
-
-namespace nsflex
-{
-    class LayoutCallbackAdapter
-    {
-    protected:
-        UICollectionViewFlexLayout *m_layout;
-    public:
-        
-        LayoutCallbackAdapter(UICollectionViewFlexLayout *layout) : m_layout(layout) {}
-        ~LayoutCallbackAdapter() { m_layout = NULL; }
-        
-        inline int getLayoutModeForSection(NSInteger section) const
-        {
-            return [m_layout getLayoutModeForSection:section];
-        }
-        
-        inline NSInteger getNumberOfSections() const
-        {
-            return [m_layout getNumberOfSections];
-        }
-        
-        inline NSInteger getNumberOfItemsInSection(NSInteger section) const
-        {
-            return [m_layout getNumberOfItemsInSection:section];
-        }
-        
-        inline Size getSizeForItem(NSInteger section, NSInteger item, bool *isFullSpan) const
-        {
-            CGSize size = [m_layout getSizeForItemAtIndexPath:[NSIndexPath indexPathForItem:item inSection:section]];
-            if (isFullSpan != NULL)
-            {
-                *isFullSpan = [m_layout isFullSpanAtItem:item forSection:section];
-            }
-            return FlexSizeFromCGSize(size);
-        }
-        
-        inline Insets getInsetForSection(NSInteger section) const
-        {
-            UIEdgeInsets insets = [m_layout getInsetForSectionAtIndex:section];
-            return Insets(insets.left, insets.top, insets.right, insets.bottom);
-        }
-        
-        inline CGFloat getMinimumLineSpacingForSection(NSInteger section) const
-        {
-            return [m_layout getMinimumLineSpacingForSectionAtIndex:section];
-        }
-        
-        inline CGFloat getMinimumInteritemSpacingForSection(NSInteger section) const
-        {
-            return [m_layout getMinimumInteritemSpacingForSectionAtIndex:section];
-        }
-        
-        inline Size getSizeForHeaderInSection(NSInteger section) const
-        {
-            CGSize size = [m_layout getSizeForHeaderInSection:section];
-            return FlexSizeFromCGSize(size);
-        }
-        
-        inline Size getSizeForFooterInSection(NSInteger section) const
-        {
-            CGSize size = [m_layout getSizeForFooterInSection:section];
-            return FlexSizeFromCGSize(size);
-        }
-        
-        inline NSInteger getNumberOfColumnsForSection(NSInteger section) const
-        {
-            return [m_layout getNumberOfColumnsForSection:section];
-        }
-        
-        inline bool hasFixedItemSize(NSInteger section, Size *fixedItemSize) const
-        {
-            CGSize size = CGSizeZero;
-            BOOL hasFixedItemSize = [m_layout hasFixedSize:&size forSection:section];
-            if (NULL != fixedItemSize)
-            {
-                *fixedItemSize = FlexSizeFromCGSize(size);
-            }
-            
-            return hasFixedItemSize;
-        }
-    };
 }
 
 @interface UICollectionViewFlexLayout ()
@@ -553,7 +449,7 @@ namespace nsflex
     {
 
         UICollectionView *cv = self.collectionView;
-        nsflex::LayoutCallbackAdapter layoutAdapter(self);
+        CollectionViewFlexLayoutAdapter layoutAdapter(self);
         nsflex::Insets padding = FlexInsetsFromUIEdgeInsets(cv.contentInset);
         nsflex::Size boundSize = FlexSizeFromCGSize(cv.bounds.size);
         boundSize.width -= padding.hsize();
@@ -866,23 +762,6 @@ namespace nsflex
 }
  */
 
-- (void)prepareForTransitionFromLayout:(UICollectionViewLayout *)oldLayout;
-{
-    memset(&m_layoutDelegateFlags, 0, sizeof(m_layoutDelegateFlags));
-    [super prepareForTransitionFromLayout:oldLayout];
-}
-
-- (void)prepareForTransitionToLayout:(UICollectionViewLayout *)newLayout
-{
-    memset(&m_layoutDelegateFlags, 0, sizeof(m_layoutDelegateFlags));
-    [super prepareForTransitionToLayout:newLayout];
-}
-
-- (void)finalizeLayoutTransition
-{
-    [self prepareDelegate];
-}
-
 - (CGSize)collectionViewContentSize
 {
     return CGSizeFromFlexSize((UICollectionViewScrollDirectionVertical == m_scrollDirection) ? m_verticalLayout->getContentSize() : m_horizontalLayout->getContentSize());
@@ -890,130 +769,21 @@ namespace nsflex
 
 #pragma mark - Utility Functions
 
-- (void)prepareDelegate
-{
-    id dataSource = self.collectionView.dataSource;
-    if (NULL == m_layoutDelegateFlags.dataSourcePointer || m_layoutDelegateFlags.dataSourcePointer != (__bridge void *)dataSource)
-    {
-        m_layoutDelegateFlags.dataSourcePointer = (__bridge void *)dataSource;
-        m_layoutDelegateFlags.dataSource = 0;
-        if ([dataSource conformsToProtocol:@protocol(UICollectionViewDataSource)])
-        {
-            m_layoutDelegateFlags.numberOfSections = ([dataSource respondsToSelector:@selector(numberOfSectionsInCollectionView:)]) ? 1 : 0;
-            m_layoutDelegateFlags.numberOfItemsInSection = ([dataSource respondsToSelector:@selector(collectionView:numberOfItemsInSection:)]) ? 1 : 0;
-        }
-    }
-    
-    id delegate = self.collectionView.delegate;
-    if (NULL == m_layoutDelegateFlags.delegatePointer || m_layoutDelegateFlags.delegatePointer != (__bridge void *)delegate)
-    {
-        m_layoutDelegateFlags.delegatePointer = (__bridge void *)delegate;
-        m_layoutDelegateFlags.layoutDelegate = 0;
-        if ([delegate conformsToProtocol:@protocol(UICollectionViewDelegateFlexLayout)])
-        {
-            m_layoutDelegateFlags.sizeForItem = [delegate respondsToSelector:@selector(collectionView:layout:sizeForItemAtIndexPath:)] ? 1 : 0;
-            m_layoutDelegateFlags.insetForSection = ([delegate respondsToSelector:@selector(collectionView:layout:insetForSectionAtIndex:)]) ? 1 : 0;
-            m_layoutDelegateFlags.minimumLineSpacing = ([delegate respondsToSelector:@selector(collectionView:layout:minimumLineSpacingForSectionAtIndex:)]) ? 1 : 0;
-            m_layoutDelegateFlags.minimumInteritemSpacing = ([delegate respondsToSelector:@selector(collectionView:layout:minimumLineSpacingForSectionAtIndex:)]) ? 1 : 0;
-            m_layoutDelegateFlags.sizeForHeader = ([delegate respondsToSelector:@selector(collectionView:layout:referenceSizeForHeaderInSection:)]) ? 1 : 0;
-            m_layoutDelegateFlags.sizeForFooter = ([delegate respondsToSelector:@selector(collectionView:layout:referenceSizeForFooterInSection:)]) ? 1 : 0;
-            m_layoutDelegateFlags.numberOfColumns = ([delegate respondsToSelector:@selector(collectionView:layout:numberOfColumnsInSection:)]) ? 1 : 0;
-            m_layoutDelegateFlags.layoutModeForSection = ([delegate respondsToSelector:@selector(collectionView:layout:layoutModeForSection:)]) ? 1 : 0;
-            m_layoutDelegateFlags.hasFixedSize = ([delegate respondsToSelector:@selector(collectionView:layout:hasFixedSize:forSection:)]) ? 1 : 0;
-            m_layoutDelegateFlags.isFullSpan = ([delegate respondsToSelector:@selector(collectionView:layout:isFullSpanAtItem:forSection:)]) ? 1 : 0;
-            m_layoutDelegateFlags.enterStickyMode = [delegate respondsToSelector:@selector(collectionView:layout:headerEnterStickyModeAtSection:withOriginalPoint:)];
-            m_layoutDelegateFlags.exitStickyMode = [delegate respondsToSelector:@selector(collectionView:layout:headerExitStickyModeAtSection:)];
-        }
-    }
-}
-
-- (NSInteger)getNumberOfSections
-{
-    [self prepareDelegate];
-    return (m_layoutDelegateFlags.numberOfSections == 1) ? [self.collectionView.dataSource numberOfSectionsInCollectionView:self.collectionView] : self.collectionView.numberOfSections;
-}
-
-- (NSInteger)getNumberOfItemsInSection:(NSInteger)section
-{
-    [self prepareDelegate];
-    return (m_layoutDelegateFlags.numberOfSections == 1) ? [self.collectionView.dataSource collectionView:self.collectionView numberOfItemsInSection:section] : 0;
-}
-
-- (CGSize)getSizeForItemAtIndexPath:(NSIndexPath *)indexPath
-{
-    [self prepareDelegate];
-    return m_layoutDelegateFlags.sizeForItem ? [((id<UICollectionViewDelegateFlowLayout>)self.collectionView.delegate) collectionView:self.collectionView layout:self sizeForItemAtIndexPath:indexPath] : self.itemSize;
-}
-
-- (UIEdgeInsets)getInsetForSectionAtIndex:(NSInteger)section
-{
-    [self prepareDelegate];
-    return m_layoutDelegateFlags.insetForSection ? [((id<UICollectionViewDelegateFlowLayout>)self.collectionView.delegate) collectionView:self.collectionView layout:self insetForSectionAtIndex:section] : self.sectionInset;
-}
-
-- (CGFloat)getMinimumLineSpacingForSectionAtIndex:(NSInteger)section
-{
-    [self prepareDelegate];
-    return m_layoutDelegateFlags.minimumLineSpacing ? [((id<UICollectionViewDelegateFlowLayout>)self.collectionView.delegate) collectionView:self.collectionView layout:self minimumLineSpacingForSectionAtIndex:section] : self.minimumLineSpacing;
-}
-
-- (CGFloat)getMinimumInteritemSpacingForSectionAtIndex:(NSInteger)section
-{
-    [self prepareDelegate];
-    return m_layoutDelegateFlags.minimumInteritemSpacing ? [((id<UICollectionViewDelegateFlowLayout>)self.collectionView.delegate) collectionView:self.collectionView layout:self minimumInteritemSpacingForSectionAtIndex:section] : self.minimumInteritemSpacing;
-}
-
-- (CGSize)getSizeForHeaderInSection:(NSInteger)section
-{
-    [self prepareDelegate];
-    return m_layoutDelegateFlags.sizeForHeader ? [((id<UICollectionViewDelegateFlowLayout>)self.collectionView.delegate) collectionView:self.collectionView layout:self referenceSizeForHeaderInSection:section] : self.headerReferenceSize;
-}
-
-- (CGSize)getSizeForFooterInSection:(NSInteger)section
-{
-    [self prepareDelegate];
-    return m_layoutDelegateFlags.sizeForFooter ? [((id<UICollectionViewDelegateFlowLayout>)self.collectionView.delegate) collectionView:self.collectionView layout:self referenceSizeForFooterInSection:section] : self.footerReferenceSize;
-}
-
-- (NSInteger)getNumberOfColumnsForSection:(NSInteger)section
-{
-    [self prepareDelegate];
-    return m_layoutDelegateFlags.numberOfColumns ? [((id<UICollectionViewDelegateFlexLayout>)self.collectionView.delegate) collectionView:self.collectionView layout:self numberOfColumnsInSection:section] : 1;
-}
-
-- (UICollectionViewFlexLayoutMode)getLayoutModeForSection:(NSInteger)section
-{
-    [self prepareDelegate];
-    return m_layoutDelegateFlags.layoutModeForSection ? [((id<UICollectionViewDelegateFlexLayout>)self.collectionView.delegate) collectionView:self.collectionView layout:self layoutModeForSection:section] : UICollectionViewFlexLayoutModeFlow;
-}
-
-- (BOOL)hasFixedSize:(CGSize *)fixedSize forSection:(NSInteger)section
-{
-    [self prepareDelegate];
-    return m_layoutDelegateFlags.hasFixedSize ? [((id<UICollectionViewDelegateFlexLayout>)self.collectionView.delegate) collectionView:self.collectionView layout:self hasFixedSize:fixedSize forSection:section] : NO;
-}
-
-- (BOOL)isFullSpanAtItem:(NSInteger)item forSection:(NSInteger)section
-{
-    [self prepareDelegate];
-    return m_layoutDelegateFlags.isFullSpan ? [((id<UICollectionViewDelegateFlexLayout>)self.collectionView.delegate) collectionView:self.collectionView layout:self isFullSpanAtItem:item forSection:section] : NO;
-}
-
 - (void)enterStickyModeAt:(NSInteger)section withOriginalPoint:(CGPoint)point
 {
-    [self prepareDelegate];
-    if (m_layoutDelegateFlags.enterStickyMode)
+    id<UICollectionViewDelegate> delegate = self.collectionView.delegate;
+    if ([delegate conformsToProtocol:@protocol(UICollectionViewDelegateFlexLayout)] && [delegate respondsToSelector:@selector(collectionView:layout:headerEnterStickyModeAtSection:withOriginalPoint:)])
     {
-        [((id<UICollectionViewDelegateFlexLayout>)self.collectionView.delegate) collectionView:self.collectionView layout:self headerEnterStickyModeAtSection:section withOriginalPoint:point];
+        [((id<UICollectionViewDelegateFlexLayout>)delegate) collectionView:self.collectionView layout:self headerEnterStickyModeAtSection:section withOriginalPoint:point];
     }
 }
 
 - (void)exitStickyModeAt:(NSInteger)section
 {
-    [self prepareDelegate];
-    if (m_layoutDelegateFlags.exitStickyMode)
+    id<UICollectionViewDelegate> delegate = self.collectionView.delegate;
+    if ([delegate conformsToProtocol:@protocol(UICollectionViewDelegateFlexLayout)] && [delegate respondsToSelector:@selector(collectionView:layout:headerExitStickyModeAtSection:)])
     {
-        [((id<UICollectionViewDelegateFlexLayout>)self.collectionView.delegate) collectionView:self.collectionView layout:self headerExitStickyModeAtSection:section];
+        [((id<UICollectionViewDelegateFlexLayout>)delegate) collectionView:self.collectionView layout:self headerExitStickyModeAtSection:section];
     }
 }
 

@@ -29,6 +29,7 @@
 		34058D3724B762C400CE2CEA /* Graphics.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Graphics.h; sourceTree = "<group>"; };
 		34503EB724CABEE800FC9CFD /* FlexListViewDataSource.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = FlexListViewDataSource.m; sourceTree = "<group>"; };
 		34503EB924CABEF900FC9CFD /* FlexListViewDataSource.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = FlexListViewDataSource.h; sourceTree = "<group>"; };
+		34503EE124CEA94100FC9CFD /* CollectionViewFlexAdapter.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = CollectionViewFlexAdapter.h; sourceTree = "<group>"; };
 		345496922490C07200447FCA /* FlexListView.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = FlexListView.mm; sourceTree = "<group>"; };
 		345496932490C07200447FCA /* FlexListView.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FlexListView.h; sourceTree = "<group>"; };
 		345496962490C14200447FCA /* ItemViewCell.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ItemViewCell.h; sourceTree = "<group>"; };
@@ -150,21 +151,22 @@
 		348912782490A01C00B1A95B /* Layout */ = {
 			isa = PBXGroup;
 			children = (
-				34E878DF24C6D3FD00F716CA /* FlexLayout.h */,
 				34BD104424C34ED400EEA415 /* BoolTraits.h */,
-				34BD104224C2BCEB00EEA415 /* ContainerBase.h */,
-				34058D3724B762C400CE2CEA /* Graphics.h */,
+				34503EE124CEA94100FC9CFD /* CollectionViewFlexAdapter.h */,
 				348475D12490A2B900569952 /* CollectionViewFlexLayout.h */,
 				348475D02490A2B900569952 /* CollectionViewFlexLayout.mm */,
-				348475C92490A2B800569952 /* FlexFlowSection.h */,
-				348475CD2490A2B900569952 /* FlexSection.h */,
-				348475D22490A2B900569952 /* FlexColumn.h */,
-				348475D42490A2B900569952 /* FlexItem.h */,
-				348475D32490A2B900569952 /* FlexPage.h */,
-				348475C82490A2B800569952 /* FlexRow.h */,
-				348475CC2490A2B900569952 /* FlexWaterfallSection.h */,
 				345496A72490DEAF00447FCA /* CollectionViewFlexLayoutInvalidationContext.h */,
 				345496A82490DEC200447FCA /* CollectionViewFlexLayoutInvalidationContext.m */,
+				34BD104224C2BCEB00EEA415 /* ContainerBase.h */,
+				348475D22490A2B900569952 /* FlexColumn.h */,
+				348475C92490A2B800569952 /* FlexFlowSection.h */,
+				348475D42490A2B900569952 /* FlexItem.h */,
+				34E878DF24C6D3FD00F716CA /* FlexLayout.h */,
+				348475D32490A2B900569952 /* FlexPage.h */,
+				348475C82490A2B800569952 /* FlexRow.h */,
+				348475CD2490A2B900569952 /* FlexSection.h */,
+				348475CC2490A2B900569952 /* FlexWaterfallSection.h */,
+				34058D3724B762C400CE2CEA /* Graphics.h */,
 			);
 			path = Layout;
 			sourceTree = "<group>";

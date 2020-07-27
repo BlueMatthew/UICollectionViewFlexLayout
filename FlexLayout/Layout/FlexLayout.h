@@ -403,7 +403,6 @@ public:
     {
     }
 
-    
     // LayoutItem::data == 1, indicates that the item is sticky
     void getItemsInRect(std::vector<LayoutItem> &items, StickyItemList &changingStickyItems, StickyItemList &stickyItems, bool stackedStickyItems, const Rect &rect, const Size &size,  const Size &contentSize, const Insets &padding, const Point &contentOffset) const;
     
@@ -476,7 +475,7 @@ protected:
         return NULL;
     }
 
-#ifdef NDK_DEBUG
+#ifndef NDEBUG
     std::string printDebugInfo(std::string prefix) const
     {
         std::ostringstream str;

@@ -12,7 +12,8 @@
 #import <UIKit/UIKit.h>
 
 @interface UICollectionViewFlexLayoutInvalidationContext : UICollectionViewFlowLayoutInvalidationContext
-@property (nonatomic, assign) BOOL invalidatedOffset; // Paging Or Sticky
+@property (nonatomic, assign) BOOL invalidatedOffset; // Sticky or Paging Offset
+@property (nonatomic, assign) BOOL invalidatedPagingOffset; // Paging Offset will cause prepareLayout on specified page
 
 @end
 

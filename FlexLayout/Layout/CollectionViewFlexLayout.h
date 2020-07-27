@@ -19,6 +19,7 @@ typedef NS_ENUM(NSUInteger, UICollectionViewFlexLayoutMode) {
     UICollectionViewFlexLayoutModeWaterfall,
 };
 
+// Extending from UICollectionViewDelegateFlowLayout makes studying/using easier
 @protocol UICollectionViewDelegateFlexLayout <UICollectionViewDelegateFlowLayout>
 
 @optional
@@ -35,7 +36,6 @@ typedef NS_ENUM(NSUInteger, UICollectionViewFlexLayoutMode) {
 - (void)collectionView:(UICollectionView *)collectionView layout:(UICollectionViewFlexLayout *)layout headerEnterStickyModeAtSection:(NSInteger)section withOriginalPoint:(CGPoint)point;
 // Tells the delegate that the header is exitting from STICKY mode
 - (void)collectionView:(UICollectionView *)collectionView layout:(UICollectionViewFlexLayout *)layout headerExitStickyModeAtSection:(NSInteger)section;
-
 
 @end
 
@@ -62,6 +62,7 @@ typedef NS_ENUM(NSUInteger, UICollectionViewFlexLayoutMode) {
 - (void)addStickyHeader:(NSInteger)section;
 // Clear all sections with sticky header
 - (void)removeAllStickyHeaders;
+
 
 @end
 

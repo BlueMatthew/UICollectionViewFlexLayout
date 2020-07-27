@@ -77,6 +77,14 @@ protected:
         for(typename std::vector<FlexRow *>::iterator it = m_rows.begin(); it != m_rows.end(); delete *it, ++it);
         m_rows.clear();
     }
+    
+    // Override
+    virtual void invalidateLayout()
+    {
+        // Items
+        clearRows();
+        TBaseSection::invalidateLayout();
+    }
 
     void prepareItemsLayout(const TLayout *layout, const Size &size)
     {

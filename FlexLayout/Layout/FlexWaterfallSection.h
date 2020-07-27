@@ -86,8 +86,52 @@ protected:
         m_placeHolderItems.clear();
     }
     
-    /// Keep the commented code of "horizontally" parts
+    // Override
+    virtual void invalidateLayout()
+    {
+        // Items
+        clearColumns();
+        TBaseSection::invalidateLayout();
+    }
+    
+    // Override
     void prepareItemsLayout(const TLayout *layout, const Size &size)
+    {
+        // Items
+        clearColumns();
+        TBaseSection::clearItems();
+#ifdef PERF_DEBUG
+        double time = 0.0f;
+        double prevTime = 0.0;
+        
+        prevTime = [[NSDate date] timeIntervalSince1970] * 1000;
+        
+#endif
+        
+        prepareItemsLayout2(layout, size);
+        
+#ifdef PERF_DEBUG
+        time = [[NSDate date] timeIntervalSince1970] * 1000;
+        NSLog(@"PERF prepareItemsLayout2 takes %0.2f ms", time - prevTime);
+#endif
+        
+        // Items
+        clearColumns();
+        TBaseSection::clearItems();
+        
+#ifdef PERF_DEBUG
+        prevTime = [[NSDate date] timeIntervalSince1970] * 1000;
+#endif
+        
+        prepareItemsLayout3(layout, size);
+#ifdef PERF_DEBUG
+        time = [[NSDate date] timeIntervalSince1970] * 1000;
+        NSLog(@"PERF prepareItemsLayout3 takes %0.2f ms", time - prevTime);
+#endif
+    }
+    
+    // Override
+    void prepareItemsLayout1(const TLayout *layout, const Size &size)
     {
         // Items
         clearColumns();
@@ -188,6 +232,298 @@ protected:
             TBaseSection::m_items.push_back(item);
         }
         
+        // Find the column with highest height
+        FlexColumnConstIterator columnItOfMaximalSize = max_element(m_columns.begin(), m_columns.end(), compare);
+        
+        height(TBaseSection::m_itemsFrame, bottom((*columnItOfMaximalSize)->getFrame()) + bottom(sectionInset));
+        height(TBaseSection::m_frame, bottom(TBaseSection::m_itemsFrame));
+    }
+    
+    // Override
+    void prepareItemsLayout2(const TLayout *layout, const Size &size)
+    {
+        // Items
+        clearColumns();
+        TBaseSection::clearItems();
+        
+        TInt numberOfItems = TBaseSection::getNumberOfItems(layout);
+        if (numberOfItems == 0)
+        {
+            return;
+        }
+        
+        Insets sectionInset = TBaseSection::getInsets(layout);
+        Rect frameOfColumn(sectionInset.left, sectionInset.top, 0, 0);
+        
+        TBaseSection::m_items.reserve(numberOfItems);
+        
+        TCoordinate minimumLineSpacing = TBaseSection::getMinimumLineSpacing(layout);
+        TCoordinate minimumInteritemSpacing = TBaseSection::getMinimumInteritemSpacing(layout);
+        
+        // Get Number of Columns
+        TInt numberOfColumns = TBaseSection::getNumberOfColumns(layout);
+        if (numberOfColumns < 1)
+        {
+            numberOfColumns = 1;
+        }
+        
+        m_columns.reserve(numberOfColumns);
+        TInt estimatedNumberOfItems = (TInt)ceil(numberOfItems / numberOfColumns);
+        TCoordinate sizeOfColumn = 0.0;
+        
+        TCoordinate availableSizeOfColumn = width(size) - hinsets(sectionInset);
+        
+        for (TInt columnIndex = 0; columnIndex < numberOfColumns; columnIndex++)
+        {
+            if (columnIndex == numberOfColumns - 1)
+            {
+                sizeOfColumn = availableSizeOfColumn;
+                // availableSizeOfColumn = 0.0;
+            }
+            else
+            {
+                sizeOfColumn = round((availableSizeOfColumn - (numberOfColumns - columnIndex - 1) * minimumInteritemSpacing) / (numberOfColumns - columnIndex));
+                availableSizeOfColumn -= sizeOfColumn + minimumInteritemSpacing;
+            }
+            
+            width(frameOfColumn, sizeOfColumn);
+            
+            FlexColumn *column = new FlexColumn(estimatedNumberOfItems, frameOfColumn);
+            m_columns.push_back(column);
+            
+            Rect rect = m_columns[m_columns.size() - 1]->getFrame();
+            
+            
+            offsetX(frameOfColumn, sizeOfColumn + minimumInteritemSpacing);
+        }
+
+#ifdef PERF_DEBUG
+        double time = 0.0f;
+        double prevTime = 0.0;
+        
+        prevTime = [[NSDate date] timeIntervalSince1970] * 1000;
+        
+#endif
+        Rect frameOfItem;
+        bool isFullSpan = false;
+        for (TInt itemIndex = 0; itemIndex < numberOfItems; itemIndex++)
+        {
+            isFullSpan = false;
+            frameOfItem.size = TBaseSection::getSizeForItem(layout, itemIndex, &isFullSpan);
+            
+            FlexItem *item = new FlexItem(itemIndex, frameOfItem);
+            
+            if (isFullSpan)
+            {
+                item->setFullSpan(true);
+            }
+            
+            TBaseSection::m_items.push_back(item);
+        }
+        
+#ifdef PERF_DEBUG
+        time = [[NSDate date] timeIntervalSince1970] * 1000;
+        NSLog(@"PERF alloc items takes %0.2f ms", time - prevTime);
+        prevTime = time;
+#endif
+        // Layout each item
+        typename std::vector<FlexColumn *>::iterator itOfTargetColumn = m_columns.begin();
+        ColumnSizeCompare compare;
+        
+        for (typename std::vector<FlexItem *>::iterator it = TBaseSection::m_items.begin(); it != TBaseSection::m_items.end(); ++it)
+        {
+            // Find the column with lowest hight
+            itOfTargetColumn = (*it)->isFullSpan() ? max_element(m_columns.begin(), m_columns.end(), compare) : min_element(m_columns.begin(), m_columns.end(), compare);
+            
+            // Add spacing for the item which is not first one
+            frameOfItem.origin = leftBottom((*itOfTargetColumn)->getFrame());
+            offsetY(frameOfItem, (*itOfTargetColumn)->isEmpty() ? (TCoordinate)0 : minimumLineSpacing);
+            
+            (*it)->getFrame().origin = frameOfItem.origin;
+            
+            if ((*it)->isFullSpan())
+            {
+                // Add into the column
+                for (typename std::vector<FlexColumn *>::iterator itColumn = m_columns.begin(); itColumn != m_columns.end(); ++itColumn)
+                {
+                    if (itOfTargetColumn != itColumn)
+                    {
+                        FlexItem *placeHolder = new FlexItem(*(*it));
+                        placeHolder->setPlaceHolder(true);
+                        m_placeHolderItems.push_back(placeHolder);
+                        top(placeHolder->getFrame(), bottom((*itColumn)->getFrame()) + ((*itColumn)->isEmpty() ? (TCoordinate)0 : minimumLineSpacing));
+                        (*itColumn)->addItem(placeHolder);
+                    }
+                }
+            }
+            
+            (*itOfTargetColumn)->addItem(*it);
+        }
+        
+#ifdef PERF_DEBUG
+        time = [[NSDate date] timeIntervalSince1970] * 1000;
+        NSLog(@"PERF layout items takes %0.2f ms", time - prevTime);
+        prevTime = time;
+#endif
+        // Find the column with highest height
+        FlexColumnConstIterator columnItOfMaximalSize = max_element(m_columns.begin(), m_columns.end(), compare);
+        
+        height(TBaseSection::m_itemsFrame, bottom((*columnItOfMaximalSize)->getFrame()) + bottom(sectionInset));
+        height(TBaseSection::m_frame, bottom(TBaseSection::m_itemsFrame));
+    }
+    
+    // Override
+    void prepareItemsLayout3(const TLayout *layout, const Size &size)
+    {
+        // Items
+        // clearColumns();
+        // TBaseSection::clearItems();
+
+        TInt numberOfItems = TBaseSection::getNumberOfItems(layout);
+        if (numberOfItems == 0)
+        {
+            clearColumns();
+            TBaseSection::clearItems();
+            return;
+        }
+#ifdef PERF_DEBUG
+        double time = 0.0f;
+        double prevTime = 0.0;
+        
+        prevTime = [[NSDate date] timeIntervalSince1970] * 1000;
+#endif
+        
+        TInt orgNumberOfItems = TBaseSection::m_items.size();
+        if (numberOfItems > orgNumberOfItems)
+        {
+            for (TInt itemIndex = orgNumberOfItems; itemIndex < numberOfItems; ++itemIndex)
+            {
+                TBaseSection::m_items.push_back(new FlexItem(itemIndex));
+            }
+        }
+        else if (numberOfItems < orgNumberOfItems)
+        {
+            typename std::vector<FlexItem *>::iterator itStart = TBaseSection::m_items.begin() + numberOfItems;
+            typename std::vector<FlexItem *>::iterator it = itStart;
+            for (; it < TBaseSection::m_items.end(); ++it)
+            {
+                delete (*it);
+            }
+            TBaseSection::m_items.erase(itStart, TBaseSection::m_items.end());
+        }
+        
+        
+#ifdef PERF_DEBUG
+        time = [[NSDate date] timeIntervalSince1970] * 1000;
+        NSLog(@"PERF alloc items takes %0.2f ms", time - prevTime);
+        prevTime = time;
+        
+#endif
+        
+        Insets sectionInset = TBaseSection::getInsets(layout);
+        Rect frameOfColumn(sectionInset.left, sectionInset.top, 0, 0);
+        
+        TBaseSection::m_items.reserve(numberOfItems);
+        
+        TCoordinate minimumLineSpacing = TBaseSection::getMinimumLineSpacing(layout);
+        TCoordinate minimumInteritemSpacing = TBaseSection::getMinimumInteritemSpacing(layout);
+        
+        // Get Number of Columns
+        TInt numberOfColumns = TBaseSection::getNumberOfColumns(layout);
+        if (numberOfColumns < 1)
+        {
+            numberOfColumns = 1;
+        }
+        
+        m_columns.reserve(numberOfColumns);
+        TInt estimatedNumberOfItems = (TInt)ceil(numberOfItems / numberOfColumns);
+        TCoordinate sizeOfColumn = 0.0;
+        
+        TCoordinate availableSizeOfColumn = width(size) - hinsets(sectionInset);
+        
+        for (TInt columnIndex = 0; columnIndex < numberOfColumns; columnIndex++)
+        {
+            if (columnIndex == numberOfColumns - 1)
+            {
+                sizeOfColumn = availableSizeOfColumn;
+                // availableSizeOfColumn = 0.0;
+            }
+            else
+            {
+                sizeOfColumn = round((availableSizeOfColumn - (numberOfColumns - columnIndex - 1) * minimumInteritemSpacing) / (numberOfColumns - columnIndex));
+                availableSizeOfColumn -= sizeOfColumn + minimumInteritemSpacing;
+            }
+            
+            width(frameOfColumn, sizeOfColumn);
+            
+            FlexColumn *column = new FlexColumn(estimatedNumberOfItems, frameOfColumn);
+            m_columns.push_back(column);
+            
+            Rect rect = m_columns[m_columns.size() - 1]->getFrame();
+            
+            
+            offsetX(frameOfColumn, sizeOfColumn + minimumInteritemSpacing);
+        }
+        
+#ifdef PERF_DEBUG
+        
+        prevTime = [[NSDate date] timeIntervalSince1970] * 1000;
+        
+#endif
+        bool isFullSpan = false;
+        TInt itemIndex = 0;
+        for (typename std::vector<FlexItem *>::iterator it = TBaseSection::m_items.begin(); it != TBaseSection::m_items.end(); ++it, ++itemIndex)
+        {
+            // isFullSpan = false;
+            (*it)->getFrame().size = TBaseSection::getSizeForItem(layout, itemIndex, &isFullSpan);
+            (*it)->setFullSpan(isFullSpan);
+        }
+        
+#ifdef PERF_DEBUG
+        time = [[NSDate date] timeIntervalSince1970] * 1000;
+        NSLog(@"PERF getSize takes %0.2f ms", time - prevTime);
+        prevTime = time;
+#endif
+        // Layout each item
+        Rect frameOfItem;
+        typename std::vector<FlexColumn *>::iterator itOfTargetColumn = m_columns.begin();
+        ColumnSizeCompare compare;
+        
+        for (typename std::vector<FlexItem *>::iterator it = TBaseSection::m_items.begin(); it != TBaseSection::m_items.end(); ++it)
+        {
+            // Find the column with lowest hight
+            itOfTargetColumn = (*it)->isFullSpan() ? max_element(m_columns.begin(), m_columns.end(), compare) : min_element(m_columns.begin(), m_columns.end(), compare);
+            
+            // Add spacing for the item which is not first one
+            frameOfItem.origin = leftBottom((*itOfTargetColumn)->getFrame());
+            offsetY(frameOfItem, (*itOfTargetColumn)->isEmpty() ? (TCoordinate)0 : minimumLineSpacing);
+            
+            (*it)->getFrame().origin = frameOfItem.origin;
+            
+            if ((*it)->isFullSpan())
+            {
+                // Add into the column
+                for (typename std::vector<FlexColumn *>::iterator itColumn = m_columns.begin(); itColumn != m_columns.end(); ++itColumn)
+                {
+                    if (itOfTargetColumn != itColumn)
+                    {
+                        FlexItem *placeHolder = new FlexItem(*(*it));
+                        placeHolder->setPlaceHolder(true);
+                        m_placeHolderItems.push_back(placeHolder);
+                        top(placeHolder->getFrame(), bottom((*itColumn)->getFrame()) + ((*itColumn)->isEmpty() ? (TCoordinate)0 : minimumLineSpacing));
+                        (*itColumn)->addItem(placeHolder);
+                    }
+                }
+            }
+            
+            (*itOfTargetColumn)->addItem(*it);
+        }
+        
+#ifdef PERF_DEBUG
+        time = [[NSDate date] timeIntervalSince1970] * 1000;
+        NSLog(@"PERF layout items takes %0.2f ms", time - prevTime);
+        prevTime = time;
+#endif
         // Find the column with highest height
         FlexColumnConstIterator columnItOfMaximalSize = max_element(m_columns.begin(), m_columns.end(), compare);
         
