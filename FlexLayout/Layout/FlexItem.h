@@ -112,6 +112,10 @@ namespace nsflex
         {
             return *lhs < *rhs;
         }
+        inline bool operator() ( const FlexItem* lhs, TInt item) const
+        {
+            return lhs->getItem() < item;
+        }
     };
     
     template <typename TInt, typename TCoordinate>
@@ -121,6 +125,10 @@ namespace nsflex
         inline bool operator() ( const FlexItem* lhs, const FlexItem *rhs) const
         {
             return *lhs > *rhs;
+        }
+        inline bool operator() ( const FlexItem* lhs, TInt item) const
+        {
+            return lhs->getItem() > item;
         }
     };
 

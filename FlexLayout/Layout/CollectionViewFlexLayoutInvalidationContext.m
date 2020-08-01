@@ -8,7 +8,6 @@
 
 #import "CollectionViewFlexLayoutInvalidationContext.h"
 
-
 @implementation UICollectionViewFlexLayoutInvalidationContext
 
 @end

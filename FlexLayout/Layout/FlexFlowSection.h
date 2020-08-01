@@ -77,14 +77,6 @@ protected:
         for(typename std::vector<FlexRow *>::iterator it = m_rows.begin(); it != m_rows.end(); delete *it, ++it);
         m_rows.clear();
     }
-    
-    // Override
-    virtual void invalidateLayout()
-    {
-        // Items
-        clearRows();
-        TBaseSection::invalidateLayout();
-    }
 
     void prepareItemsLayout(const TLayout *layout, const Size &size)
     {
@@ -180,9 +172,14 @@ protected:
         for (FlexRowConstIterator it = range.first; it != range.second; ++it)
         {
             std::pair<typename std::vector<FlexItem *>::iterator, typename std::vector<FlexItem *>::iterator> itemRange = (*it)->getItemIterator();
+            if ((it != range.first && it != lastRow))
+            {
+                items.insert(items.end(), itemRange.first, itemRange.second);
+                continue;
+            }
             for (typename std::vector<FlexItem *>::iterator itItem = itemRange.first; itItem != itemRange.second; ++itItem)
             {
-                if ((it != range.first && it != lastRow) || (*itItem)->getFrame().intersects(rectInSection))
+                if ((*itItem)->getFrame().intersects(rectInSection))
                 {
                     items.push_back(*itItem);
                 }

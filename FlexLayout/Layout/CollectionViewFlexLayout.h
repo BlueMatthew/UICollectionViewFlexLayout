@@ -6,10 +6,15 @@
 //  Copyright © 2020 Matthew Shi. All rights reserved.
 //
 
+#define USING_MANUAL_UPDATE_ITEMS_FOR_BATCH_UPDATES
+
 #ifndef CollectionViewFlexLayout_h
 #define CollectionViewFlexLayout_h
 
 #import <UIKit/UIKit.h>
+#if defined(USING_MANUAL_UPDATE_ITEMS_FOR_BATCH_UPDATES)
+#import "FlexBatchUpdateContext.h"
+#endif
 
 @class UICollectionViewFlexLayout;
 
@@ -51,6 +56,10 @@ typedef NS_ENUM(NSUInteger, UICollectionViewFlexLayoutMode) {
 @property (nonatomic) CGSize footerReferenceSize;
 @property (nonatomic) UIEdgeInsets sectionInset;
 
+// AccurateUpdate needs caller provide more into when he make updates as we can't get those information from UICollectionViewLayout
+// Curretnlu, we suggest caller use it with performBatchUpdates. Please call commitBatchUpdates when you finish all updates in update block
+@property (nonatomic) BOOL accurateUpdate; // DEfault value is NO
+
 // Indicates the behavior of among multiple headers.
 // If stackedStickyHeaders is NO, the behavior is same as UICollectionViewFloLayout.sectionHeadersPinToVisibleBounds but only specified section set by addStickyHeader will be sticky.
 // If stackedStickyHeaders is YES, all of sticky headers above/in current vivible area will pin to the top of UICollectionView bounds, even the section which includes the sticky header is invisible
@@ -63,6 +72,9 @@ typedef NS_ENUM(NSUInteger, UICollectionViewFlexLayoutMode) {
 // Clear all sections with sticky header
 - (void)removeAllStickyHeaders;
 
+#if defined(USING_MANUAL_UPDATE_ITEMS_FOR_BATCH_UPDATES)
+- (void)commitBatchUpdates:(nullable NSArray<UIFlexUpdateItem *> *)updateItems;
+#endif
 
 @end
 

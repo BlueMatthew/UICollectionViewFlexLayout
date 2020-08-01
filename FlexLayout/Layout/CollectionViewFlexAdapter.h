@@ -117,7 +117,7 @@ public:
         
         if (isFullSpan != NULL)
         {
-            *isFullSpan = m_layoutDelegateFlags.isFullSpan ? (((BOOL (*)(id, SEL, UICollectionView *, UICollectionViewFlexLayout *, NSInteger, NSInteger))m_fullSpanImp)(m_delegate, m_itemSizeSel, m_collectionView, m_layout, item, section) == YES) : false;
+            *isFullSpan = m_layoutDelegateFlags.isFullSpan ? (((BOOL (*)(id, SEL, UICollectionView *, UICollectionViewFlexLayout *, NSInteger, NSInteger))m_fullSpanImp)(m_delegate, m_fullSpanSel, m_collectionView, m_layout, item, section) == YES) : false;
             
             // *isFullSpan = m_layoutDelegateFlags.isFullSpan ? ([m_delegate collectionView:m_collectionView layout:m_layout isFullSpanAtItem:item forSection:section] == YES) : false;
         }

@@ -29,6 +29,8 @@ public:
     using FlexItem = FlexItemT<TInt, TCoordinate>;
     using Rect = RectT<TCoordinate>;
 
+    using FlexItemIterator = typename std::vector<FlexItem *>::iterator;
+    using FlexItemConstIterator = typename std::vector<FlexItem *>::const_iterator;
     using ItemCompare = FlexCompareT<FlexItem, VERTICAL>;
     
     // using TBase::x;
@@ -83,8 +85,35 @@ public:
         m_items.push_back(item);
         height(m_frame, bottom(item->getFrame()));
     }
+    
+#ifndef NDEBUG
+    inline bool matched()
+    {
+        FlexItem *item = m_items[m_items.size() - 1];
+        long aa = item->getItem();
+        if (aa > 10000)
+        {
+            aa = aa + 1;
+            aa = aa -1;
+            
+            aa = aa + 0;
+        }
+        
+        return aa > 10000;
+    }
+    #endif
+    
+    inline void removeItemsFrom(TInt item)
+    {
+        FlexItemIterator it = std::lower_bound(m_items.begin(), m_items.end(), item, FlexItemLessCompareT<TInt, TCoordinate>());
+        if (it != m_items.end())
+        {
+            m_items.erase(it, m_items.end());
+        }
+        height(m_frame, m_items.empty() ? 0 : bottom(m_items[m_items.size() - 1]->getFrame()));
+    }
 
-    inline std::pair<typename std::vector<FlexItem *>::iterator, typename std::vector<FlexItem *>::iterator> getItemsInRect(const Rect& rect)
+    inline std::pair<FlexItemIterator, FlexItemIterator> getItemsInRect(const Rect& rect)
     {
         return std::equal_range(m_items.begin(), m_items.end(), std::pair<TCoordinate, TCoordinate>(top(rect), bottom(rect)), ItemCompare());
     }
@@ -96,7 +125,7 @@ public:
 
 
         int idx = 1;
-        for (typename std::vector<FlexItem *>::const_iterator it = m_items.begin(); it != m_items.end(); ++it)
+        for (FlexItemConstIterator it = m_items.cbegin(); it != m_items.cend(); ++it)
         {
             str << prefix << "Item " << idx << "[" << (*it)->getFrame().left() << "," << (*it)->getFrame().top() << "-" << (*it)->getFrame().width() << "," << (*it)->getFrame().height() << "]\r\n";
 

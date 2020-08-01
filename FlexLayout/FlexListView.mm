@@ -30,14 +30,16 @@
 #define REUSE_ID_INFO_HEADER        "info_header"
 #define REUSE_ID_INFO_FOOTER        "info_footer"
 
-#define CONTENT_INSET                    10
+extern const NSInteger CONTENT_INSET;
 
-#define SECTION_INDEX_ENTRY             0
-#define SECTION_INDEX_TEST1             1
-#define SECTION_INDEX_TEST2             2
-#define SECTION_INDEX_CATBAR            3
-#define SECTION_INDEX_ITEM1             4
-#define SECTION_INDEX_ITEM2             5
+extern const NSInteger SECTION_INDEX_ENTRY;
+extern const NSInteger SECTION_INDEX_TEST1;
+extern const NSInteger SECTION_INDEX_TEST2;
+extern const NSInteger SECTION_INDEX_CATBAR;
+extern const NSInteger SECTION_INDEX_ITEM1;
+extern const NSInteger SECTION_INDEX_ITEM2;
+
+extern const NSInteger NUM_OF_ITEMS_IN_CATEGORY_BAR;
 
 @interface SUIFlexListView() <UICollectionViewDelegateFlexLayout, UICollectionViewDataSource, SUICategoryBarDelegate>
 {
@@ -119,6 +121,9 @@
         m_tapGesture = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(tapView:)];
         m_tapGesture.numberOfTouchesRequired=1;
     }
+    
+    // [self performSelector:@selector(invalidateLayout) withObject:nil afterDelya:2 inMode:];
+    [self performSelector:@selector(testInvalidateLayout) withObject:nil afterDelay:6 inModes:@[NSRunLoopCommonModes]];
     
     return self;
 }
@@ -614,6 +619,57 @@
             //
         }];
     }];
+}
+
++ (void)setAnimationsEnabled:(BOOL)enabled
+{
+    NSLog(@"PERF: %@, %@", @"setAnimationsEnabled", enabled ? @"YES" : @"NO");
+    [super setAnimationsEnabled:enabled];
+}
+
+- (void)testInvalidateLayout
+{
+    // [m_dataSource updateDataSourceAtSection:SECTION_INDEX_TEST1 frame:self.bounds insets:self.contentInset onPage:m_page];
+    
+    NSInteger sectionIndex = SECTION_INDEX_ITEM1;
+    SectionData *sectionData = [m_dataSource sectionAt:sectionIndex forPage:m_page];
+    
+    NSInteger itemCount = MIN(3, sectionData.items.count);
+    if (itemCount <= 0)
+    {
+        return;
+    }
+    NSInteger itemStart = (sectionData.items.count - itemCount);
+    [m_dataSource deleteItems:sectionIndex itemStart:itemStart itemCount:itemCount forPage:m_page];
+    
+    __block NSMutableArray<NSIndexPath *> *indexPaths = [NSMutableArray<NSIndexPath *> arrayWithCapacity:itemCount];
+    for (NSInteger idx = itemStart + itemCount - 1; idx >= itemStart; --idx)
+    {
+        [indexPaths addObject:[NSIndexPath indexPathForItem:idx inSection:sectionIndex]];
+    }
+    __block UICollectionView *collectionView = self;
+    
+    [UIView performWithoutAnimation:^{
+        [self performBatchUpdates:^{
+            UIFlexBatchUpdateContext *context = [[UIFlexBatchUpdateContext alloc] init];
+            // NSIndexSet *indexSet = [NSIndexSet indexSetWithIndex:SECTION_INDEX_TEST1];
+            // [collectionView reloadSections:indexSet];
+            // [context reloadSections:indexSet];
+            [collectionView deleteItemsAtIndexPaths:indexPaths];
+            [context deleteItemsAtIndexPaths:indexPaths];
+            UICollectionViewFlexLayout *layout = (UICollectionViewFlexLayout *)collectionView.collectionViewLayout;
+            [layout commitBatchUpdates:context.updateItems];
+            
+        } completion:^(BOOL finshed){
+            collectionView = nil;
+        }];
+
+    }];
+    
+    // UICollectionViewLayout *layout = self.collectionViewLayout;
+    // [layout invalidateLayout];
+    
+    [self performSelector:@selector(testInvalidateLayout) withObject:nil afterDelay:10 inModes:@[NSRunLoopCommonModes]];
 }
 
 @end

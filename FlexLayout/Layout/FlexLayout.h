@@ -252,6 +252,7 @@ public:
     using FlowSection = typename nsflex::FlexFlowSectionT<Section, VERTICAL>;
     using WaterfallSection = typename nsflex::FlexWaterfallSectionT<Section, VERTICAL>;
     using SectionCompare = nsflex::FlexCompareT<Section, VERTICAL>;
+    using SectionIterator = typename std::vector<Section *>::iterator;
     using SectionConstIterator = typename std::vector<Section *>::const_iterator;
     using SectionConstIteratorPair = std::pair<SectionConstIterator, SectionConstIterator>;
     // using SectionPositionCompare = FlexSectionPositionCompare<Section>;
@@ -294,105 +295,83 @@ public:
     {
         clearSections();
     }
-    
-    // Parameter "relayout" indicates wheather we should relayout the following sections immidiately
-    // If we have multiple updates, it is better to layout after the last update.
-    void insertSection(const TLayoutCallbackAdapter& layoutCallbackAdapter, const Size &boundSize, const Insets &padding, TInt section, bool refreshImmiediately)
+
+    void insertItem(const TLayoutCallbackAdapter& layoutCallbackAdapter, const Size &boundSize, const Insets &padding, TInt sectionIndex, TInt itemIndex)
     {
-        int mode = layoutCallbackAdapter.getLayoutModeForSection(section);
+        if (sectionIndex < 0 || sectionIndex >= m_sections.size())
+        {
+            return;
+        }
+        
+        SectionIterator it = m_sections.begin() + sectionIndex;  // Previous Section
+        (*it)->insertItem(itemIndex);
+    }
+    
+    void insertSection(const TLayoutCallbackAdapter& layoutCallbackAdapter, const Size &boundSize, const Insets &padding, TInt sectionIndex)
+    {
+        int mode = layoutCallbackAdapter.getLayoutModeForSection(sectionIndex);
         
         Rect frame;
         width(frame, width(boundSize));
         // Get the leftBottom(topRight for horizontal direction) of the previous section
-        if ((section - 1) >= 0)
+        if (sectionIndex >= 1)
         {
-            SectionConstIterator it = m_sections.begin() + (section - 1);  // Previous Section
+            SectionConstIterator it = m_sections.cbegin() + (sectionIndex - 1);  // Previous Section
             top(frame, bottom((*it)->getFrame()));
         }
         
-        Section *pSection = (mode == UICollectionViewFlexLayoutModeFlow) ? ((Section *)(new FlowSection(section, frame))) : ((Section *)(new WaterfallSection(section, frame)));
+        Section *section = (mode == UICollectionViewFlexLayoutModeFlow) ? ((Section *)(new FlowSection(sectionIndex, frame))) : ((Section *)(new WaterfallSection(sectionIndex, frame)));
         
-        pSection->prepareLayout(&layoutCallbackAdapter, boundSize);
-        
-        m_sections.insert(m_sections.begin() + section, pSection);
-        
-        if (refreshImmiediately)
+        m_sections.insert(m_sections.begin() + sectionIndex, section);
+    }
+    
+    void deleteItem(const TLayoutCallbackAdapter& layoutCallbackAdapter, const Size &boundSize, const Insets &padding, TInt sectionIndex, TInt itemIndex)
+    {
+        if (sectionIndex < 0 || sectionIndex >= m_sections.size())
         {
-            refreshSectionFrom(layoutCallbackAdapter, boundSize, padding, section);
+            return;
         }
+        SectionIterator it = m_sections.begin() + sectionIndex;
+        (*it)->deleteItem(itemIndex);
     }
     
     // Parameter "relayout" indicates wheather we should relayout the following sections immidiately
     // If we have multiple updates, it is better to layout after the last update.
-    void removeSection(const TLayoutCallbackAdapter& layoutCallbackAdapter, const Size &boundSize, const Insets &padding, TInt section, bool refreshImmiediately)
+    void deleteSection(const TLayoutCallbackAdapter& layoutCallbackAdapter, const Size &boundSize, const Insets &padding, TInt sectionIndex)
     {
-        if (section < 0 || section >= m_sections.size())
+        if (sectionIndex < 0 || sectionIndex >= m_sections.size())
         {
             return;
         }
-        typename std::vector<Section *>::iterator it = m_sections.begin() + section;
+        typename std::vector<Section *>::iterator it = m_sections.begin() + sectionIndex;
         delete *it;
         m_sections.erase(it);
-        
-        if (refreshImmiediately)
+    }
+    
+    void reloadItem(const TLayoutCallbackAdapter& layoutCallbackAdapter, const Size &boundSize, const Insets &padding, TInt sectionIndex, TInt itemIndex)
+    {
+        if (sectionIndex < 0 || sectionIndex >= m_sections.size())
         {
-            refreshSectionFrom(layoutCallbackAdapter, boundSize, padding, section);
+            return;
         }
+        SectionIterator it = m_sections.begin() + sectionIndex;
+        (*it)->reloadItem(itemIndex);
     }
     
     // Parameter "relayout" indicates wheather we should relayout the following sections immidiately
     // If we have multiple updates, it is better to layout after the last update.
-    void removeSections(const TLayoutCallbackAdapter& layoutCallbackAdapter, const Size &boundSize, const Insets &padding, const std::vector<TInt> &sections, bool refreshImmiediately)
+    void reloadSection(const TLayoutCallbackAdapter& layoutCallbackAdapter, const Size &boundSize, const Insets &padding, TInt sectionIndex)
     {
-        TInt minSection = -1;
-        // Remove section from tail to head
-        for (typename std::vector<TInt>::const_reverse_iterator it = sections.crbegin(); it != sections.crend(); ++it)
-        {
-            minSection = *it;
-            if (*it >= m_sections.size())
-            {
-                continue;
-            }
-            typename std::vector<Section *>::iterator itSection = m_sections.begin() + *it;
-            delete *itSection;
-            m_sections.erase(itSection);
-        }
-        
-        if (refreshImmiediately && minSection != -1)
-        {
-            refreshSectionFrom(layoutCallbackAdapter, boundSize, padding, minSection);
-        }
-    }
-    
-    void refreshSectionFrom(const TLayoutCallbackAdapter& layoutCallbackAdapter, const Size &boundSize, const Insets &padding, TInt section)
-    {
-        if (section >= m_sections.size())
+        if (sectionIndex < 0 || sectionIndex >= m_sections.size())
         {
             return;
         }
-        
-        TCoordinate btm = 0;
-        typename std::vector<Section *>::iterator it = m_sections.begin() + section;
-        if (section > 0)
-        {
-            typename std::vector<Section *>::iterator prevIt = it - 1;
-            btm = bottom((*prevIt)->getFrame());
-        }
-        
-        TInt newSection = section;
-        for (; it != m_sections.end(); ++it, ++newSection)
-        {
-            (*it)->setSection(newSection);
-            (*it)->prepareHeaderAndFooterLayout(&layoutCallbackAdapter, boundSize);
-            top((*it)->getFrame(), btm);
-            
-            btm += height((*it)->getFrame());
-        }
-        
-        m_contentSize = makeSize(width(boundSize), btm);
+        SectionIterator it = m_sections.begin() + sectionIndex;
+        (*it)->reloadSection();
     }
 
     void prepareLayout(const TLayoutCallbackAdapter& layoutCallbackAdapter, const Size &boundSize, const Insets &padding);
+    void prepareLayoutIncrementally(const TLayoutCallbackAdapter& layoutCallbackAdapter, const Size &boundSize, const Insets &padding, TInt minInvalidatedSection);
     
     inline Size getContentSize() const
     {
@@ -511,7 +490,8 @@ void FlexLayoutT<TLayoutCallbackAdapter, TInt, TCoordinate, VERTICAL>::prepareLa
     
     // Initialize width and set height to 0, layout will calculate new height
     Rect rectOfSection = makeRect(0, 0, width(boundSize), 0);
-    for (TInt sectionIndex = 0; sectionIndex < sectionCount; sectionIndex++) {
+    for (TInt sectionIndex = 0; sectionIndex < sectionCount; sectionIndex++)
+    {
         int layoutMode = layoutCallbackAdapter.getLayoutModeForSection(sectionIndex);
         Section *section = layoutMode == 1 ?
         static_cast<Section *>(new WaterfallSection(sectionIndex, rectOfSection)) :
@@ -522,6 +502,39 @@ void FlexLayoutT<TLayoutCallbackAdapter, TInt, TCoordinate, VERTICAL>::prepareLa
         m_sections.push_back(section);
 
         offsetY(rectOfSection, height(section->getFrame()));
+    }
+    
+    m_contentSize = makeSize(width(boundSize), bottom(rectOfSection));
+}
+
+template<class TLayoutCallbackAdapter, class TInt, class TCoordinate, bool VERTICAL>
+void FlexLayoutT<TLayoutCallbackAdapter, TInt, TCoordinate, VERTICAL>::prepareLayoutIncrementally(const TLayoutCallbackAdapter& layoutCallbackAdapter, const Size &boundSize, const Insets &padding, TInt minInvalidatedSection)
+{
+    TInt sectionCount = layoutCallbackAdapter.getNumberOfSections();
+    if (sectionCount <= 0)
+    {
+        // Set contentSize to bound size
+        m_contentSize = boundSize;;
+        return;
+    }
+    
+    if (minInvalidatedSection >= sectionCount)
+    {
+        return;
+    }
+    
+    // Initialize width and set height to 0, layout will calculate new height
+    
+    typename std::vector<Section *>::iterator it = m_sections.begin() + minInvalidatedSection;
+    Rect rectOfSection = (*it)->getFrame();
+    height(rectOfSection, 0);
+    TInt sectionIndex = minInvalidatedSection;
+    for (; it != m_sections.end(); ++it, ++sectionIndex)
+    {
+        top((*it)->getFrame(), bottom(rectOfSection));
+        (*it)->setSection(sectionIndex);
+        (*it)->prepareLayout(&layoutCallbackAdapter, boundSize);
+        offsetY(rectOfSection, height((*it)->getFrame()));
     }
     
     m_contentSize = makeSize(width(boundSize), bottom(rectOfSection));
@@ -609,8 +622,8 @@ void FlexLayoutT<TLayoutCallbackAdapter, TInt, TCoordinate, VERTICAL>::getItemsI
             
             // If original mode is sticky, we check contentOffset and if contentOffset.y is less than origin.y, it is exiting sticky mode
             // Otherwise, we check the top of sticky header
-            bool stickyMode = it->second.isInSticky() ? ((y(contentOffset) + top(padding) < top(rect)) ? false : true) : ((top(rect) >= y(origin)) ? true : false);
-            bool originChanged = it->second.isInSticky() ? ((top(rect) >= y(contentOffset) + top(padding)) ? false : true) : ((top(rect) > y(origin)) ? true : false);
+            bool stickyMode = top(rect) >= y(origin);
+            bool originChanged = top(rect) > y(origin);
             // bool stickyMode = (rect.origin.y >= origin.y);
             if (stickyMode != it->second.isInSticky())
             {

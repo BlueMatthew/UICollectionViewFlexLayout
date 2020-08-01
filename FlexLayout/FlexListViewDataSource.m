@@ -11,27 +11,27 @@
 #define ITEM_TEXT_NAVBAR            "Navigation Bar"
 #define ITEM_TEXT_LOADMORE          "Loading More Data..."
 #define ITEM_TEXT_CATBAR_ITEM       "Cat %ld"
-#define ITEM_TEXT_ITEM1             "Cat:%lu Item:%lu"
-#define ITEM_TEXT_ITEM2             "Cat:%lu Item:%lu"
+#define ITEM_TEXT_ITEM1             "Cat:%lu Item:%lu %@"
+#define ITEM_TEXT_ITEM2             "Cat:%lu Item:%lu %@"
 
 // #define SECTION_INDEX_NAVBAR            0
-#define SECTION_INDEX_ENTRY             0
-#define SECTION_INDEX_TEST1             1
-#define SECTION_INDEX_TEST2             2
-#define SECTION_INDEX_CATBAR            3
-#define SECTION_INDEX_ITEM1             4
-#define SECTION_INDEX_ITEM2             5
+const NSInteger SECTION_INDEX_ENTRY =            0;
+const NSInteger SECTION_INDEX_TEST1 =            1;
+const NSInteger SECTION_INDEX_TEST2 =            2;
+const NSInteger SECTION_INDEX_CATBAR =           3;
+const NSInteger SECTION_INDEX_ITEM1 =            4;
+const NSInteger SECTION_INDEX_ITEM2 =            5;
 
-#define SECTION_INDEX_ITEM_PAGING1      0
-#define SECTION_INDEX_ITEM_PAGING2      1
+const NSInteger SECTION_INDEX_ITEM_PAGING1 =     0;
+const NSInteger SECTION_INDEX_ITEM_PAGING2 =     1;
 
-#define NUM_OF_ITEMS_IN_CATEGORY_BAR    8
+const NSInteger NUM_OF_ITEMS_IN_CATEGORY_BAR =   8;
 
-#define NUM_OF_ITEMS_IN_SECTION_ENTRY   1
-#define NUM_OF_ITEMS_IN_SECTION_TEST1   1
-#define NUM_OF_ITEMS_IN_SECTION_TEST2   1
-#define NUM_OF_ITEMS_IN_SECTION_ITEM1   8000
-#define NUM_OF_ITEMS_IN_SECTION_ITEM2   8
+static const NSInteger NUM_OF_ITEMS_IN_SECTION_ENTRY =   1;
+static const NSInteger NUM_OF_ITEMS_IN_SECTION_TEST1 =   1;
+static const NSInteger NUM_OF_ITEMS_IN_SECTION_TEST2 =   1;
+static const NSInteger NUM_OF_ITEMS_IN_SECTION_ITEM1 =   2000;
+static const NSInteger NUM_OF_ITEMS_IN_SECTION_ITEM2 =   2;
 
 #define ITEM_HEIGHT_NAVBAR              100
 #define ITEM_HEIGHT_ENTRY               120
@@ -53,7 +53,7 @@
 
 #define SECTION_INSET_TEST1_PADDING      10
 
-#define CONTENT_INSET                    10
+const NSInteger CONTENT_INSET =          0;
 
 #define ITEM_COLUMNS                     2
 
@@ -201,6 +201,17 @@
     return [m_items objectAtIndex:item];
 }
 
+- (BOOL)deleteItemAt:(NSInteger)item
+{
+    if (item < 0 || item >= m_items.count)
+    {
+        return NO;
+    }
+    
+    [m_items removeObjectAtIndex:item];
+    return YES;
+}
+
 - (BOOL)isEntry
 {
     return m_sectionId == SECTION_INDEX_ENTRY;
@@ -246,68 +257,17 @@
     
     CGFloat scale = UIScreen.mainScreen.scale;
     
-    // round(scale * itemHeight) / scale;
-    
     if (m_sectionId == SECTION_INDEX_ENTRY)
     {
-        // Nav + Entry
-        m_header = [[ItemData alloc] init];
-        m_header.text = @ITEM_TEXT_NAVBAR;
-        m_header.backgroundColor = 0xFF7F50; // coral
-        m_header.width = round(scale * [self calcWidth:bounds contentInsets:contentInsets]) / scale;
-        m_header.height = round(scale * ITEM_HEIGHT_NAVBAR) / scale;
-        
-        unsigned int entryColors[] = {0x7CFC00, 0x32CD32, 0x006400, 0x9ACD32, 0x00FA9A, 0x98FB98, 0x808000, 0x6B8E23};
-        int bgColorIndex = (int)m_sectionId * 4;
-        m_items = [[NSMutableArray<ItemData *> alloc] initWithCapacity:NUM_OF_ITEMS_IN_SECTION_ENTRY];
-        for (NSInteger idx = 0; idx < NUM_OF_ITEMS_IN_SECTION_ENTRY; idx++, bgColorIndex++)
-        {
-            ItemData *item = [[ItemData alloc] init];
-            
-            item.backgroundColor = entryColors[bgColorIndex % (sizeof(entryColors) / sizeof(unsigned int))];
-            item.text = [NSString stringWithFormat:@"Entry %ld", idx];
-            item.width = round(scale * [self calcWidth:bounds contentInsets:contentInsets]) / scale;
-            item.height = round(scale * ITEM_HEIGHT_ENTRY) / scale;
-            
-            [m_items addObject:item];
-        }
-        
+        [self loadNavAndEntry:page withBounds:bounds contentInsets:contentInsets];
     }
     else if (m_sectionId == SECTION_INDEX_TEST1)
     {
-        unsigned int entryColors[] = {0x7CFC00, 0x32CD32, 0x006400, 0x9ACD32, 0x00FA9A, 0x98FB98, 0x808000, 0x6B8E23};
-        int bgColorIndex = (int)(m_sectionId * 4);
-        m_items = [[NSMutableArray<ItemData *> alloc] initWithCapacity:NUM_OF_ITEMS_IN_SECTION_TEST1];
-        for (NSInteger idx = 0; idx < NUM_OF_ITEMS_IN_SECTION_ENTRY; idx++, bgColorIndex++)
-        {
-            ItemData *item = [[ItemData alloc] init];
-            
-            item.backgroundColor = entryColors[bgColorIndex % (sizeof(entryColors) / sizeof(unsigned int))];
-            item.text = [NSString stringWithFormat:@"Test1 %ld", idx];
-            item.width = round(scale * [self calcWidth:bounds contentInsets:contentInsets]) / scale;
-            item.height = round(scale * ITEM_HEIGHT_TEST1) / scale;
-            
-            [m_items addObject:item];
-        }
-        
+        [self loadTest1:page withBounds:bounds contentInsets:contentInsets];
     }
     else if (m_sectionId == SECTION_INDEX_TEST2)
     {
-        
-        unsigned int entryColors[] = {0x7CFC00, 0x32CD32, 0x006400, 0x9ACD32, 0x00FA9A, 0x98FB98, 0x808000, 0x6B8E23};
-        int bgColorIndex = (int)(m_sectionId * 4);
-        m_items = [[NSMutableArray<ItemData *> alloc] initWithCapacity:NUM_OF_ITEMS_IN_SECTION_TEST2];
-        for (NSInteger idx = 0; idx < NUM_OF_ITEMS_IN_SECTION_ENTRY; idx++, bgColorIndex++)
-        {
-            ItemData *item = [[ItemData alloc] init];
-            
-            item.backgroundColor = entryColors[bgColorIndex % (sizeof(entryColors) / sizeof(unsigned int))];
-            item.text = [NSString stringWithFormat:@"Test2 %ld", idx];
-            item.width = round(scale * [self calcWidth:bounds contentInsets:contentInsets]) / scale;
-            item.height = round(scale * ITEM_HEIGHT_TEST2) / scale;
-            
-            [m_items addObject:item];
-        }
+        [self loadTest2:page withBounds:bounds contentInsets:contentInsets];
     }
     else if (m_sectionId == SECTION_INDEX_CATBAR)
     {
@@ -357,6 +317,92 @@
     }
 }
 
+- (void)loadNavAndEntry:(NSInteger)page withBounds:(CGRect)bounds contentInsets:(UIEdgeInsets)contentInsets
+{
+    unsigned int entryColors[] = {0x7CFC00, 0x32CD32, 0x006400, 0x9ACD32, 0x00FA9A, 0x98FB98, 0x808000, 0x6B8E23};
+    
+    CGFloat scale = UIScreen.mainScreen.scale;
+    
+    // Nav + Entry
+    m_header = [[ItemData alloc] init];
+    m_header.text = @ITEM_TEXT_NAVBAR;
+    m_header.backgroundColor = 0xFF7F50; // coral
+    m_header.width = round(scale * [self calcWidth:bounds contentInsets:contentInsets]) / scale;
+    m_header.height = round(scale * ITEM_HEIGHT_NAVBAR) / scale;
+    
+    NSString *time = [self timeString];
+    
+    int bgColorIndex = (int)m_sectionId * 4;
+    m_items = [[NSMutableArray<ItemData *> alloc] initWithCapacity:NUM_OF_ITEMS_IN_SECTION_ENTRY];
+    for (NSInteger idx = 0; idx < NUM_OF_ITEMS_IN_SECTION_ENTRY; idx++, bgColorIndex++)
+    {
+        ItemData *item = [[ItemData alloc] init];
+        
+        item.backgroundColor = entryColors[bgColorIndex % (sizeof(entryColors) / sizeof(unsigned int))];
+        item.text = [NSString stringWithFormat:@"Entry %ld %@", idx, time];
+        item.width = round(scale * [self calcWidth:bounds contentInsets:contentInsets]) / scale;
+        item.height = round(scale * ITEM_HEIGHT_ENTRY) / scale;
+        
+        [m_items addObject:item];
+    }
+}
+
+- (NSString *)timeString
+{
+    NSDate *date = [NSDate date];
+    NSDateComponents * components = [[NSCalendar currentCalendar] components:(NSCalendarUnitHour | NSCalendarUnitMinute | NSCalendarUnitSecond) fromDate:date];
+    NSString *time = [NSString stringWithFormat:@"%02d:%02d:%02d", (int)[components hour], (int)[components minute], (int)[components second]];
+    
+    return time;
+}
+
+- (void)loadTest1:(NSInteger)page withBounds:(CGRect)bounds contentInsets:(UIEdgeInsets)contentInsets
+{
+    unsigned int entryColors[] = {0x7CFC00, 0x32CD32, 0x006400, 0x9ACD32, 0x00FA9A, 0x98FB98, 0x808000, 0x6B8E23};
+    
+    CGFloat scale = UIScreen.mainScreen.scale;
+
+    int bgColorIndex = (int)(m_sectionId * 4);
+    m_items = [[NSMutableArray<ItemData *> alloc] initWithCapacity:NUM_OF_ITEMS_IN_SECTION_TEST1];
+    
+    NSString *time = [self timeString];
+    
+    for (NSInteger idx = 0; idx < NUM_OF_ITEMS_IN_SECTION_TEST1; idx++, bgColorIndex++)
+    {
+        ItemData *item = [[ItemData alloc] init];
+        
+        item.backgroundColor = entryColors[bgColorIndex % (sizeof(entryColors) / sizeof(unsigned int))];
+        item.text = [NSString stringWithFormat:@"Test1 %ld %@", idx, time];
+        item.width = round(scale * [self calcWidth:bounds contentInsets:contentInsets]) / scale;
+        item.height = round(scale * ITEM_HEIGHT_TEST1) / scale;
+        
+        [m_items addObject:item];
+    }
+}
+
+- (void)loadTest2:(NSInteger)page withBounds:(CGRect)bounds contentInsets:(UIEdgeInsets)contentInsets
+{
+    unsigned int entryColors[] = {0x7CFC00, 0x32CD32, 0x006400, 0x9ACD32, 0x00FA9A, 0x98FB98, 0x808000, 0x6B8E23};
+    
+    CGFloat scale = UIScreen.mainScreen.scale;
+    
+    NSString *time = [self timeString];
+    
+    int bgColorIndex = (int)(m_sectionId * 4);
+    m_items = [[NSMutableArray<ItemData *> alloc] initWithCapacity:NUM_OF_ITEMS_IN_SECTION_TEST2];
+    for (NSInteger idx = 0; idx < NUM_OF_ITEMS_IN_SECTION_TEST2; idx++, bgColorIndex++)
+    {
+        ItemData *item = [[ItemData alloc] init];
+        
+        item.backgroundColor = entryColors[bgColorIndex % (sizeof(entryColors) / sizeof(unsigned int))];
+        item.text = [NSString stringWithFormat:@"Test2 %ld %@", idx, time];
+        item.width = round(scale * [self calcWidth:bounds contentInsets:contentInsets]) / scale;
+        item.height = round(scale * ITEM_HEIGHT_TEST2) / scale;
+        
+        [m_items addObject:item];
+    }
+}
+
 - (CGFloat)calcWidth:(CGRect)bounds contentInsets:(UIEdgeInsets)contentInsets
 {
     CGFloat width = bounds.size.width - contentInsets.left - contentInsets.right;
@@ -366,6 +412,9 @@
 - (void)initializeItems:(NSMutableArray<ItemData *> *)items numberOfItemsInSection:(NSInteger)numberOfItems textFormat:(NSString *)textFormat columns:(NSInteger)columns itemColors:(NSArray *)itemColors imageColors:(NSArray *)imageColors itemHeights:(NSArray *)itemHeights forPage:(NSInteger)page  withBounds:(CGRect)bounds contentInsets:(UIEdgeInsets)contentInsets
 {
     CGFloat scale = UIScreen.mainScreen.scale;
+    
+    NSString *time = [self timeString];
+    
     NSMutableArray<NSNumber *> *widthOfColumns = [[NSMutableArray<NSNumber *> alloc] initWithCapacity:ITEM_COLUMNS];
     CGFloat availableColumnSize = bounds.size.width - (contentInsets.left + contentInsets.right + SECTION_INSET_ITEM_LEFT + SECTION_INSET_ITEM_RIGHT);
     for (NSInteger idx = 0; idx < columns; idx++)
@@ -423,7 +472,7 @@
         
         item.height = round(scale * itemHeight) / scale;
         item.itemType = @"item";
-        item.text = [NSString stringWithFormat:textFormat, page, idx];
+        item.text = [NSString stringWithFormat:textFormat, page, idx, time];
         
         [items addObject:item];
     }
@@ -439,7 +488,7 @@
 {
     m_sections = [NSMutableArray<SectionData *> array];
     
-    NSArray<NSNumber *> *sections = @[/*@SECTION_INDEX_NAVBAR, */@SECTION_INDEX_ENTRY, @SECTION_INDEX_TEST1, @SECTION_INDEX_TEST2, @SECTION_INDEX_CATBAR, @SECTION_INDEX_ITEM1, @SECTION_INDEX_ITEM2];
+    NSArray<NSNumber *> *sections = @[/*@SECTION_INDEX_NAVBAR, */@(SECTION_INDEX_ENTRY), @(SECTION_INDEX_TEST1), @(SECTION_INDEX_TEST2), @(SECTION_INDEX_CATBAR), @(SECTION_INDEX_ITEM1), @(SECTION_INDEX_ITEM2)];
     
     for (NSInteger idx = 0; idx < sections.count; idx++)
     {
@@ -479,6 +528,26 @@
     return [m_sections objectAtIndex:section];
 }
 
+- (SectionData *)sectionWithId:(NSInteger)sectionId
+{
+    SectionData *sectionData = nil;
+    for (int idx = 0; idx < m_sections.count; idx++)
+    {
+        sectionData = [m_sections objectAtIndex:idx];
+        if (sectionData.sectionId == sectionId)
+        {
+            break;
+        }
+        else
+        {
+            sectionData = nil;
+        }
+    }
+    
+    return sectionData;
+}
+
+
 @end
 
 @implementation DataSource
@@ -500,6 +569,23 @@
     }
     
     return self;
+}
+
+- (void)updateDataSourceAtSection:(NSInteger) section frame:(CGRect)frame insets:(UIEdgeInsets)insets onPage:(NSInteger)page
+{
+    if (page >= m_pages.count)
+    {
+        return;
+    }
+    
+    PageData *pageData = [m_pages objectAtIndex:page];
+    SectionData *sectionData = [pageData sectionAt:section];
+    if (nil == sectionData)
+    {
+        return;
+    }
+
+    [sectionData initializeDataSource:page withBounds:frame contentInsets:insets];
 }
 
 - (SectionData *)sectionAt:(NSInteger)section forPage:(NSInteger)page
@@ -635,6 +721,30 @@
     
     PageData *pageData = [m_pages objectAtIndex:page];
     return [pageData removeSection:sectionId];
+}
+
+- (NSInteger)deleteItems:(NSInteger)sectionId itemStart:(NSInteger)itemStart itemCount:(NSInteger)itemCount forPage:(NSInteger)page
+{
+    NSInteger deleted = 0;
+    if (page >= m_pages.count)
+    {
+        return deleted;
+    }
+    
+    PageData *pageData = [m_pages objectAtIndex:page];
+    SectionData *sectionData = [pageData sectionWithId:sectionId];
+    if (nil != sectionData)
+    {
+        for (NSInteger idx = itemStart; idx < (itemStart + itemCount); ++idx)
+        {
+            if ([sectionData deleteItemAt:idx - deleted])
+            {
+                ++deleted;
+            }
+        }
+    }
+    
+    return deleted;
 }
 
 + (NSIndexSet *)getSectionsForStickyHeader

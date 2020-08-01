@@ -51,6 +51,7 @@
 - (BOOL)isItem2;
 
 - (ItemData *)itemAt:(NSInteger)item;
+- (BOOL)deleteItemAt:(NSInteger)item;
 
 @end
 
@@ -72,6 +73,8 @@
 
 - (instancetype)initWithFrame:(CGRect)frame insets:(UIEdgeInsets)insets numberOfPages:(NSInteger)numberOfPages;
 
+- (void)updateDataSourceAtSection:(NSInteger) section frame:(CGRect)frame insets:(UIEdgeInsets)insets onPage:(NSInteger)page;
+
 - (SectionData *)sectionAt:(NSInteger)section forPage:(NSInteger)page;
 - (ItemData *)itemAt:(NSIndexPath *)indexPath forPage:(NSInteger)page;
 - (ItemData *)headerAt:(NSInteger)section forPage:(NSInteger)page;
@@ -90,6 +93,7 @@
 - (UIEdgeInsets)insetsAtSection:(NSInteger)section forPage:(NSInteger)page;
 
 - (NSInteger)removeSection:(NSInteger)sectionId forPage:(NSInteger)page;
+- (NSInteger)deleteItems:(NSInteger)sectionId itemStart:(NSInteger)itemStart itemCount:(NSInteger)itemCount forPage:(NSInteger)page;
 
 + (NSIndexSet *)getSectionsForStickyHeader;
 + (NSInteger)numberOfPages;
