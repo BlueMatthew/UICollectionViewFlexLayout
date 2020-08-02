@@ -99,6 +99,7 @@ namespace nsflex
         inline void setPlaceHolder(bool placeHolder) { m_placeHolder = placeHolder ? 1 : 0; }
 
         inline TInt getItem() const { return m_item; }
+        inline void setItem(TInt itemIndex) { m_item = itemIndex; }
         inline Rect &getFrame() { return m_frame; }
         inline Rect getFrame() const { return m_frame; }
 

@@ -47,30 +47,19 @@ namespace nsflex
         using IntType = TInt;
         using CoordinateType = TCoordinate;
         using FlexItem = FlexItemT<TInt, TCoordinate>;
+        using FlexItemIterator = typename std::vector<FlexItem *>::iterator;
 
         using Point = PointT<TCoordinate>;
         using Size = SizeT<TCoordinate>;
         using Rect = RectT<TCoordinate>;
         using Insets = InsetsT<TCoordinate>;
 
-        // using TBase::x;
         using TBase::y;
-        // using TBase::left;
         using TBase::top;
-        // using TBase::right;
         using TBase::bottom;
-
-        // using TBase::offset;
-        // using TBase::offsetX;
-        // using TBase::offsetY;
-        // using TBase::incWidth;
-
         using TBase::leftBottom;
         using TBase::height;
         using TBase::width;
-
-        // using TBase::hinsets;
-        // using TBase::vinsets;
 
     protected:
         TInt m_section;
@@ -347,6 +336,29 @@ namespace nsflex
             Rect rectInView(rect);
             rectInView.offset(m_frame.left(), m_frame.top());
             return rectInView;
+        }
+        
+        inline void prepareItems(TInt numberOfItems)
+        {
+            TInt orgNumberOfItems = m_items.size();
+            if (numberOfItems > orgNumberOfItems)
+            {
+                m_items.reserve(numberOfItems);
+                for (TInt itemIndex = orgNumberOfItems; itemIndex < numberOfItems; ++itemIndex)
+                {
+                    m_items.push_back(new FlexItem(itemIndex));
+                }
+            }
+            else if (numberOfItems < orgNumberOfItems)
+            {
+                FlexItemIterator itStart = m_items.begin() + numberOfItems;
+                FlexItemIterator it = itStart;
+                for (; it < m_items.end(); ++it)
+                {
+                    delete (*it);
+                }
+                m_items.erase(itStart, m_items.end());
+            }
         }
 
         // Layout Adapter Functions Begin

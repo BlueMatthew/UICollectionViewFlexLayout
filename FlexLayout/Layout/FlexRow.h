@@ -24,6 +24,9 @@ public:
     using TBase = ContainerBaseT<TCoordinate, VERTICAL>;
     using CoordinateType = TCoordinate;
     using FlexItem = FlexItemT<TInt, TCoordinate>;
+    using FlexItemIterator = typename std::vector<FlexItem *>::iterator;
+    using FlexItemConstIterator = typename std::vector<FlexItem *>::const_iterator;
+    
     using Rect = RectT<TCoordinate>;
     
     using TBase::x;
@@ -63,27 +66,73 @@ public:
         return !m_items.empty();
     }
     
-    inline void addItem(FlexItem *item, bool vertical)
+    bool lessThan(TInt item) const
     {
-        m_items.push_back(item);
-        if (vertical)
-        {
-            m_frame.size.width += item->getFrame().size.width;
-            if (m_frame.size.height < item->getFrame().size.height) m_frame.size.height = item->getFrame().size.height;
-        }
-        else
-        {
-            m_frame.size.height += item->getFrame().size.height;
-            if (m_frame.size.width < item->getFrame().size.width) m_frame.size.width = item->getFrame().size.width;
-        }
+        // empty() ???
+        return m_items.back()->getItem() < item;
     }
     
+    bool greaterThan(TInt item) const
+    {
+        // empty() ???
+        return m_items.front()->getItem() > item;
+    }
+
     inline void addItem(FlexItem *item)
     {
         m_items.push_back(item);
         
         incWidth(m_frame, width(item->getFrame()));
         if (height(m_frame) < height(item->getFrame())) height(m_frame, height(item->getFrame()));
+    }
+    
+    inline void adjustHeight()
+    {
+        TCoordinate newHeight = 0;
+        
+        for (FlexItemConstIterator it = m_items.cbegin(); it != m_items.cend(); ++it)
+        {
+            if (newHeight < height((*it)->getFrame()))
+            {
+                newHeight = height((*it)->getFrame());
+            }
+        }
+        height(m_frame, newHeight);
+    }
+    
+    inline bool removeItemsFrom(TInt item)
+    {
+        FlexItemIterator it = std::lower_bound(m_items.begin(), m_items.end(), item, FlexItemLessCompareT<TInt, TCoordinate>());
+        if (it != m_items.end())
+        {
+            bool heightChanged = height((*it)->getFrame()) >= height(m_frame);
+            m_items.erase(it, m_items.end());
+            if (heightChanged)
+            {
+                adjustHeight();
+            }
+            return true;
+        }
+        return false;
+    }
+    
+    inline bool removeLastItemIfEquals(TInt itemIndex)
+    {
+        if (!m_items.empty())
+        {
+            FlexItemIterator it = m_items.end() - 1;
+            if ((*it)->getItem() == itemIndex)
+            {
+                bool heightChanged = height(m_items.back()->getFrame()) >= height(m_frame);
+                m_items.erase(it);
+                if (heightChanged)
+                {
+                    adjustHeight();
+                }
+                return true;
+            }
+        }
+        return false;
     }
     
     inline std::pair<typename std::vector<FlexItem *>::iterator, typename std::vector<FlexItem *>::iterator> getItemIterator()
@@ -100,6 +149,31 @@ public:
                 items.push_back(*it);
             }
         }
+    }
+
+    
+};
+
+template <typename TInt, typename TCoordinate, bool VERTICAL>
+struct FlexRowItemLessCompareT
+{
+    using FlexRow = FlexRowT<TInt, TCoordinate, VERTICAL>;
+
+    inline bool operator() ( const FlexRow* lhs, TInt item) const
+    {
+        return lhs->lessThan(item);
+    }
+    
+};
+
+template <typename TInt, typename TCoordinate, bool VERTICAL>
+struct FlexRowItemGreaterCompareT
+{
+    using FlexRow = FlexRowT<TInt, TCoordinate, VERTICAL>;
+
+    inline bool operator() ( const FlexRow* lhs, TInt item) const
+    {
+        return lhs->greaterThan(item);
     }
     
 };

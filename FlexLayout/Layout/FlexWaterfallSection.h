@@ -76,6 +76,18 @@ public:
         clearColumns();
     }
     
+    // Override
+    void deleteItem(TInt itemIndex)
+    {
+        // Before the item is deleted, we have to remove the item pointer from columns first to avoid exception of bad address
+        if (!TBaseSection::m_items.empty())
+        {
+            // In most cases, we removes items from end and it is enought to just check and remove the last item
+            (TBaseSection::m_items.back()->getItem() == itemIndex) ? removeLastItemInColumnsIfEquals(itemIndex, false) : removeItemsInColumns(itemIndex, false);
+        }
+        TBaseSection::deleteItem(itemIndex);
+    }
+    
 protected:
     
     inline void clearColumns()
@@ -86,12 +98,20 @@ protected:
         m_placeHolderItems.clear();
     }
     
-    inline void removeItemsInColumns(TInt itemStart)
+    inline void removeItemsInColumns(TInt itemStart, bool includingPlaceHolder = true)
     {
         for (FlexColumnIterator it = m_columns.begin(); it != m_columns.end(); ++it)
         {
             (*it)->removeItemsFrom(itemStart);
         }
+        if (includingPlaceHolder)
+        {
+            removePlaceHolderItems(itemStart);
+        }
+    }
+    
+    inline void removePlaceHolderItems(TInt itemStart)
+    {
         FlexItemIterator it = std::lower_bound(m_placeHolderItems.begin(), m_placeHolderItems.end(), itemStart, FlexItemLessCompareT<TInt, TCoordinate>());
         if (it != m_placeHolderItems.end())
         {
@@ -103,6 +123,18 @@ protected:
         }
     }
 
+    inline void removeLastItemInColumnsIfEquals(TInt itemIndex, bool includingPlaceHolder = true)
+    {
+        for (FlexColumnIterator it = m_columns.begin(); it != m_columns.end(); ++it)
+        {
+            (*it)->removeLastItemIfEquals(itemIndex);
+        }
+        if (includingPlaceHolder)
+        {
+            removePlaceHolderItems(itemIndex);
+        }
+    }
+    
     // Override
     void prepareItemsLayout(const TLayout *layout, const Size &size)
     {
@@ -117,56 +149,19 @@ protected:
             TBaseSection::clearItems();
             return;
         }
-#ifdef PERF_DEBUG
-        double time = 0.0f;
-        double prevTime = 0.0;
-        
-        prevTime = [[NSDate date] timeIntervalSince1970] * 1000;
-#endif
 
-        TInt orgNumberOfItems = TBaseSection::m_items.size();
-        if (numberOfItems > orgNumberOfItems)
-        {
-            TBaseSection::m_items.reserve(numberOfItems);
-            for (TInt itemIndex = orgNumberOfItems; itemIndex < numberOfItems; ++itemIndex)
-            {
-                TBaseSection::m_items.push_back(new FlexItem(itemIndex));
-            }
-        }
-        else if (numberOfItems < orgNumberOfItems)
-        {
-            typename std::vector<FlexItem *>::iterator itStart = TBaseSection::m_items.begin() + numberOfItems;
-            typename std::vector<FlexItem *>::iterator it = itStart;
-            for (; it < TBaseSection::m_items.end(); ++it)
-            {
-                delete (*it);
-            }
-            TBaseSection::m_items.erase(itStart, TBaseSection::m_items.end());
-            // Will remove the pointer in columns later
-        }
-        
-                
-#ifdef PERF_DEBUG
-        time = [[NSDate date] timeIntervalSince1970] * 1000;
-        NSLog(@"PERF alloc items takes %0.2f ms", time - prevTime);
-        prevTime = time;
-#endif
+        TBaseSection::prepareItems(numberOfItems);
 
         TInt minInvalidatedItem = TBaseSection::getMinimalInvalidatedItem();
         bool isFullSpan = false;
-        TInt itemIndex = 0;
+        TInt itemIndex = minInvalidatedItem;
         for (FlexItemIterator it = TBaseSection::m_items.begin() + minInvalidatedItem; it != TBaseSection::m_items.end(); ++it, ++itemIndex)
         {
             // isFullSpan = false;
+            (*it)->setItem(itemIndex);
             (*it)->getFrame().size = TBaseSection::getSizeForItem(layout, itemIndex, &isFullSpan);
             (*it)->setFullSpan(isFullSpan);
         }
-                
-#ifdef PERF_DEBUG
-        time = [[NSDate date] timeIntervalSince1970] * 1000;
-        // NSLog(@"PERF getSize takes %0.2f ms", time - prevTime);
-        prevTime = time;
-#endif
 
         // Get Number of Columns
         TInt numberOfColumns = TBaseSection::getNumberOfColumns(layout);
@@ -174,16 +169,15 @@ protected:
         {
             numberOfColumns = 1;
         }
-
         Insets sectionInset = TBaseSection::getInsets(layout);
         
         if (numberOfColumns != m_columns.size() || minInvalidatedItem == 0 || TBaseSection::isSectionInvalidated())
         {
             // If NumberOfColumns changes, we need relayout all items
             minInvalidatedItem = 0;
-            
+
             clearColumns();
-            
+
             m_columns.reserve(numberOfColumns);
             TInt estimatedNumberOfItems = (TInt)ceil(numberOfItems / numberOfColumns);
             
@@ -221,12 +215,6 @@ protected:
             removeItemsInColumns(minInvalidatedItem);
         }
         
-#ifdef PERF_DEBUG
-        
-        // prevTime = [[NSDate date] timeIntervalSince1970] * 1000;
-        
-#endif
-        
         TCoordinate minimumLineSpacing = TBaseSection::getMinimumLineSpacing(layout);
         
         // Layout each item
@@ -263,12 +251,7 @@ protected:
             
             (*itOfTargetColumn)->addItem(*it);
         }
-        
-#ifdef PERF_DEBUG
-        time = [[NSDate date] timeIntervalSince1970] * 1000;
-        // NSLog(@"PERF layout items takes %0.2f ms", time - prevTime);
-        prevTime = time;
-#endif
+
         // Find the column with highest height
         FlexColumnConstIterator columnItOfMaximalSize = max_element(m_columns.begin(), m_columns.end(), compare);
 
@@ -281,8 +264,6 @@ protected:
         typename std::vector<const FlexItem *>::size_type orgSize = items.size();
         bool firstColumn = true;
         FlexItemLessCompare comp;
-        
-        // FlexItem *lastItem = TBaseSection::m_items.
         
         // Items
         for (FlexColumnConstIterator it = m_columns.begin(); it != m_columns.end(); ++it)

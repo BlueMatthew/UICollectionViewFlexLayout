@@ -546,6 +546,7 @@ extern const NSInteger NUM_OF_ITEMS_IN_CATEGORY_BAR;
     NSInteger page = (collectionView == self) ? m_page : collectionView.tag;
     NSInteger sectionIndex = (collectionView == self) ? section : (section + SECTION_INDEX_ITEM1);
     SectionData *sectionData = [m_dataSource sectionAt:sectionIndex forPage:page];
+    // return UICollectionViewFlexLayoutModeFlow;
     return (sectionData.sectionId == SECTION_INDEX_ITEM1) ? UICollectionViewFlexLayoutModeWaterfall : UICollectionViewFlexLayoutModeFlow;
 }
 
@@ -669,7 +670,7 @@ extern const NSInteger NUM_OF_ITEMS_IN_CATEGORY_BAR;
     // UICollectionViewLayout *layout = self.collectionViewLayout;
     // [layout invalidateLayout];
     
-    [self performSelector:@selector(testInvalidateLayout) withObject:nil afterDelay:10 inModes:@[NSRunLoopCommonModes]];
+    [self performSelector:@selector(testInvalidateLayout) withObject:nil afterDelay:2 inModes:@[NSRunLoopCommonModes]];
 }
 
 @end

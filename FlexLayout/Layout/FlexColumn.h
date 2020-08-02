@@ -86,31 +86,31 @@ public:
         height(m_frame, bottom(item->getFrame()));
     }
     
-#ifndef NDEBUG
-    inline bool matched()
-    {
-        FlexItem *item = m_items[m_items.size() - 1];
-        long aa = item->getItem();
-        if (aa > 10000)
-        {
-            aa = aa + 1;
-            aa = aa -1;
-            
-            aa = aa + 0;
-        }
-        
-        return aa > 10000;
-    }
-    #endif
-    
-    inline void removeItemsFrom(TInt item)
+    inline bool removeItemsFrom(TInt item)
     {
         FlexItemIterator it = std::lower_bound(m_items.begin(), m_items.end(), item, FlexItemLessCompareT<TInt, TCoordinate>());
         if (it != m_items.end())
         {
             m_items.erase(it, m_items.end());
+            height(m_frame, m_items.empty() ? 0 : (bottom(m_items.back()->getFrame()) - top(m_items.front()->getFrame())));
+            return true;
         }
-        height(m_frame, m_items.empty() ? 0 : bottom(m_items[m_items.size() - 1]->getFrame()));
+        return false;
+    }
+    
+    inline bool removeLastItemIfEquals(TInt itemIndex)
+    {
+        if (m_items.empty())
+        {
+            FlexItemIterator it = m_items.end() - 1;
+            if ((*it)->getItem() == itemIndex)
+            {
+                m_items.erase(it);
+                height(m_frame, m_items.empty() ? 0 : (bottom(m_items.back()->getFrame()) - top(m_items.front()->getFrame())));
+                return true;
+            }
+        }
+        return false;
     }
 
     inline std::pair<FlexItemIterator, FlexItemIterator> getItemsInRect(const Rect& rect)

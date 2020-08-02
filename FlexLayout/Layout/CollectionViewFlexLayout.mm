@@ -406,14 +406,13 @@ inline nsflex::Insets FlexInsetsFromUIEdgeInsets(const UIEdgeInsets& insets)
     {
         return;
     }
-    
+
 #ifdef PERF_DEBUG
     double time = 0.0f;
     double prevTime = 0.0;
     
     prevTime = [[NSDate date] timeIntervalSince1970] * 1000;
 #endif
-
     UICollectionView *cv = self.collectionView;
     CollectionViewFlexLayoutAdapter layoutAdapter(self);
     nsflex::Insets padding = FlexInsetsFromUIEdgeInsets(cv.contentInset);
@@ -431,14 +430,15 @@ inline nsflex::Insets FlexInsetsFromUIEdgeInsets(const UIEdgeInsets& insets)
         NSInteger minInvalidSection = NSIntegerMax;
         NSInteger sectionDeleted = 0;
         
+        NSIndexPath *indexPath = nil;
 #if defined(USING_INTERNAL_UPDATE_ITEMS_FOR_BATCH_UPDATES)
         for (UICollectionViewUpdateItem *updateItem in m_updateItems)
 #else
         for (UIFlexUpdateItem *updateItem in m_updateItems)
 #endif
         {
-            NSIndexPath *indexPath = nil;
-            switch(updateItem.updateAction)
+            UICollectionUpdateAction updateAction = updateItem.updateAction;
+            switch(updateAction)
             {
                 case UICollectionUpdateActionInsert:
                     indexPath = updateItem.indexPathAfterUpdate;
@@ -461,7 +461,7 @@ inline nsflex::Insets FlexInsetsFromUIEdgeInsets(const UIEdgeInsets& insets)
             
             if (NSNotFound == indexPath.item)
             {
-                switch(updateItem.updateAction)
+                switch(updateAction)
                 {
                     case UICollectionUpdateActionInsert:
                         vertical ? m_verticalLayout->insertSection(layoutAdapter, boundSize, padding, indexPath.section) : m_horizontalLayout->insertSection(layoutAdapter, boundSize, padding, indexPath.section);
@@ -480,7 +480,7 @@ inline nsflex::Insets FlexInsetsFromUIEdgeInsets(const UIEdgeInsets& insets)
             }
             else // (NSNotFound != indexPath.item)
             {
-                switch(updateItem.updateAction)
+                switch(updateAction)
                 {
                     case UICollectionUpdateActionInsert:
                         vertical ? m_verticalLayout->insertItem(layoutAdapter, boundSize, padding, indexPath.section, indexPath.item) : m_horizontalLayout->insertItem(layoutAdapter, boundSize, padding, indexPath.section, indexPath.item);
@@ -514,10 +514,10 @@ inline nsflex::Insets FlexInsetsFromUIEdgeInsets(const UIEdgeInsets& insets)
     
     m_updateItems = nil;
     m_layoutInvalidated = UICollectionViewFlexInvalidationFlagNone;
-
+    
 #ifdef PERF_DEBUG
     time = [[NSDate date] timeIntervalSince1970] * 1000;
-    NSLog(@"PERF prepareLayout takes %0.2f ms", time - prevTime);
+    NSLog(@"PERF: prepareLayout takes %0.2f ms.", time - prevTime);
 #endif
 }
 
@@ -638,7 +638,7 @@ inline nsflex::Insets FlexInsetsFromUIEdgeInsets(const UIEdgeInsets& insets)
         // No Items
         return nil;
     }
-    
+
     NSMutableArray<UICollectionViewLayoutAttributes *> *layoutAttributesArray = [NSMutableArray arrayWithCapacity:layoutItems.size()];
     UICollectionViewLayoutAttributes *la = nil;
     BOOL hasOffset = ((m_pagingSection != NSNotFound) && !CGPointEqualToPoint(m_pagingOffset, CGPointZero));

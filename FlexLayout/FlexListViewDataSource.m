@@ -406,7 +406,8 @@ const NSInteger CONTENT_INSET =          0;
 - (CGFloat)calcWidth:(CGRect)bounds contentInsets:(UIEdgeInsets)contentInsets
 {
     CGFloat width = bounds.size.width - contentInsets.left - contentInsets.right;
-    return ceil(width / self.columns);
+    return width / self.columns;
+    // return ceil(width / self.columns);
 }
 
 - (void)initializeItems:(NSMutableArray<ItemData *> *)items numberOfItemsInSection:(NSInteger)numberOfItems textFormat:(NSString *)textFormat columns:(NSInteger)columns itemColors:(NSArray *)itemColors imageColors:(NSArray *)imageColors itemHeights:(NSArray *)itemHeights forPage:(NSInteger)page  withBounds:(CGRect)bounds contentInsets:(UIEdgeInsets)contentInsets
@@ -457,7 +458,8 @@ const NSInteger CONTENT_INSET =          0;
         
         item.displayed = NO;
         
-        item.width = round(scale * itemWidth) / scale;
+        // item.width = round(scale * itemWidth) / scale;
+        item.width = itemWidth;
         CGFloat itemHeight = 0;
         if (columns == 1)
         {
