@@ -240,11 +240,11 @@ namespace nsflex
         {
             return point.y;
         }
-        inline void x(const Point &point, TCoordinate v, bool_trait<true>) const
+        inline void x(Point &point, TCoordinate v, bool_trait<true>) const
         {
             point.x = v;
         }
-        inline void x(const Point &point, TCoordinate v, bool_trait<false>) const
+        inline void x(Point &point, TCoordinate v, bool_trait<false>) const
         {
             point.y = v;
         }
