@@ -18,7 +18,13 @@ class LayoutCallbackAdapter;
 
 #define INVALID_OFFSET INT_MIN
 
-template<class TInt>
+enum FlexLayoutMode
+{
+    FlexLayoutModeFlow = 0,
+    FlexLayoutModeWaterfall = 1,
+};
+
+template<class TInt, char type>
 class SectionItemT
 {
 protected:
@@ -32,7 +38,7 @@ public:
     
     TInt getSection() const { return m_section; }
     TInt getItem() const { return m_item; }
-    char getType() const { return nsflex::ITEM_TYPE_HEADER; }
+    char getType() const { return type; }
     
     bool operator==(const SectionItemT &other) const
     {
@@ -120,7 +126,10 @@ public:
 };
 
 template<class TInt, class TCoordinate>
-using StickyItemT = std::pair<SectionItemT<TInt>, StickyItemStateT<TCoordinate>>;
+using HeaderSectionItemT = SectionItemT<TInt, (char)(nsflex::FlexItemT<TInt, TCoordinate>::ITEM_TYPE_HEADER)>;
+
+template<class TInt, class TCoordinate>
+using StickyItemT = std::pair<HeaderSectionItemT<TInt, TCoordinate>, StickyItemStateT<TCoordinate>>;
 
 template<class TInt, class TCoordinate>
 inline bool operator<(const StickyItemT<TInt, TCoordinate> &lhs, const StickyItemT<TInt, TCoordinate> &rhs)
@@ -131,12 +140,12 @@ inline bool operator<(const StickyItemT<TInt, TCoordinate> &lhs, const StickyIte
 template<class TInt, class TCoordinate>
 struct StickyItemAndSectionItemCompareT
 {
-    inline bool operator() (const StickyItemT<TInt, TCoordinate> &lhs, const SectionItemT<TInt> &rhs) const
+    inline bool operator() (const StickyItemT<TInt, TCoordinate> &lhs, const HeaderSectionItemT<TInt, TCoordinate> &rhs) const
     {
         return lhs.first < rhs;
         
     }
-    inline bool operator() (const SectionItemT<TInt> &lhs, const StickyItemT<TInt, TCoordinate> &rhs) const
+    inline bool operator() (const HeaderSectionItemT<TInt, TCoordinate> &lhs, const StickyItemT<TInt, TCoordinate> &rhs) const
     {
         return lhs < rhs.first;
     }
@@ -147,8 +156,10 @@ class LayoutItemT : public nsflex::FlexItemT<TInt, TCoordinate>
 {
 public:
     using FlexItem = nsflex::FlexItemT<TInt, TCoordinate>;
+    using HeaderSectionItem = HeaderSectionItemT<TInt, TCoordinate>;
     using Rect = nsflex::RectT<TCoordinate>;
     using FlexItem::getItem;
+    using FlexItem::getType;
     
 protected:
     TInt m_section;
@@ -191,6 +202,28 @@ public:
         return (m_section < other.getSection()) || ((m_section == other.getSection()) && (FlexItem::getItem() < other.FlexItem::getItem()));
     }
     
+    bool operator<(const HeaderSectionItem &other) const
+    {
+        // !!! Here MUST use FlexItem::getItem() to compare
+        return (m_section < other.getSection()) ||
+                (m_section == other.getSection() && getType() < other.getType()) ||
+                (m_section == other.getSection() && getType() == other.getType() && FlexItem::getItem() < other.getItem());
+    }
+    
+    
+    bool equalsHeaderSectionItem(const HeaderSectionItem &other) const
+    {
+        // !!! Here MUST use FlexItem::getItem() to compare
+        return (m_section == other.getSection()) &&
+                (getType() == other.getType()) &&
+                (FlexItem::getItem() == other.getItem());
+    }
+    
+    bool equalsHeaderSectionItem(const HeaderSectionItem *other) const
+    {
+        return equalsHeaderSectionItem(*other);
+    }
+    
     TInt getSection() const
     {
         return m_section;
@@ -227,15 +260,17 @@ struct LayoutStickyItemCompareT
 {
     bool operator() ( const LayoutItemT<TInt, TCoordinate> &lhs, const StickyItemT<TInt, TCoordinate> &rhs) const
     {
-        return (lhs.getSection() < rhs.first.getSection()) || ((lhs.getSection() == rhs.first.getSection()) && (lhs.getType() < lhs.getType())) || ((lhs.getSection() == rhs.first.getSection()) && (lhs.getType() == rhs.first.getType()) && (lhs.getItem() < rhs.first.getItem()));
+        return lhs < rhs.first;
     }
 };
 
-template<class TLayoutCallbackAdapter, class TInt, class TCoordinate, bool VERTICAL>
-class FlexLayoutT : public nsflex::ContainerBaseT<TCoordinate, VERTICAL>
+template<class TLayoutCallbackAdapter, class TSectionBase, bool VERTICAL>
+class FlexLayoutT : public nsflex::ContainerBaseT<typename TSectionBase::CoordinateType, VERTICAL>
 {
 public:
-    using TBase = nsflex::ContainerBaseT<TCoordinate, VERTICAL>;
+    using TInt = typename TSectionBase::IntType;
+    using TCoordinate = typename TSectionBase::CoordinateType;
+    using TBase = nsflex::ContainerBaseT<typename TSectionBase::CoordinateType, VERTICAL>;
     
     using StickyItem = StickyItemT<TInt, TCoordinate>;
     using LayoutItem = LayoutItemT<TInt, TCoordinate>;
@@ -248,7 +283,7 @@ public:
     using Insets = nsflex::InsetsT<TCoordinate>;
     
     using FlexItem = nsflex::FlexItemT<TInt, TCoordinate>;
-    using Section = nsflex::FlexSectionT<TLayoutCallbackAdapter, TInt, TCoordinate, VERTICAL>;
+    using Section = TSectionBase;
     using FlowSection = typename nsflex::FlexFlowSectionT<Section, VERTICAL>;
     using WaterfallSection = typename nsflex::FlexWaterfallSectionT<Section, VERTICAL>;
     using SectionCompare = nsflex::FlexCompareT<Section, VERTICAL>;
@@ -320,7 +355,7 @@ public:
             top(frame, bottom((*it)->getFrame()));
         }
         
-        Section *section = (mode == UICollectionViewFlexLayoutModeFlow) ? ((Section *)(new FlowSection(sectionIndex, frame))) : ((Section *)(new WaterfallSection(sectionIndex, frame)));
+        Section *section = (mode == FlexLayoutModeFlow) ? ((Section *)(new FlowSection(sectionIndex, frame))) : ((Section *)(new WaterfallSection(sectionIndex, frame)));
         
         m_sections.insert(m_sections.begin() + sectionIndex, section);
     }
@@ -370,8 +405,70 @@ public:
         (*it)->reloadSection();
     }
 
-    void prepareLayout(const TLayoutCallbackAdapter& layoutCallbackAdapter, const Size &boundSize, const Insets &padding);
-    void prepareLayoutIncrementally(const TLayoutCallbackAdapter& layoutCallbackAdapter, const Size &boundSize, const Insets &padding, TInt minInvalidatedSection);
+    void prepareLayout(const TLayoutCallbackAdapter& layoutCallbackAdapter, const Size &boundSize, const Insets &padding)
+    {
+        // Clear all sections, maybe optimize later
+        clearSections();
+        
+        TInt sectionCount = layoutCallbackAdapter.getNumberOfSections();
+        if (sectionCount <= 0)
+        {
+            // Set contentSize to bound size
+            m_contentSize = boundSize;;
+            return;
+        }
+        
+        // Initialize width and set height to 0, layout will calculate new height
+        Rect rectOfSection = makeRect(0, 0, width(boundSize), 0);
+        for (TInt sectionIndex = 0; sectionIndex < sectionCount; sectionIndex++)
+        {
+            int layoutMode = layoutCallbackAdapter.getLayoutModeForSection(sectionIndex);
+            Section *section = layoutMode == FlexLayoutModeWaterfall ?
+            static_cast<Section *>(new WaterfallSection(sectionIndex, rectOfSection)) :
+            static_cast<Section *>(new FlowSection(sectionIndex, rectOfSection));
+
+            section->prepareLayout(&layoutCallbackAdapter, boundSize);
+            
+            m_sections.push_back(section);
+
+            offsetY(rectOfSection, height(section->getFrame()));
+        }
+        
+        m_contentSize = makeSize(width(boundSize), bottom(rectOfSection));
+    }
+    
+    void prepareLayoutIncrementally(const TLayoutCallbackAdapter& layoutCallbackAdapter, const Size &boundSize, const Insets &padding, TInt minInvalidatedSection)
+    {
+        TInt sectionCount = layoutCallbackAdapter.getNumberOfSections();
+        if (sectionCount <= 0)
+        {
+            // Set contentSize to bound size
+            m_contentSize = boundSize;;
+            return;
+        }
+        
+        if (minInvalidatedSection >= sectionCount)
+        {
+            return;
+        }
+        
+        // Initialize width and set height to 0, layout will calculate new height
+        
+        typename std::vector<Section *>::iterator it = m_sections.begin() + minInvalidatedSection;
+        Rect rectOfSection = (*it)->getFrame();
+        height(rectOfSection, 0);
+        TInt sectionIndex = minInvalidatedSection;
+        for (; it != m_sections.end(); ++it, ++sectionIndex)
+        {
+            top((*it)->getFrame(), bottom(rectOfSection));
+            (*it)->setSection(sectionIndex);
+            (*it)->prepareLayout(&layoutCallbackAdapter, boundSize);
+            offsetY(rectOfSection, height((*it)->getFrame()));
+        }
+        
+        m_contentSize = makeSize(width(boundSize), bottom(rectOfSection));
+    }
+
     
     inline Size getContentSize() const
     {
@@ -383,7 +480,125 @@ public:
     }
 
     // LayoutItem::data == 1, indicates that the item is sticky
-    void getItemsInRect(std::vector<LayoutItem> &items, StickyItemList &changingStickyItems, StickyItemList &stickyItems, bool stackedStickyItems, const Rect &rect, const Size &size,  const Size &contentSize, const Insets &padding, const Point &contentOffset) const;
+    void getItemsInRect(std::vector<LayoutItem> &items, StickyItemList &changingStickyItems, StickyItemList &stickyItems, bool stackedStickyItems, const Rect &rect, const Size &size,  const Size &contentSize, const Insets &padding, const Point &contentOffset) const
+    {
+        SectionConstIteratorPair range = std::equal_range(m_sections.begin(), m_sections.end(), std::pair<TCoordinate, TCoordinate>(top(rect), bottom(rect)), SectionCompare());
+        
+        if (range.first == range.second)
+        {
+            // No Sections
+            // If there is no matched section in rect, there must not be sticky items
+            return;
+        }
+        
+        std::vector<const FlexItem *> flexItems;
+        for (SectionConstIterator it = range.first; it != range.second; ++it)
+        {
+            (*it)->filterInRect(flexItems, rect);
+            if (flexItems.empty())
+            {
+                continue;
+            }
+            
+            for (ItemConstIterator itItem = flexItems.begin(); itItem != flexItems.end(); ++itItem)
+            {
+                LayoutItem item((*it)->getSection(), *(*itItem));
+                item.getFrame() = (*it)->getItemFrameInView(*itItem);
+                
+                items.push_back(item);
+            }
+            
+            flexItems.clear();
+        }
+
+        if (!stickyItems.empty())
+        {
+            TInt maxSection = range.second - 1 - m_sections.begin();
+            TInt minSection = range.first - m_sections.begin();
+            
+            TCoordinate totalStickyItemSize = 0; // When m_stackedStickyItems == YES
+            
+            LayoutStickyItemCompare comp;
+            Rect rect;
+            Point origin;
+            
+            for (typename StickyItemList::iterator it = stickyItems.begin(); it != stickyItems.end(); ++it)
+            {
+                if (it->first.getSection() > maxSection || (!stackedStickyItems && (it->first.getSection() < minSection)))
+                {
+                    if (it->second.isInSticky())
+                    {
+                        it->second.setInSticky(false);
+                        // Pass the change info to caller
+                        changingStickyItems.push_back(std::make_pair(it->first, it->second));
+                        // notifyItemLeavingStickyMode((*it)->section, (*it)->item, (*it)->position);
+                    }
+                    continue;
+                }
+                
+                Section *section = m_sections[it->first.getSection()];
+                rect = section->getHeaderFrameInView();
+                if (rect.size.empty())
+                {
+                    continue;
+                }
+                origin = rect.origin;
+                
+                TCoordinate stickyItemSize = height(rect);
+                
+                if (stackedStickyItems)
+                {
+                    top(rect, round(std::max(y(contentOffset) + totalStickyItemSize - top(padding), y(origin))));
+                }
+                else
+                {
+                    Rect frameItems = m_sections[it->first.getSection()]->getItemsFrameInView();
+                    top(rect, std::min(std::max(top(padding) + y(contentOffset), (top(frameItems) - stickyItemSize)),
+                                       (bottom(frameItems) - stickyItemSize)));
+                }
+                
+                
+                // If original mode is sticky, we check contentOffset and if contentOffset.y is less than origin.y, it is exiting sticky mode
+                // Otherwise, we check the top of sticky header
+                bool stickyMode = top(rect) >= y(origin);
+                bool originChanged = top(rect) > y(origin);
+                // bool stickyMode = (rect.origin.y >= origin.y);
+                if (stickyMode != it->second.isInSticky())
+                {
+                    // Pass the change info to caller
+                    it->second.setInSticky(stickyMode);
+                    changingStickyItems.push_back(std::make_pair(it->first, it->second));
+                }
+                
+                if (stickyMode)
+                {
+                    typename std::vector<LayoutItem>::iterator itVisibleItem = std::lower_bound(items.begin(), items.end(), *it, comp);
+                    if (itVisibleItem != items.end() && itVisibleItem->equalsHeaderSectionItem(it->first))
+                    {
+                        // Update in place
+                        if (originChanged)
+                        {
+                            itVisibleItem->getFrame() = rect;
+                        }
+                        itVisibleItem->setInSticky(true);
+                        itVisibleItem->setOriginChanged(originChanged);
+                    }
+                    else
+                    {
+                        // Create new LayoutItem and put it into visibleItems
+                        LayoutItem layoutItem(it->first.getSection(), it->first.getItem(), rect);
+                        layoutItem.setHeader(true);
+                        layoutItem.setInSticky(true);
+                        layoutItem.setOriginChanged(originChanged);
+                        items.insert(itVisibleItem, layoutItem);
+                    }
+                    
+                    totalStickyItemSize += stickyItemSize;
+                }
+            }
+        }
+        
+    }
     
     bool getItemFrame(TInt sectionIndex, TInt itemIndex, Rect &frame) const
     {
@@ -474,190 +689,6 @@ protected:
 
 };
 
-template<class TLayoutCallbackAdapter, class TInt, class TCoordinate, bool VERTICAL>
-void FlexLayoutT<TLayoutCallbackAdapter, TInt, TCoordinate, VERTICAL>::prepareLayout(const TLayoutCallbackAdapter& layoutCallbackAdapter, const Size &boundSize, const Insets &padding)
-{
-    // Clear all sections, maybe optimize later
-    clearSections();
-    
-    TInt sectionCount = layoutCallbackAdapter.getNumberOfSections();
-    if (sectionCount <= 0)
-    {
-        // Set contentSize to bound size
-        m_contentSize = boundSize;;
-        return;
-    }
-    
-    // Initialize width and set height to 0, layout will calculate new height
-    Rect rectOfSection = makeRect(0, 0, width(boundSize), 0);
-    for (TInt sectionIndex = 0; sectionIndex < sectionCount; sectionIndex++)
-    {
-        int layoutMode = layoutCallbackAdapter.getLayoutModeForSection(sectionIndex);
-        Section *section = layoutMode == 1 ?
-        static_cast<Section *>(new WaterfallSection(sectionIndex, rectOfSection)) :
-        static_cast<Section *>(new FlowSection(sectionIndex, rectOfSection));
-
-        section->prepareLayout(&layoutCallbackAdapter, boundSize);
-        
-        m_sections.push_back(section);
-
-        offsetY(rectOfSection, height(section->getFrame()));
-    }
-    
-    m_contentSize = makeSize(width(boundSize), bottom(rectOfSection));
-}
-
-template<class TLayoutCallbackAdapter, class TInt, class TCoordinate, bool VERTICAL>
-void FlexLayoutT<TLayoutCallbackAdapter, TInt, TCoordinate, VERTICAL>::prepareLayoutIncrementally(const TLayoutCallbackAdapter& layoutCallbackAdapter, const Size &boundSize, const Insets &padding, TInt minInvalidatedSection)
-{
-    TInt sectionCount = layoutCallbackAdapter.getNumberOfSections();
-    if (sectionCount <= 0)
-    {
-        // Set contentSize to bound size
-        m_contentSize = boundSize;;
-        return;
-    }
-    
-    if (minInvalidatedSection >= sectionCount)
-    {
-        return;
-    }
-    
-    // Initialize width and set height to 0, layout will calculate new height
-    
-    typename std::vector<Section *>::iterator it = m_sections.begin() + minInvalidatedSection;
-    Rect rectOfSection = (*it)->getFrame();
-    height(rectOfSection, 0);
-    TInt sectionIndex = minInvalidatedSection;
-    for (; it != m_sections.end(); ++it, ++sectionIndex)
-    {
-        top((*it)->getFrame(), bottom(rectOfSection));
-        (*it)->setSection(sectionIndex);
-        (*it)->prepareLayout(&layoutCallbackAdapter, boundSize);
-        offsetY(rectOfSection, height((*it)->getFrame()));
-    }
-    
-    m_contentSize = makeSize(width(boundSize), bottom(rectOfSection));
-}
-
-// LayoutItem::data == 1, indicates that the item is sticky
-template<class TLayoutCallbackAdapter, class TInt, class TCoordinate, bool VERTICAL>
-void FlexLayoutT<TLayoutCallbackAdapter, TInt, TCoordinate, VERTICAL>::getItemsInRect(std::vector<LayoutItem> &items, StickyItemList &changingStickyItems, StickyItemList &stickyItems, bool stackedStickyItems, const Rect &rect, const Size &size,  const Size &contentSize, const Insets &padding, const Point &contentOffset) const
-{
-    SectionConstIteratorPair range = std::equal_range(m_sections.begin(), m_sections.end(), std::pair<TCoordinate, TCoordinate>(top(rect), bottom(rect)), SectionCompare());
-    
-    if (range.first == range.second)
-    {
-        // No Sections
-        // If there is no matched section in rect, there must not be sticky items
-        return;
-    }
-    
-    std::vector<const FlexItem *> flexItems;
-    for (SectionConstIterator it = range.first; it != range.second; ++it)
-    {
-        (*it)->filterInRect(flexItems, rect);
-        if (flexItems.empty())
-        {
-            continue;
-        }
-        
-        for (ItemConstIterator itItem = flexItems.begin(); itItem != flexItems.end(); ++itItem)
-        {
-            LayoutItem item((*it)->getSection(), *(*itItem));
-            item.getFrame() = (*it)->getItemFrameInView(*itItem);
-            
-            items.push_back(item);
-        }
-        
-        flexItems.clear();
-    }
-
-    if (!stickyItems.empty())
-    {
-        TInt maxSection = range.second - 1 - m_sections.begin();
-        TInt minSection = range.first - m_sections.begin();
-        
-        TCoordinate totalStickyItemSize = 0; // When m_stackedStickyItems == YES
-        
-        LayoutStickyItemCompare comp;
-        Rect rect;
-        Point origin;
-        
-        for (typename StickyItemList::iterator it = stickyItems.begin(); it != stickyItems.end(); ++it)
-        {
-            if (it->first.getSection() > maxSection || (!stackedStickyItems && (it->first.getSection() < minSection)))
-            {
-                if (it->second.isInSticky())
-                {
-                    it->second.setInSticky(false);
-                    // Pass the change info to caller
-                    changingStickyItems.push_back(std::make_pair(it->first, it->second));
-                    // notifyItemLeavingStickyMode((*it)->section, (*it)->item, (*it)->position);
-                }
-                continue;
-            }
-            
-            Section *section = m_sections[it->first.getSection()];
-            rect = section->getHeaderFrameInView();
-            if (rect.size.empty())
-            {
-                continue;
-            }
-            origin = rect.origin;
-            
-            TCoordinate stickyItemSize = height(rect);
-            
-            if (stackedStickyItems)
-            {
-                top(rect, round(std::max(y(contentOffset) + totalStickyItemSize - top(padding), y(origin))));
-            }
-            else
-            {
-                Rect frameItems = m_sections[it->first.getSection()]->getItemsFrameInView();
-                top(rect, std::min(std::max(top(padding) + y(contentOffset), (top(frameItems) - stickyItemSize)),
-                                   (bottom(frameItems) - stickyItemSize)));
-            }
-            
-            
-            // If original mode is sticky, we check contentOffset and if contentOffset.y is less than origin.y, it is exiting sticky mode
-            // Otherwise, we check the top of sticky header
-            bool stickyMode = top(rect) >= y(origin);
-            bool originChanged = top(rect) > y(origin);
-            // bool stickyMode = (rect.origin.y >= origin.y);
-            if (stickyMode != it->second.isInSticky())
-            {
-                // Pass the change info to caller
-                it->second.setInSticky(stickyMode);
-                changingStickyItems.push_back(std::make_pair(it->first, it->second));
-            }
-            
-            if (stickyMode)
-            {
-                typename std::vector<LayoutItem>::iterator itVisibleItem = std::lower_bound(items.begin(), items.end(), *it, comp);
-                if (itVisibleItem == items.end() || (itVisibleItem->getSection() != it->first.getSection() || itVisibleItem->getItem() != it->first.getItem()))
-                {
-                    // Create new LayoutItem and put it into visibleItems
-                    LayoutItem layoutItem(it->first.getSection(), it->first.getItem(), rect);
-                    layoutItem.setHeader(true);
-                    layoutItem.setInSticky(true);
-                    layoutItem.setOriginChanged(originChanged);
-                    items.insert(itVisibleItem, layoutItem);
-                }
-                else
-                {
-                    // Update in place
-                    itVisibleItem->getFrame() = rect;
-                    itVisibleItem->setInSticky(true);
-                    itVisibleItem->setOriginChanged(originChanged);
-                }
-                
-                totalStickyItemSize += stickyItemSize;
-            }
-        }
-    }
-    
-}
 
 
 #endif //FLEXLAYOUTMANAGER_FLEXLAYOUT_H

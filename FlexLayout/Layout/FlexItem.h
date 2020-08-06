@@ -15,10 +15,6 @@
 
 namespace nsflex
 {
-    static const unsigned char ITEM_TYPE_DECORATION = ~0;
-    static const unsigned char ITEM_TYPE_HEADER = (unsigned char)-1;
-    static const unsigned char ITEM_TYPE_ITEM = 0;
-    static const unsigned char ITEM_TYPE_FOOTER = 1;
     
     template <typename TInt, typename TCoordinate>
     class FlexItemT
@@ -27,6 +23,11 @@ namespace nsflex
         using IntType = TInt;
         using CoordinateType = TCoordinate;
         using Rect = RectT<TCoordinate>;
+        
+        static const unsigned char ITEM_TYPE_DECORATION = ~0;
+        static const unsigned char ITEM_TYPE_HEADER = (unsigned char)-1;
+        static const unsigned char ITEM_TYPE_ITEM = 0;
+        static const unsigned char ITEM_TYPE_FOOTER = 1;
 
     private:
         TInt m_item;

@@ -28,15 +28,15 @@ const NSInteger SECTION_INDEX_ITEM_PAGING2 =     1;
 const NSInteger NUM_OF_ITEMS_IN_CATEGORY_BAR =   8;
 
 static const NSInteger NUM_OF_ITEMS_IN_SECTION_ENTRY =   1;
-static const NSInteger NUM_OF_ITEMS_IN_SECTION_TEST1 =   1;
+static const NSInteger NUM_OF_ITEMS_IN_SECTION_TEST1 =   8;
 static const NSInteger NUM_OF_ITEMS_IN_SECTION_TEST2 =   1;
 static const NSInteger NUM_OF_ITEMS_IN_SECTION_ITEM1 =   2000;
 static const NSInteger NUM_OF_ITEMS_IN_SECTION_ITEM2 =   2;
 
 #define ITEM_HEIGHT_NAVBAR              100
 #define ITEM_HEIGHT_ENTRY               120
-#define ITEM_HEIGHT_TEST1               100
-#define ITEM_HEIGHT_TEST2               100
+#define ITEM_HEIGHT_TEST1               110
+#define ITEM_HEIGHT_TEST2               90
 #define ITEM_HEIGHT_INFO                80
 #define ITEM_HEIGHT_LOADMORE            110
 #define ITEM_HEIGHT_CATBAR              40
@@ -497,10 +497,22 @@ const NSInteger CONTENT_INSET =          0;
         SectionData *sectionData = [[SectionData alloc] init];
         sectionData.sectionId = [[sections objectAtIndex:idx] integerValue];
         sectionData.columns = (sectionData.sectionId == SECTION_INDEX_ITEM1) ? 2 : 1;
-        [sectionData initializeDataSource:idx withBounds:bounds contentInsets:contentInsets];
+        [sectionData initializeDataSource:sectionData.sectionId withBounds:bounds contentInsets:contentInsets];
         
         [m_sections addObject:sectionData];
     }
+}
+
+- (NSInteger)addSection:(NSInteger)sectionId frame:(CGRect)frame insets:(UIEdgeInsets)insets;
+{
+    SectionData *sectionData = [[SectionData alloc] init];
+    sectionData.sectionId = sectionId;
+    sectionData.columns = (sectionData.sectionId == SECTION_INDEX_ITEM1) ? 2 : 1;
+    [sectionData initializeDataSource:sectionId withBounds:frame contentInsets:insets];
+    
+    [m_sections addObject:sectionData];
+    
+    return m_sections.count - 1;
 }
 
 - (NSInteger)removeSection:(NSInteger)sectionId
@@ -723,6 +735,17 @@ const NSInteger CONTENT_INSET =          0;
     
     PageData *pageData = [m_pages objectAtIndex:page];
     return [pageData removeSection:sectionId];
+}
+
+- (NSInteger)addSection:(NSInteger)sectionId frame:(CGRect)frame insets:(UIEdgeInsets)insets onPage:(NSInteger)page
+{
+    if (page >= m_pages.count)
+    {
+        return NSNotFound;
+    }
+    
+    PageData *pageData = [m_pages objectAtIndex:page];
+    return [pageData addSection:sectionId frame:frame insets:insets];
 }
 
 - (NSInteger)deleteItems:(NSInteger)sectionId itemStart:(NSInteger)itemStart itemCount:(NSInteger)itemCount forPage:(NSInteger)page

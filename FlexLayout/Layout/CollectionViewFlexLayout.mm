@@ -32,13 +32,15 @@ namespace nsflex
     using Insets = InsetsT<CGFloat>;
 }
 
-using SectionItem = SectionItemT<NSInteger>;
+using HeaderSectionItem = HeaderSectionItemT<NSInteger, CGFloat>;
 using StickyItemState = StickyItemStateT<CGFloat>;
 using StickyItem = StickyItemT<NSInteger, CGFloat>;
 using LayoutItem = LayoutItemT<NSInteger, CGFloat>;
 using StickyItemList = std::vector<StickyItem>;
 template <bool VERTICAL>
-using FlexLayout = FlexLayoutT<CollectionViewFlexLayoutAdapter, NSInteger, CGFloat, VERTICAL>;
+using Section = nsflex::FlexSectionT<CollectionViewFlexLayoutAdapter, NSInteger, CGFloat, VERTICAL>;
+template <bool VERTICAL>
+using FlexLayout = FlexLayoutT<CollectionViewFlexLayoutAdapter, Section<VERTICAL>, VERTICAL>;
 using StickyItemAndSectionItemCompare = StickyItemAndSectionItemCompareT<NSInteger, CGFloat>;
 
 inline nsflex::Point FlexPointFromCGPoint(const CGPoint& point)
@@ -98,7 +100,7 @@ inline nsflex::Insets FlexInsetsFromUIEdgeInsets(const UIEdgeInsets& insets)
     NSInteger m_layoutInvalidated;
 #if defined(USING_INTERNAL_UPDATE_ITEMS_FOR_BATCH_UPDATES)
     NSArray<UICollectionViewUpdateItem *> *m_updateItems;
-#else
+#elif defined(USING_MANUAL_UPDATE_ITEMS_FOR_BATCH_UPDATES)
     NSArray<UIFlexUpdateItem *> *m_updateItems;
 #endif
 
@@ -148,8 +150,9 @@ inline nsflex::Insets FlexInsetsFromUIEdgeInsets(const UIEdgeInsets& insets)
         m_headerLayoutAttributes = [NSMutableDictionary dictionaryWithCapacity:4];
         m_footerLayoutAttributes = [NSMutableDictionary dictionaryWithCapacity:2];
         
+#if defined(USING_INTERNAL_UPDATE_ITEMS_FOR_BATCH_UPDATES) || defined(USING_MANUAL_UPDATE_ITEMS_FOR_BATCH_UPDATES)
         m_updateItems = nil;
-        
+#endif
         [self initializeLayout:m_scrollDirection];
     }
     return self;
@@ -167,7 +170,7 @@ inline nsflex::Insets FlexInsetsFromUIEdgeInsets(const UIEdgeInsets& insets)
                 NSDictionary<NSNumber *, NSNumber *> *stickyHeaders = (NSDictionary<NSNumber *, NSNumber *> *)obj;
                 for (NSNumber *section in stickyHeaders)
                 {
-                    m_stickyHeaders.push_back(std::make_pair(SectionItem([section integerValue], 0), StickyItemState([[stickyHeaders objectForKey:section] boolValue] ? true : false)));
+                    m_stickyHeaders.push_back(std::make_pair(HeaderSectionItem([section integerValue], 0), StickyItemState([[stickyHeaders objectForKey:section] boolValue] ? true : false)));
                 }
                 std::sort(m_stickyHeaders.begin(), m_stickyHeaders.end());
             }
@@ -188,7 +191,9 @@ inline nsflex::Insets FlexInsetsFromUIEdgeInsets(const UIEdgeInsets& insets)
         m_horizontalLayout = NULL;
 
         m_layoutInvalidated = UICollectionViewFlexInvalidationFlagNone;
+#if defined(USING_INTERNAL_UPDATE_ITEMS_FOR_BATCH_UPDATES) || defined(USING_MANUAL_UPDATE_ITEMS_FOR_BATCH_UPDATES)
         m_updateItems = nil;
+#endif
         
         m_itemLayoutAttributes = [NSMutableDictionary dictionaryWithCapacity:8];
         m_headerLayoutAttributes = [NSMutableDictionary dictionaryWithCapacity:4];
@@ -325,7 +330,7 @@ inline nsflex::Insets FlexInsetsFromUIEdgeInsets(const UIEdgeInsets& insets)
 
 - (void)addStickyHeader:(NSInteger)section
 {
-    SectionItem sectionItem(section, 0);
+    HeaderSectionItem sectionItem(section, 0);
     StickyItemList::iterator it = std::lower_bound(m_stickyHeaders.begin(), m_stickyHeaders.end(), sectionItem, StickyItemAndSectionItemCompare());
     if (it == m_stickyHeaders.end() || it->first != sectionItem)
     {
@@ -355,10 +360,12 @@ inline nsflex::Insets FlexInsetsFromUIEdgeInsets(const UIEdgeInsets& insets)
     [self invalidateOffset];
 }
 
+#if defined(USING_MANUAL_UPDATE_ITEMS_FOR_BATCH_UPDATES)
 - (void)commitBatchUpdates:(NSArray<UIFlexUpdateItem *> *)updateItems
 {
     m_updateItems = updateItems;
 }
+#endif
 
 #pragma mark - Layout Functions
 
@@ -433,9 +440,10 @@ inline nsflex::Insets FlexInsetsFromUIEdgeInsets(const UIEdgeInsets& insets)
         NSIndexPath *indexPath = nil;
 #if defined(USING_INTERNAL_UPDATE_ITEMS_FOR_BATCH_UPDATES)
         for (UICollectionViewUpdateItem *updateItem in m_updateItems)
-#else
+#elif defined(USING_MANUAL_UPDATE_ITEMS_FOR_BATCH_UPDATES)
         for (UIFlexUpdateItem *updateItem in m_updateItems)
 #endif
+#if defined(USING_INTERNAL_UPDATE_ITEMS_FOR_BATCH_UPDATES) || defined(USING_MANUAL_UPDATE_ITEMS_FOR_BATCH_UPDATES)
         {
             UICollectionUpdateAction updateAction = updateItem.updateAction;
             switch(updateAction)
@@ -506,13 +514,18 @@ inline nsflex::Insets FlexInsetsFromUIEdgeInsets(const UIEdgeInsets& insets)
         {
             vertical ? m_verticalLayout->prepareLayoutIncrementally(layoutAdapter, boundSize, padding, minInvalidSection) : m_horizontalLayout->prepareLayoutIncrementally(layoutAdapter, boundSize, padding, minInvalidSection);
         }
+#else
+        vertical ? m_verticalLayout->prepareLayout(layoutAdapter, boundSize, padding) : m_horizontalLayout->prepareLayout(layoutAdapter, boundSize, padding);
+#endif
     }
     
     [m_itemLayoutAttributes removeAllObjects];
     [m_headerLayoutAttributes removeAllObjects];
     [m_footerLayoutAttributes removeAllObjects];
     
+#if defined(USING_INTERNAL_UPDATE_ITEMS_FOR_BATCH_UPDATES) || defined(USING_MANUAL_UPDATE_ITEMS_FOR_BATCH_UPDATES)
     m_updateItems = nil;
+#endif
     m_layoutInvalidated = UICollectionViewFlexInvalidationFlagNone;
     
 #ifdef PERF_DEBUG
@@ -565,7 +578,7 @@ inline nsflex::Insets FlexInsetsFromUIEdgeInsets(const UIEdgeInsets& insets)
 #if defined(USING_MANUAL_UPDATE_ITEMS_FOR_BATCH_UPDATES)
             m_layoutInvalidated |= UICollectionViewFlexInvalidationFlagDataSourceChanged;
 #elif defined(USING_INTERNAL_UPDATE_ITEMS_FOR_BATCH_UPDATES)
-            m_updateItems = [invalidationContext objectForKey:@"_updateItems"];
+            m_updateItems = [invalidationContext valueForKey:@"_updateItems"];
             m_layoutInvalidated |= UICollectionViewFlexInvalidationFlagDataSourceChanged;
 #else
             m_layoutInvalidated |= UICollectionViewFlexInvalidationFlagEverything;
@@ -603,7 +616,8 @@ inline nsflex::Insets FlexInsetsFromUIEdgeInsets(const UIEdgeInsets& insets)
     nsflex::Size contentSize = FlexSizeFromCGSize(self.collectionView.contentSize);
     nsflex::Point contentOffset = FlexPointFromCGPoint(cv.contentOffset);
     nsflex::Size boundsSize = FlexSizeFromCGSize(cv.bounds.size);
-    nsflex::Rect visibleRect = FlexRectFromCGRect(rect);
+    // nsflex::Rect visibleRect = FlexRectFromCGRect(rect);
+    nsflex::Rect visibleRect(contentOffset.x, contentOffset.y, boundsSize.width, boundsSize.height);
     
     /*
     if (layoutContentSize != contentSize)
@@ -662,11 +676,11 @@ inline nsflex::Insets FlexInsetsFromUIEdgeInsets(const UIEdgeInsets& insets)
         
         if (nil == la)
         {
-            
             NSLog(@"nil la: %ld, %ld", (long)(it->getSection()), it->getItem());
         }
         
         // Reset all attributes
+        la.zIndex = it - layoutItems.begin() + 1;
         la.zIndex = 0;
         la.frame = CGRectFromFlexRect(it->getFrame());
         if (it->isInSticky())
@@ -674,7 +688,8 @@ inline nsflex::Insets FlexInsetsFromUIEdgeInsets(const UIEdgeInsets& insets)
             // If the sticky header's origin is changed, we have to put it higher in z-coodinate
             if (it->isOriginChanged())
             {
-                la.zIndex = layoutItems.size() + 1024 + it->getSection();
+                la.zIndex = /*layoutItems.size() +*/ 1024 + it->getSection();
+                NSLog(@"PERF: Update zIndex=%ld, section=%ld, rect=%@, contentOffset=%f", la.zIndex, la.indexPath.section, NSStringFromCGRect(la.frame), contentOffset.y);
             }
         }
         
@@ -697,14 +712,14 @@ inline nsflex::Insets FlexInsetsFromUIEdgeInsets(const UIEdgeInsets& insets)
     time = [[NSDate date] timeIntervalSince1970] * 1000;
     NSLog(@"PERF ElementsInRect takes %0.2f ms rect=%@", time - prevTime, NSStringFromCGRect(rect));
     
-    /*
+
     static int inrect = 0;
     inrect ++;
     for (UICollectionViewLayoutAttributes *la in layoutAttributesArray)
     {
-        NSLog(@"InRect-%d LA=[%ld-%ld], frame=[%d-%f]-[%d-%f] zIndex=%ld", inrect, la.indexPath.section, la.indexPath.item, (int)CGRectGetMinX(la.frame), CGRectGetMinY(la.frame), (int)CGRectGetWidth(la.frame), CGRectGetHeight(la.frame), la.zIndex);
+        NSLog(@"InRect-%d LA=[%ld-%ld], frame=[%d-%f]-[%d-%f] zIndex=%ld, %@", inrect, la.indexPath.section, la.indexPath.item, (int)CGRectGetMinX(la.frame), CGRectGetMinY(la.frame), (int)CGRectGetWidth(la.frame), CGRectGetHeight(la.frame), la.zIndex, la.representedElementKind);
     }
-     */
+    
 #endif
     
     return layoutAttributesArray;
@@ -715,39 +730,40 @@ inline nsflex::Insets FlexInsetsFromUIEdgeInsets(const UIEdgeInsets& insets)
     UICollectionViewLayoutAttributes *layoutAttributes = [m_itemLayoutAttributes objectForKey:indexPath];
     if (nil == layoutAttributes)
     {
-        layoutAttributes = [[UICollectionViewFlexLayout layoutAttributesClass] layoutAttributesForCellWithIndexPath:indexPath];
-        [m_itemLayoutAttributes setObject:layoutAttributes forKey:indexPath];
+        nsflex::Rect frame;
+        bool existed = (UICollectionViewScrollDirectionVertical == m_scrollDirection) ? m_verticalLayout->getItemFrame(indexPath.section, indexPath.item, frame) : m_horizontalLayout->getItemFrame(indexPath.section, indexPath.item, frame);
+        if (existed)
+        {
+            layoutAttributes = [[UICollectionViewFlexLayout layoutAttributesClass] layoutAttributesForCellWithIndexPath:indexPath];
+            [m_itemLayoutAttributes setObject:layoutAttributes forKey:indexPath];
+            
+            layoutAttributes.frame = CGRectFromFlexRect(frame);
+        }
     }
     
-    nsflex::Rect frame;
-    bool existed = (UICollectionViewScrollDirectionVertical == m_scrollDirection) ? m_verticalLayout->getItemFrame(indexPath.section, indexPath.item, frame) : m_horizontalLayout->getItemFrame(indexPath.section, indexPath.item, frame);
-    if (existed)
-    {
-        layoutAttributes.frame = CGRectFromFlexRect(frame);
-        return layoutAttributes;
-    }
-    
-    return nil;
+    return layoutAttributes;
 }
 
 - (UICollectionViewLayoutAttributes *)layoutAttributesForSupplementaryViewOfKind:(NSString *)elementKind atIndexPath:(NSIndexPath *)indexPath
 {
+    // Layout info will be placed in prepareLayout and can be adjusted in layoutAttributesForElementsInRect and other functions/callbacks SHOULD NOT update the layout info.
+    // FlexLayout will cache the LayoutAttributes, if we get the cached LayoutAttributes, we should retrun it directly without any updates.
     UICollectionViewLayoutAttributes *layoutAttributes = nil;
     if ([UICollectionElementKindSectionHeader isEqualToString:elementKind])
     {
         layoutAttributes = [m_headerLayoutAttributes objectForKey:indexPath];
         if (nil == layoutAttributes)
         {
-            layoutAttributes = [[UICollectionViewFlexLayout layoutAttributesClass] layoutAttributesForSupplementaryViewOfKind:elementKind withIndexPath:indexPath];
-            [m_headerLayoutAttributes setObject:layoutAttributes forKey:indexPath];
-        }
-        
-        nsflex::Rect frame;
-        bool existed = (UICollectionViewScrollDirectionVertical == m_scrollDirection) ? m_verticalLayout->getHeaderFrame(indexPath.section, frame) : m_horizontalLayout->getHeaderFrame(indexPath.section, frame);
-        if (existed)
-        {
-            layoutAttributes.frame = CGRectFromFlexRect(frame);
-            return layoutAttributes;
+            nsflex::Rect frame;
+            bool existed = (UICollectionViewScrollDirectionVertical == m_scrollDirection) ? m_verticalLayout->getHeaderFrame(indexPath.section, frame) : m_horizontalLayout->getHeaderFrame(indexPath.section, frame);
+            if (existed)
+            {
+                layoutAttributes = [[UICollectionViewFlexLayout layoutAttributesClass] layoutAttributesForSupplementaryViewOfKind:elementKind withIndexPath:indexPath];
+                [m_headerLayoutAttributes setObject:layoutAttributes forKey:indexPath];
+                
+                layoutAttributes.frame = CGRectFromFlexRect(frame);
+                return layoutAttributes;
+            }
         }
     }
     else if ([UICollectionElementKindSectionFooter isEqualToString:elementKind])
@@ -755,15 +771,16 @@ inline nsflex::Insets FlexInsetsFromUIEdgeInsets(const UIEdgeInsets& insets)
         layoutAttributes = [m_footerLayoutAttributes objectForKey:indexPath];
         if (nil == layoutAttributes)
         {
-            layoutAttributes = [[UICollectionViewFlexLayout layoutAttributesClass] layoutAttributesForSupplementaryViewOfKind:elementKind withIndexPath:indexPath];
-            [m_footerLayoutAttributes setObject:layoutAttributes forKey:indexPath];
-        }
-        nsflex::Rect frame;
-        bool existed = (UICollectionViewScrollDirectionVertical == m_scrollDirection) ? m_verticalLayout->getFooterFrame(indexPath.section, frame) : m_horizontalLayout->getFooterFrame(indexPath.section, frame);
-        if (existed)
-        {
-            layoutAttributes.frame = CGRectFromFlexRect(frame);
-            return layoutAttributes;
+            nsflex::Rect frame;
+            bool existed = (UICollectionViewScrollDirectionVertical == m_scrollDirection) ? m_verticalLayout->getFooterFrame(indexPath.section, frame) : m_horizontalLayout->getFooterFrame(indexPath.section, frame);
+            if (existed)
+            {
+                layoutAttributes = [[UICollectionViewFlexLayout layoutAttributesClass] layoutAttributesForSupplementaryViewOfKind:elementKind withIndexPath:indexPath];
+                [m_footerLayoutAttributes setObject:layoutAttributes forKey:indexPath];
+                
+                layoutAttributes.frame = CGRectFromFlexRect(frame);
+                return layoutAttributes;
+            }
         }
     }
     

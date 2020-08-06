@@ -6,7 +6,8 @@
 //  Copyright © 2020 Matthew Shi. All rights reserved.
 //
 
-#define USING_MANUAL_UPDATE_ITEMS_FOR_BATCH_UPDATES
+// #define USING_MANUAL_UPDATE_ITEMS_FOR_BATCH_UPDATES
+#define USING_INTERNAL_UPDATE_ITEMS_FOR_BATCH_UPDATES
 
 #ifndef CollectionViewFlexLayout_h
 #define CollectionViewFlexLayout_h

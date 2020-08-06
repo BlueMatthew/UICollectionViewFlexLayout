@@ -92,7 +92,7 @@ public:
     
     inline int getLayoutModeForSection(NSInteger section) const
     {
-        return m_layoutDelegateFlags.layoutModeForSection ? [m_delegate collectionView:m_collectionView layout:m_layout layoutModeForSection:section] : UICollectionViewFlexLayoutModeFlow;
+        return m_layoutDelegateFlags.layoutModeForSection ? (int)[m_delegate collectionView:m_collectionView layout:m_layout layoutModeForSection:section] : (int)UICollectionViewFlexLayoutModeFlow;
     }
     
     inline NSInteger getNumberOfSections() const

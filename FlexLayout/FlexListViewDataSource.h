@@ -61,6 +61,7 @@
 @property (nonatomic, strong)  NSMutableArray<SectionData *> *sections;
 
 - (void)initializeSections:(CGRect)bounds contentInsets:(UIEdgeInsets)contentInsets;
+- (NSInteger)addSection:(NSInteger)sectionId frame:(CGRect)frame insets:(UIEdgeInsets)insets;
 - (NSInteger)removeSection:(NSInteger)sectionId;
 
 - (SectionData *)sectionAt:(NSInteger)section;
@@ -92,6 +93,7 @@
 
 - (UIEdgeInsets)insetsAtSection:(NSInteger)section forPage:(NSInteger)page;
 
+- (NSInteger)addSection:(NSInteger)sectionId frame:(CGRect)frame insets:(UIEdgeInsets)insets onPage:(NSInteger)page;
 - (NSInteger)removeSection:(NSInteger)sectionId forPage:(NSInteger)page;
 - (NSInteger)deleteItems:(NSInteger)sectionId itemStart:(NSInteger)itemStart itemCount:(NSInteger)itemCount forPage:(NSInteger)page;
 

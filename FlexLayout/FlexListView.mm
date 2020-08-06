@@ -123,7 +123,9 @@ extern const NSInteger NUM_OF_ITEMS_IN_CATEGORY_BAR;
     }
     
     // [self performSelector:@selector(invalidateLayout) withObject:nil afterDelya:2 inMode:];
-    [self performSelector:@selector(testInvalidateLayout) withObject:nil afterDelay:6 inModes:@[NSRunLoopCommonModes]];
+    
+    [self performSelector:@selector(testContiniousUpdateActions) withObject:nil afterDelay:6 inModes:@[NSRunLoopCommonModes]];
+    // [self performSelector:@selector(testInvalidateLayout) withObject:nil afterDelay:6.016 inModes:@[NSRunLoopCommonModes]];
     
     return self;
 }
@@ -356,6 +358,7 @@ extern const NSInteger NUM_OF_ITEMS_IN_CATEGORY_BAR;
                 ItemData *header = [m_dataSource headerAt:indexPath.section forPage:m_page];
                 
                 [cell updateDataSource:header];
+                cell.tag = 1000;
 
                 return cell;
             }
@@ -463,6 +466,10 @@ extern const NSInteger NUM_OF_ITEMS_IN_CATEGORY_BAR;
                     SUICategoryBarViewCell *cell = (SUICategoryBarViewCell *)view;
                     [cell detachCategoryBar];
                 }
+            }
+            else if (SECTION_INDEX_ENTRY == indexPath.section)
+            {
+                NSLog(@"contentOffset = %@", NSStringFromCGPoint(self.contentOffset));
             }
         }
     }
@@ -607,25 +614,16 @@ extern const NSInteger NUM_OF_ITEMS_IN_CATEGORY_BAR;
         return;
     }
     [UIView performWithoutAnimation:^{
-        NSLog(@"UPD: %@", @"performBatchUpdates call");
         [self performBatchUpdates:^{
-            NSLog(@"UPD: %@", @"performBatchUpdates block");
             // [self deleteSections:[NSIndexSet indexSetWithIndex:section]];
             [self deleteSections:indexSet];
             // [self deleteSections:indexSet];
             
             // [self insertSections:[NSIndexSet indexSetWithIndex:SECTION_INDEX_ITEM1]];
-            NSLog(@"UPD: %@", @"performBatchUpdates block end");
         } completion:^(BOOL finished) {
             //
         }];
     }];
-}
-
-+ (void)setAnimationsEnabled:(BOOL)enabled
-{
-    NSLog(@"PERF: %@, %@", @"setAnimationsEnabled", enabled ? @"YES" : @"NO");
-    [super setAnimationsEnabled:enabled];
 }
 
 - (void)testInvalidateLayout
@@ -652,14 +650,14 @@ extern const NSInteger NUM_OF_ITEMS_IN_CATEGORY_BAR;
     
     [UIView performWithoutAnimation:^{
         [self performBatchUpdates:^{
-            UIFlexBatchUpdateContext *context = [[UIFlexBatchUpdateContext alloc] init];
+            // UIFlexBatchUpdateContext *context = [[UIFlexBatchUpdateContext alloc] init];
             // NSIndexSet *indexSet = [NSIndexSet indexSetWithIndex:SECTION_INDEX_TEST1];
             // [collectionView reloadSections:indexSet];
             // [context reloadSections:indexSet];
             [collectionView deleteItemsAtIndexPaths:indexPaths];
-            [context deleteItemsAtIndexPaths:indexPaths];
+            // [context deleteItemsAtIndexPaths:indexPaths];
             UICollectionViewFlexLayout *layout = (UICollectionViewFlexLayout *)collectionView.collectionViewLayout;
-            [layout commitBatchUpdates:context.updateItems];
+            // [layout commitBatchUpdates:context.updateItems];
             
         } completion:^(BOOL finshed){
             collectionView = nil;
@@ -670,7 +668,80 @@ extern const NSInteger NUM_OF_ITEMS_IN_CATEGORY_BAR;
     // UICollectionViewLayout *layout = self.collectionViewLayout;
     // [layout invalidateLayout];
     
-    [self performSelector:@selector(testInvalidateLayout) withObject:nil afterDelay:2 inModes:@[NSRunLoopCommonModes]];
+    // [self performSelector:@selector(testInvalidateLayout) withObject:nil afterDelay:2 inModes:@[NSRunLoopCommonModes]];
+}
+
+- (void)testInsertingSections
+{
+    NSInteger sectionIndex = SECTION_INDEX_ITEM1;
+    __block NSMutableIndexSet *indexSet = [NSMutableIndexSet indexSet];
+    
+    sectionIndex = [m_dataSource addSection:SECTION_INDEX_ITEM1 frame:self.bounds insets:self.contentInset onPage:m_page];
+    [indexSet addIndex:sectionIndex];
+    
+    sectionIndex = [m_dataSource addSection:SECTION_INDEX_ITEM2 frame:self.bounds insets:self.contentInset onPage:m_page];
+    [indexSet addIndex:sectionIndex];
+    
+    __block UICollectionView *collectionView = self;
+    
+    __block NSMutableIndexSet *indexSet2 = [NSMutableIndexSet indexSet];
+    [indexSet2 addIndex:0];
+    [indexSet2 addIndex:1];
+    [indexSet2 addIndex:2];
+    [indexSet2 addIndex:3];
+    
+    if (@available(iOS 11.0, *)) {
+        NSLog(@"PERF:%@", self.hasUncommittedUpdates ? @"hasUncommittedUpdates" : @"noUncommittedUpdates");
+    } else {
+        // Fallback on earlier versions
+    }
+    [UIView performWithoutAnimation:^{
+        [self performBatchUpdates:^{
+            // UIFlexBatchUpdateContext *context = [[UIFlexBatchUpdateContext alloc] init];
+            
+            [collectionView reloadSections:indexSet2];
+            [collectionView insertSections:indexSet];
+            
+            // [context insertSections:indexSet];
+            UICollectionViewFlexLayout *layout = (UICollectionViewFlexLayout *)collectionView.collectionViewLayout;
+            // [layout commitBatchUpdates:context.updateItems];
+            
+        } completion:^(BOOL finshed){
+            collectionView = nil;
+        }];
+
+    }];
+    
+    // UICollectionViewLayout *layout = self.collectionViewLayout;
+    // [layout invalidateLayout];
+    
+    // [self performSelector:@selector(testInvalidateLayout) withObject:nil afterDelay:2 inModes:@[NSRunLoopCommonModes]];
+}
+
+
+- (void)testContiniousUpdateActions
+{
+    [m_dataSource removeSection:SECTION_INDEX_ITEM1 forPage:m_page];
+    [m_dataSource removeSection:SECTION_INDEX_ITEM2 forPage:m_page];
+    
+    [UIView performWithoutAnimation:^{
+        [self reloadData];
+    }];
+    
+    // [self.collectionViewLayout invalidateLayout];
+    
+    
+    [self performBatchUpdates:^{}
+            completion:^(BOOL finished) {
+        /// collection-view finished reload
+    }];
+     
+    
+    // [self testInvalidateLayout];
+    
+    [self performSelector:@selector(testInsertingSections) withObject:nil afterDelay:0 inModes:@[NSRunLoopCommonModes]];
+    
+    [self performSelector:@selector(testContiniousUpdateActions) withObject:nil afterDelay:6 inModes:@[NSRunLoopCommonModes]];
 }
 
 @end

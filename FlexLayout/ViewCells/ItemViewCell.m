@@ -43,6 +43,17 @@
     [super setFrame:frame];
 
     m_view.frame = CGRectInset(self.contentView.bounds, 10, 0);
+    if (self.tag == 1000)
+    {
+        NSLog(@"Nav: frame: %@", NSStringFromCGRect(frame));
+    }
+}
+
+- (void)layoutSubviews
+{
+    [super layoutSubviews];
+    
+    m_view.frame = CGRectInset(self.contentView.bounds, 10, 0);
 }
 
 - (void)setText:(nullable NSString *)text
