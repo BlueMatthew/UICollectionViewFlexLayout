@@ -11,8 +11,10 @@
 
 #include <vector>
 #include <algorithm>
+#ifndef NDEBUG
 #include <string>
 #include <sstream>
+#endif
 
 #include "ContainerBase.h"
 

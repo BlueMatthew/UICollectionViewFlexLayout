@@ -66,10 +66,6 @@ namespace nsflex
         Rect m_frame;   // The origin is in the coordinate system of section, should convert to the coordinate system of UICollectionView
         Rect m_itemsFrame;  // = (0, header.bottom) - (0, items.height)
 
-    private:
-        // FlexSectionT implements all required methods and sub-class doesn't need to access this member variable directly
-        // So set it private
-
     protected:
         union {
             struct {
@@ -201,7 +197,7 @@ namespace nsflex
             return getFrameInView(rect);
             return rect;
         }
-        
+
         void prepareLayout(const TLayout *layout, const Size &size)
         {
             if (!existsInvalidatedPart())

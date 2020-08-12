@@ -69,6 +69,7 @@
 		3489127124909FE200B1A95B /* main.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = main.m; sourceTree = "<group>"; };
 		34BD104224C2BCEB00EEA415 /* ContainerBase.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ContainerBase.h; sourceTree = "<group>"; };
 		34BD104424C34ED400EEA415 /* BoolTraits.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = BoolTraits.h; sourceTree = "<group>"; };
+		34D2054E24E3CE0F00117DE1 /* CollectionViewFlexLayoutImpl.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = CollectionViewFlexLayoutImpl.h; sourceTree = "<group>"; };
 		34DCE26B24D2B0AE00E0D10C /* FlexBatchUpdateContext.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = FlexBatchUpdateContext.m; sourceTree = "<group>"; };
 		34E878DF24C6D3FD00F716CA /* FlexLayout.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FlexLayout.h; sourceTree = "<group>"; };
 		34F5D83224D28BCD0033F3B8 /* FlexBatchUpdateContext.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = FlexBatchUpdateContext.h; sourceTree = "<group>"; };
@@ -154,15 +155,24 @@
 		348912782490A01C00B1A95B /* Layout */ = {
 			isa = PBXGroup;
 			children = (
-				34BD104424C34ED400EEA415 /* BoolTraits.h */,
 				34503EE124CEA94100FC9CFD /* CollectionViewFlexAdapter.h */,
 				348475D12490A2B900569952 /* CollectionViewFlexLayout.h */,
 				348475D02490A2B900569952 /* CollectionViewFlexLayout.mm */,
+				34D2054E24E3CE0F00117DE1 /* CollectionViewFlexLayoutImpl.h */,
 				345496A72490DEAF00447FCA /* CollectionViewFlexLayoutInvalidationContext.h */,
 				345496A82490DEC200447FCA /* CollectionViewFlexLayoutInvalidationContext.m */,
-				34BD104224C2BCEB00EEA415 /* ContainerBase.h */,
+				34D2054D24E3CD9100117DE1 /* common */,
 				34F5D83224D28BCD0033F3B8 /* FlexBatchUpdateContext.h */,
 				34DCE26B24D2B0AE00E0D10C /* FlexBatchUpdateContext.m */,
+			);
+			path = Layout;
+			sourceTree = "<group>";
+		};
+		34D2054D24E3CD9100117DE1 /* common */ = {
+			isa = PBXGroup;
+			children = (
+				34BD104424C34ED400EEA415 /* BoolTraits.h */,
+				34BD104224C2BCEB00EEA415 /* ContainerBase.h */,
 				348475D22490A2B900569952 /* FlexColumn.h */,
 				348475C92490A2B800569952 /* FlexFlowSection.h */,
 				348475D42490A2B900569952 /* FlexItem.h */,
@@ -173,7 +183,7 @@
 				348475CC2490A2B900569952 /* FlexWaterfallSection.h */,
 				34058D3724B762C400CE2CEA /* Graphics.h */,
 			);
-			path = Layout;
+			path = common;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */

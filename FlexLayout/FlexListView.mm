@@ -77,7 +77,7 @@ extern const NSInteger NUM_OF_ITEMS_IN_CATEGORY_BAR;
     [sections enumerateIndexesUsingBlock:^(NSUInteger idx, BOOL * _Nonnull stop) {
         [layout addStickyHeader:idx];
     }];
-    [layout setStackedStickyHeaders:YES];
+    [layout setStackedStickyHeaders:NO];
     
     if (self = [super initWithFrame:frame collectionViewLayout:layout])
     {
@@ -656,7 +656,7 @@ extern const NSInteger NUM_OF_ITEMS_IN_CATEGORY_BAR;
             // [context reloadSections:indexSet];
             [collectionView deleteItemsAtIndexPaths:indexPaths];
             // [context deleteItemsAtIndexPaths:indexPaths];
-            UICollectionViewFlexLayout *layout = (UICollectionViewFlexLayout *)collectionView.collectionViewLayout;
+            // UICollectionViewFlexLayout *layout = (UICollectionViewFlexLayout *)collectionView.collectionViewLayout;
             // [layout commitBatchUpdates:context.updateItems];
             
         } completion:^(BOOL finshed){
@@ -703,7 +703,7 @@ extern const NSInteger NUM_OF_ITEMS_IN_CATEGORY_BAR;
             [collectionView insertSections:indexSet];
             
             // [context insertSections:indexSet];
-            UICollectionViewFlexLayout *layout = (UICollectionViewFlexLayout *)collectionView.collectionViewLayout;
+            // UICollectionViewFlexLayout *layout = (UICollectionViewFlexLayout *)collectionView.collectionViewLayout;
             // [layout commitBatchUpdates:context.updateItems];
             
         } completion:^(BOOL finshed){
