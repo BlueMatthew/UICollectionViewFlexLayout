@@ -77,7 +77,7 @@ extern const NSInteger NUM_OF_ITEMS_IN_CATEGORY_BAR;
     [sections enumerateIndexesUsingBlock:^(NSUInteger idx, BOOL * _Nonnull stop) {
         [layout addStickyHeader:idx];
     }];
-    [layout setStackedStickyHeaders:NO];
+    [layout setStackedStickyHeaders:YES];
     
     if (self = [super initWithFrame:frame collectionViewLayout:layout])
     {
@@ -124,7 +124,7 @@ extern const NSInteger NUM_OF_ITEMS_IN_CATEGORY_BAR;
     
     // [self performSelector:@selector(invalidateLayout) withObject:nil afterDelya:2 inMode:];
     
-    [self performSelector:@selector(testContiniousUpdateActions) withObject:nil afterDelay:6 inModes:@[NSRunLoopCommonModes]];
+    // [self performSelector:@selector(testContiniousUpdateActions) withObject:nil afterDelay:6 inModes:@[NSRunLoopCommonModes]];
     // [self performSelector:@selector(testInvalidateLayout) withObject:nil afterDelay:6.016 inModes:@[NSRunLoopCommonModes]];
     
     return self;
@@ -741,7 +741,7 @@ extern const NSInteger NUM_OF_ITEMS_IN_CATEGORY_BAR;
     
     [self performSelector:@selector(testInsertingSections) withObject:nil afterDelay:0 inModes:@[NSRunLoopCommonModes]];
     
-    [self performSelector:@selector(testContiniousUpdateActions) withObject:nil afterDelay:6 inModes:@[NSRunLoopCommonModes]];
+    // [self performSelector:@selector(testContiniousUpdateActions) withObject:nil afterDelay:6 inModes:@[NSRunLoopCommonModes]];
 }
 
 @end
